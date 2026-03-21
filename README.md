@@ -68,12 +68,13 @@ underneath.
 
 ## Difficulty levels
 
-Set `CAMAZOTZ_DIFFICULTY` to control guardrail strength across all modules:
+Default is **medium**. Switch live from the portal nav bar or via API
+(`PUT /config {"difficulty":"..."}`).
 
-| Level | Claude-powered tools | Static tools |
-|-------|---------------------|--------------|
-| `easy` (default) | Wide-open system prompts, no filtering | Zero validation, all data exposed |
-| `medium` | Partial guardrails, notes injections but may still leak | Metadata blocked, partial redaction |
+| Level | LLM behavior | Deterministic controls |
+|-------|-------------|----------------------|
+| `easy` | Wide-open system prompts, no filtering | Zero validation, all data exposed |
+| `medium` (default) | Partial guardrails, notes injections but may still leak | Metadata blocked, partial redaction |
 | `hard` | Strict rejection of injections and escalation | Allowlists enforced, sensitive values redacted |
 
 All difficulty levels remain exploitable through different techniques. Easy mode
@@ -111,48 +112,39 @@ tool response:
 
 ---
 
+## Quick start
+
+```bash
+make env          # create compose/.env from example
+# Edit compose/.env to add ANTHROPIC_API_KEY (or use make up-local for Ollama)
+make up           # build + start portal, gateway, observer
+make status       # verify all services healthy
+```
+
+Portal at http://localhost:3000 — Gateway at http://localhost:8080
+
+See `QUICKSTART.md` for full setup options, Ollama local mode, and
+development without Docker.
+
 ## Development workflow
 
 - Use `uv` for dependency management and command execution.
 - Run `uv sync` after dependency changes.
-- Run tests with `uv run pytest`.
+- Run tests with `uv run pytest` or `make test`.
 - Coverage is enforced at 100%.
 
-## Local run
-
-With Docker Compose (Claude):
+## Makefile targets
 
 ```bash
-cp compose/.env.example compose/.env
-# Edit compose/.env to add ANTHROPIC_API_KEY
-docker compose -f compose/docker-compose.yml --env-file compose/.env up -d --build
-# Portal at http://localhost:3000, API at http://localhost:8080
-```
-
-With Docker Compose (Ollama — fully local, no API key needed):
-
-```bash
-cp compose/.env.example compose/.env
-# Set BRAIN_PROVIDER=local in compose/.env
-docker compose -f compose/docker-compose.yml --env-file compose/.env --profile local up -d --build
-# Pull the model into the Ollama container:
-docker compose -f compose/docker-compose.yml exec ollama ollama pull llama3.2:3b
-# Portal at http://localhost:3000, API at http://localhost:8080
-```
-
-Without Docker:
-
-```bash
-# Cloud (Claude):
-export ANTHROPIC_API_KEY=sk-ant-...
-uv run uvicorn brain_gateway.app.main:app --host 0.0.0.0 --port 8080
-# In a separate terminal, run the portal:
-cd frontend && pip install -r requirements.txt && python app.py
-
-# Local (Ollama — requires ollama running on localhost:11434):
-export BRAIN_PROVIDER=local
-uv run uvicorn brain_gateway.app.main:app --host 0.0.0.0 --port 8080
-cd frontend && GATEWAY_URL=http://localhost:8080 python app.py
+make help          # show all targets
+make up            # start with Claude (cloud)
+make up-local      # start with Ollama (local, no API key)
+make down          # stop all services
+make clean         # stop + remove volumes
+make ps            # show running services
+make status        # health check all services
+make logs          # tail all logs
+make test          # run pytest with coverage
 ```
 
 ## Regression checks

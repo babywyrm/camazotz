@@ -61,7 +61,8 @@ curl -s http://localhost:8080/mcp \
   -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}'
 ```
 
-Then open http://localhost:3000 in your browser.
+Then open http://localhost:3000 in your browser. Use the difficulty
+dropdown in the nav bar to switch between easy/medium/hard in real-time.
 
 ## Common operations
 
@@ -85,7 +86,7 @@ Edit `compose/.env` to tune behavior:
 |----------|---------|-------------|
 | `BRAIN_PROVIDER` | `cloud` | `cloud` (Claude) or `local` (Ollama) |
 | `ANTHROPIC_API_KEY` | (empty) | Required for Claude |
-| `CAMAZOTZ_DIFFICULTY` | `easy` | `easy`, `medium`, or `hard` |
+| `CAMAZOTZ_DIFFICULTY` | `medium` | `easy`, `medium`, or `hard` (switchable live from portal) |
 | `CAMAZOTZ_SHOW_TOKENS` | `false` | Show token usage and cost |
 | `CAMAZOTZ_OLLAMA_MODEL` | `llama3.2:3b` | Ollama model name |
 

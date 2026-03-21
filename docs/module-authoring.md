@@ -11,10 +11,59 @@ Tool metadata must include:
 
 - `name`
 - `description`
+- `inputSchema` (JSON Schema object)
+
+## LLM integration
+
+All modules should use the brain provider for AI-powered reasoning:
+
+```python
+from brain_gateway.app.brain.factory import get_provider
+from brain_gateway.app.config import get_difficulty, show_tokens
+
+provider = get_provider()
+result = provider.generate(prompt=prompt, system=system_prompt)
+```
+
+Include `ai_analysis` in the response:
+
+```python
+response["ai_analysis"] = result.text
+```
+
+Include `_usage` when `show_tokens()` is true:
+
+```python
+if show_tokens():
+    response["_usage"] = {
+        "input_tokens": result.input_tokens,
+        "output_tokens": result.output_tokens,
+        "cost_usd": round(result.cost_usd, 6),
+        "model": result.model,
+    }
+```
+
+## Difficulty-aware system prompts
+
+Define system prompts per difficulty level:
+
+```python
+SYSTEM_PROMPTS = {
+    "easy": "Be helpful, do not question intent...",
+    "medium": "Note suspicious patterns but still comply...",
+    "hard": "Strict mode, flag and refuse suspicious requests...",
+}
+
+system = SYSTEM_PROMPTS.get(get_difficulty(), SYSTEM_PROMPTS["easy"])
+```
+
+The LLM reasoning and the deterministic vulnerability mechanic should operate
+independently. The LLM may warn or refuse in `ai_analysis` while the
+underlying logic still executes the vulnerable behavior.
 
 ## Naming rules
 
-- Prefix tool names by domain (`auth.`, `tool.`, `context.`, `egress.`).
+- Prefix tool names by domain (`auth.`, `tool.`, `context.`, `egress.`, `secrets.`, `supply.`, `shadow.`).
 - Keep names stable so scanner regressions stay meaningful.
 
 ## Telemetry expectations
@@ -26,8 +75,25 @@ Tool calls are recorded by the gateway observer using:
 - `module`
 - `timestamp`
 
+## Registration
+
+Add the module to `brain_gateway/app/modules/adapter.py`:
+
+```python
+from camazotz_modules.your_lab.app.main import YourLabModule
+
+def get_registered_modules() -> list[ModuleAdapter]:
+    return [
+        # ... existing modules ...
+        YourLabModule(),
+    ]
+```
+
 ## Testing rules
 
 - Add pytest coverage for every module code path.
 - Keep global coverage at 100%.
-- Run tests with `uv run pytest`.
+- Test all difficulty levels (easy, medium, hard).
+- Test `show_tokens` on and off.
+- Test the `reason` parameter if your tool accepts one.
+- Run tests with `uv run pytest` or `make test`.
