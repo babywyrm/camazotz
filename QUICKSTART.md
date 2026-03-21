@@ -104,16 +104,30 @@ docker compose -f compose/docker-compose.yml --env-file compose/profiles/starter
 docker compose -f compose/docker-compose.yml --env-file compose/profiles/chaotic.env --profile local up -d
 ```
 
-## Option C: Kubernetes (K3s)
-
-See `kube/README.md` for full instructions.
+## Option C: Kubernetes (Helm)
 
 ```bash
-# On the K3s node with the repo at /opt/camazotz:
-bash /opt/camazotz/kube/deploy.sh
+make helm-deploy                    # deploy via Helm (cloud mode)
+make helm-deploy-local              # deploy with Ollama enabled
 ```
 
+For K3s with local image builds, see `kube/deploy.sh` or `deploy/README.md`.
+
 Portal at `http://<node-ip>:3000`.
+
+## Changing deployment config
+
+All deployment config lives in `deploy/helm/camazotz/values.yaml`.
+After editing values, regenerate Docker Compose and redeploy:
+
+```bash
+make compose-gen                    # regenerate docker-compose.yml
+make down && make up                # restart Compose
+# — or —
+make helm-deploy                    # redeploy K8s
+```
+
+See `deploy/README.md` for the full workflow.
 
 ## Development (without Docker)
 

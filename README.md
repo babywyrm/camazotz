@@ -12,6 +12,7 @@ cost per call. Designed for both manual exploration and automated scanner
 regression with [mcpvenom](https://github.com/babywyrm/mcpvenom).
 
 See `QUICKSTART.md` for setup.
+See `deploy/README.md` for the deployment workflow (Helm + Compose).
 See `docs/scenarios.md` for the full red/blue team exercise reference.
 See `docs/module-authoring.md` for adding new modules.
 See `CHANGELOG.md` for release history.
@@ -136,28 +137,32 @@ development without Docker.
 ## Makefile targets
 
 ```bash
-make help          # show all targets
-make up            # start with Claude (cloud)
-make up-local      # start with Ollama (local, no API key)
-make down          # stop all services
-make clean         # stop + remove volumes
-make ps            # show running services
-make status        # health check all services
-make logs          # tail all logs
-make test          # run pytest with coverage
+make help           # show all targets
+make up             # start with Claude (cloud)
+make up-local       # start with Ollama (local, no API key)
+make down           # stop all services
+make clean          # stop + remove volumes
+make ps             # show running services
+make status         # health check all services
+make logs           # tail all logs
+make test           # run pytest with coverage
+make compose-gen    # regenerate docker-compose.yml from Helm values
+make helm-template  # render Helm templates (dry-run)
+make helm-deploy    # deploy to K8s via Helm
 ```
 
 ## Kubernetes deployment
 
-K3s-ready manifests in `kube/`. See `kube/README.md` for full instructions.
+Helm chart at `deploy/helm/camazotz/`. See `deploy/README.md` for the
+full workflow.
 
 ```bash
-# On the target node with the repo at /opt/camazotz:
-bash /opt/camazotz/kube/deploy.sh
+make helm-deploy                    # deploy via Helm
+make helm-deploy-local              # deploy with Ollama enabled
 ```
 
-Portal exposed via LoadBalancer on port 3000. Gateway and Ollama are
-internal ClusterIP services.
+Legacy raw manifests in `kube/` with `deploy.sh` for K3s image import.
+Portal exposed via LoadBalancer on port 3000.
 
 ## Regression checks
 

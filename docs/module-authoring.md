@@ -97,3 +97,15 @@ def get_registered_modules() -> list[ModuleAdapter]:
 - Test `show_tokens` on and off.
 - Test the `reason` parameter if your tool accepts one.
 - Run tests with `uv run pytest` or `make test`.
+
+## Deploying your changes
+
+After code + tests are done:
+
+**Docker Compose (local):** `make down && make up` — images rebuild from source.
+
+**Kubernetes:** Rebuild images on the node, import into K3s, restart deployments.
+See `deploy/README.md` for the full workflow.
+
+If your module adds new env vars, edit `deploy/helm/camazotz/values.yaml`
+and run `make compose-gen` to keep Docker Compose in sync.

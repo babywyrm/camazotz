@@ -1,4 +1,10 @@
-# Camazotz Kubernetes Deployment
+# Camazotz Kubernetes Deployment (Legacy Raw Manifests)
+
+> **Prefer the Helm chart** at `deploy/helm/camazotz/` for new deployments.
+> See `deploy/README.md` for the unified workflow.
+>
+> These raw manifests and `deploy.sh` remain useful for quick K3s deploys
+> where Helm isn't installed.
 
 K3s manifests for deploying Camazotz to a Kubernetes cluster.
 
