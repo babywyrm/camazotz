@@ -1,0 +1,87 @@
+# Camazotz Helm values — single source of truth for K8s and Docker Compose.
+
+namespace: camazotz
+
+config:
+  brainProvider: cloud
+  camazotzModel: "claude-sonnet-4-20250514"
+  difficulty: medium
+  showTokens: "false"
+  ollamaHost: "http://ollama:11434"
+  ollamaModel: "llama3.2:3b"
+  gatewayUrl: "http://brain-gateway:8080"
+  observerPollInterval: "2"
+  logLevel: info
+
+secrets:
+  anthropicApiKey: ""
+  flaskSecret: "cztz-k8s-secret"
+
+gateway:
+  image: camazotz/brain-gateway
+  tag: latest
+  pullPolicy: Never
+  replicas: 1
+  port: 8080
+  healthPath: /health
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  build:
+    context: ..
+    dockerfile: compose/Dockerfile
+
+portal:
+  image: camazotz/portal
+  tag: latest
+  pullPolicy: Never
+  replicas: 1
+  port: 3000
+  healthPath: /health
+  serviceType: LoadBalancer
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 250m
+      memory: 128Mi
+  build:
+    context: ../frontend
+    dockerfile: Dockerfile
+
+observer:
+  image: camazotz/observer
+  tag: latest
+  pullPolicy: Never
+  replicas: 1
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 64Mi
+  build:
+    context: ./observer
+    dockerfile: Dockerfile
+
+ollama:
+  enabled: false
+  image: ollama/ollama
+  tag: latest
+  port: 11434
+  healthPath: /api/tags
+  storage: 10Gi
+  storageClass: local-path
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: "2"
+      memory: 4Gi

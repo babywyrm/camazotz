@@ -1,4 +1,4 @@
-.PHONY: help up up-local down logs test build clean status ps env
+.PHONY: help up up-local down logs test build clean status ps env compose-gen helm-template
 
 COMPOSE := docker compose -f compose/docker-compose.yml
 ENV_FILE := compose/.env
@@ -67,3 +67,16 @@ test: ## Run pytest with coverage
 
 test-v: ## Run pytest verbose
 	uv run pytest -v
+
+compose-gen: ## Regenerate docker-compose.yml from Helm values
+	uv run python deploy/generate-compose.py
+	@echo "compose/docker-compose.yml regenerated from deploy/helm/camazotz/values.yaml"
+
+helm-template: ## Render Helm templates to stdout
+	helm template camazotz deploy/helm/camazotz --namespace camazotz
+
+helm-deploy: ## Deploy to K8s via Helm (requires cluster access)
+	helm upgrade --install camazotz deploy/helm/camazotz --namespace camazotz --create-namespace
+
+helm-deploy-local: ## Deploy with Ollama enabled
+	helm upgrade --install camazotz deploy/helm/camazotz --namespace camazotz --create-namespace --set ollama.enabled=true --set config.brainProvider=local

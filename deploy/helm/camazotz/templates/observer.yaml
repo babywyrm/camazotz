@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: observer
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "camazotz.selectorLabels" "observer" | nindent 4 }}
+    {{- include "camazotz.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.observer.replicas }}
+  selector:
+    matchLabels:
+      {{- include "camazotz.selectorLabels" "observer" | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "camazotz.selectorLabels" "observer" | nindent 8 }}
+    spec:
+      containers:
+        - name: observer
+          image: "{{ .Values.observer.image }}:{{ .Values.observer.tag }}"
+          imagePullPolicy: {{ .Values.observer.pullPolicy }}
+          envFrom:
+            - configMapRef:
+                name: camazotz-config
+          resources:
+            {{- toYaml .Values.observer.resources | nindent 12 }}

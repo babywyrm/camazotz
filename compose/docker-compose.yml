@@ -1,106 +1,112 @@
+# Auto-generated from deploy/helm/camazotz/values.yaml
+# Regenerate: make compose-gen
+
 services:
   portal:
     build:
       context: ../frontend
       dockerfile: Dockerfile
     environment:
-      - GATEWAY_URL=http://brain-gateway:8080
-      - FLASK_SECRET=${FLASK_SECRET:-cztz-dev-key}
+    - GATEWAY_URL=http://brain-gateway:8080
+    - FLASK_SECRET=${FLASK_SECRET:-cztz-k8s-secret}
     ports:
-      - "3000:3000"
+    - 3000:3000
     depends_on:
       brain-gateway:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:3000/health')\""]
+      test:
+      - CMD-SHELL
+      - python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:3000/health')"
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 5s
     networks:
-      - camazotz
-
+    - camazotz
   brain-gateway:
     build:
       context: ..
       dockerfile: compose/Dockerfile
     environment:
-      - BRAIN_PROVIDER=${BRAIN_PROVIDER:-cloud}
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
-      - CAMAZOTZ_MODEL=${CAMAZOTZ_MODEL:-claude-sonnet-4-20250514}
-      - CAMAZOTZ_DIFFICULTY=${CAMAZOTZ_DIFFICULTY:-medium}
-      - CAMAZOTZ_SHOW_TOKENS=${CAMAZOTZ_SHOW_TOKENS:-false}
-      - OLLAMA_HOST=${OLLAMA_HOST:-http://ollama:11434}
-      - CAMAZOTZ_OLLAMA_MODEL=${CAMAZOTZ_OLLAMA_MODEL:-llama3.2:3b}
+    - BRAIN_PROVIDER=${BRAIN_PROVIDER:-cloud}
+    - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+    - CAMAZOTZ_MODEL=${CAMAZOTZ_MODEL:-claude-sonnet-4-20250514}
+    - CAMAZOTZ_DIFFICULTY=${CAMAZOTZ_DIFFICULTY:-medium}
+    - CAMAZOTZ_SHOW_TOKENS=${CAMAZOTZ_SHOW_TOKENS:-false}
+    - OLLAMA_HOST=${OLLAMA_HOST:-http://ollama:11434}
+    - CAMAZOTZ_OLLAMA_MODEL=${CAMAZOTZ_OLLAMA_MODEL:-llama3.2:3b}
     ports:
-      - "8080:8080"
+    - 8080:8080
     depends_on:
       ollama:
         condition: service_started
         required: false
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8080/health')\""]
+      test:
+      - CMD-SHELL
+      - python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 5s
     networks:
-      - camazotz
-
+    - camazotz
   observer:
     build:
       context: ./observer
       dockerfile: Dockerfile
     environment:
-      - GATEWAY_URL=http://brain-gateway:8080
-      - OBSERVER_POLL_INTERVAL=${OBSERVER_POLL_INTERVAL:-2}
-      - LOG_LEVEL=${LOG_LEVEL:-info}
+    - GATEWAY_URL=http://brain-gateway:8080
+    - OBSERVER_POLL_INTERVAL=${OBSERVER_POLL_INTERVAL:-2}
+    - LOG_LEVEL=${LOG_LEVEL:-info}
     depends_on:
       brain-gateway:
         condition: service_healthy
     restart: unless-stopped
     networks:
-      - camazotz
-
+    - camazotz
   ollama:
     image: ollama/ollama:latest
     ports:
-      - "11434:11434"
+    - 11434:11434
     volumes:
-      - ollama-models:/root/.ollama
+    - ollama-models:/root/.ollama
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:11434/api/tags || exit 1"]
+      test:
+      - CMD-SHELL
+      - curl -sf http://localhost:11434/api/tags || exit 1
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 15s
     profiles:
-      - local
-      - full
+    - local
+    - full
     networks:
-      - camazotz
-
+    - camazotz
   ollama-init:
     image: ollama/ollama:latest
     depends_on:
       ollama:
         condition: service_healthy
-    restart: "no"
-    entrypoint: ["ollama", "pull", "${CAMAZOTZ_OLLAMA_MODEL:-llama3.2:3b}"]
+    restart: 'no'
+    entrypoint:
+    - ollama
+    - pull
+    - ${CAMAZOTZ_OLLAMA_MODEL:-llama3.2:3b}
     environment:
-      - OLLAMA_HOST=http://ollama:11434
+    - OLLAMA_HOST=http://ollama:11434
     profiles:
-      - local
-      - full
+    - local
+    - full
     networks:
-      - camazotz
-
+    - camazotz
 networks:
   camazotz:
     name: camazotz
-
 volumes:
-  ollama-models:
+  ollama-models: null

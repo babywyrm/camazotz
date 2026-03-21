@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: camazotz-config
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "camazotz.labels" . | nindent 4 }}
+data:
+  BRAIN_PROVIDER: {{ .Values.config.brainProvider | quote }}
+  CAMAZOTZ_MODEL: {{ .Values.config.camazotzModel | quote }}
+  CAMAZOTZ_DIFFICULTY: {{ .Values.config.difficulty | quote }}
+  CAMAZOTZ_SHOW_TOKENS: {{ .Values.config.showTokens | quote }}
+  OLLAMA_HOST: {{ .Values.config.ollamaHost | quote }}
+  CAMAZOTZ_OLLAMA_MODEL: {{ .Values.config.ollamaModel | quote }}
+  GATEWAY_URL: {{ .Values.config.gatewayUrl | quote }}
+  OBSERVER_POLL_INTERVAL: {{ .Values.config.observerPollInterval | quote }}
+  LOG_LEVEL: {{ .Values.config.logLevel | quote }}

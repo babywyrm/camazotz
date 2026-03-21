@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: portal
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "camazotz.selectorLabels" "portal" | nindent 4 }}
+    {{- include "camazotz.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.portal.replicas }}
+  selector:
+    matchLabels:
+      {{- include "camazotz.selectorLabels" "portal" | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "camazotz.selectorLabels" "portal" | nindent 8 }}
+    spec:
+      containers:
+        - name: portal
+          image: "{{ .Values.portal.image }}:{{ .Values.portal.tag }}"
+          imagePullPolicy: {{ .Values.portal.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.portal.port }}
+          envFrom:
+            - configMapRef:
+                name: camazotz-config
+            - secretRef:
+                name: camazotz-secrets
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.portal.healthPath }}
+              port: {{ .Values.portal.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.portal.healthPath }}
+              port: {{ .Values.portal.port }}
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          resources:
+            {{- toYaml .Values.portal.resources | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: portal
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "camazotz.selectorLabels" "portal" | nindent 4 }}
+    {{- include "camazotz.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.portal.serviceType }}
+  selector:
+    {{- include "camazotz.selectorLabels" "portal" | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.portal.port }}
+      targetPort: {{ .Values.portal.port }}
+      protocol: TCP

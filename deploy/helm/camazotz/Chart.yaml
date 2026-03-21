@@ -1,0 +1,11 @@
+apiVersion: v2
+name: camazotz
+description: MCP security playground with intentionally vulnerable module labs
+version: 0.1.0
+appVersion: "0.1.0"
+type: application
+keywords:
+  - mcp
+  - security
+  - owasp
+  - training
