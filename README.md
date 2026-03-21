@@ -105,7 +105,7 @@ tool response:
 | `CAMAZOTZ_MODEL` | Model name | `claude-sonnet-4-20250514` | Claude model to use |
 | `OLLAMA_HOST` | URL | `http://localhost:11434` | Ollama API endpoint |
 | `CAMAZOTZ_OLLAMA_MODEL` | Model name | `llama3.2:3b` | Ollama model to use |
-| `CAMAZOTZ_DIFFICULTY` | `easy`, `medium`, `hard` | `easy` | Guardrail strength |
+| `CAMAZOTZ_DIFFICULTY` | `easy`, `medium`, `hard` | `medium` | Guardrail strength (switchable from portal) |
 | `CAMAZOTZ_SHOW_TOKENS` | `true`, `false` | `false` | Show token usage and cost |
 | `LOG_LEVEL` | `info`, `debug` | `info` | Observer log level |
 

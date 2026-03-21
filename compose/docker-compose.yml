@@ -13,11 +13,11 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:3000/health')"]
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:3000/health')\""]
       interval: 10s
       timeout: 5s
-      retries: 3
-      start_period: 10s
+      retries: 5
+      start_period: 5s
     networks:
       - camazotz
 
@@ -29,7 +29,7 @@ services:
       - BRAIN_PROVIDER=${BRAIN_PROVIDER:-cloud}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - CAMAZOTZ_MODEL=${CAMAZOTZ_MODEL:-claude-sonnet-4-20250514}
-      - CAMAZOTZ_DIFFICULTY=${CAMAZOTZ_DIFFICULTY:-easy}
+      - CAMAZOTZ_DIFFICULTY=${CAMAZOTZ_DIFFICULTY:-medium}
       - CAMAZOTZ_SHOW_TOKENS=${CAMAZOTZ_SHOW_TOKENS:-false}
       - OLLAMA_HOST=${OLLAMA_HOST:-http://ollama:11434}
       - CAMAZOTZ_OLLAMA_MODEL=${CAMAZOTZ_OLLAMA_MODEL:-llama3.2:3b}
@@ -41,11 +41,11 @@ services:
         required: false
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8080/health')\""]
       interval: 10s
       timeout: 5s
-      retries: 3
-      start_period: 10s
+      retries: 5
+      start_period: 5s
     networks:
       - camazotz
 

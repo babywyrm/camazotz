@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 
 from brain_gateway.app.brain.factory import reset_provider
+from brain_gateway.app.config import reset_difficulty
 from brain_gateway.app.main import app
 from camazotz_modules.shadow_lab.app.main import _reset_webhooks
 from camazotz_modules.tool_lab.app.main import _reset_state
@@ -8,6 +9,7 @@ from camazotz_modules.tool_lab.app.main import _reset_state
 
 def setup_function() -> None:
     reset_provider()
+    reset_difficulty()
     _reset_state()
     _reset_webhooks()
 
@@ -50,12 +52,11 @@ def test_supply_show_tokens(monkeypatch) -> None:
     assert "_usage" in result
 
 
-def test_difficulty_defaults_to_easy(monkeypatch) -> None:
+def test_difficulty_defaults_to_medium(monkeypatch) -> None:
     monkeypatch.delenv("CAMAZOTZ_DIFFICULTY", raising=False)
     client = TestClient(app)
     result = _call(client, "context.injectable_summary", {"text": "test"})
-    assert result["_difficulty"] == "easy"
-    assert result["_sanitized"] is False
+    assert result["_difficulty"] == "medium"
 
 
 def test_difficulty_hard_context(monkeypatch) -> None:

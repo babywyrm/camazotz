@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 
 from brain_gateway.app.brain.factory import reset_provider
+from brain_gateway.app.config import reset_difficulty
 from brain_gateway.app.main import app
 from camazotz_modules.shadow_lab.app.main import _reset_webhooks
 from camazotz_modules.tool_lab.app.main import _reset_state
@@ -8,6 +9,9 @@ from camazotz_modules.tool_lab.app.main import _reset_state
 
 def setup_function() -> None:
     reset_provider()
+    reset_difficulty()
+    from brain_gateway.app.config import set_difficulty
+    set_difficulty("easy")
     _reset_state()
     _reset_webhooks()
 

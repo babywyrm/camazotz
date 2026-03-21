@@ -79,6 +79,27 @@ def api_observer():
     return jsonify(_observer_last())
 
 
+@app.route("/api/config", methods=["GET"])
+def api_config_get():
+    try:
+        resp = httpx.get(f"{GATEWAY_URL}/config", timeout=5.0)
+        resp.raise_for_status()
+        return jsonify(resp.json())
+    except (httpx.HTTPError, ValueError):
+        return jsonify({"difficulty": "medium", "show_tokens": False})
+
+
+@app.route("/api/config", methods=["PUT"])
+def api_config_put():
+    body = request.get_json(silent=True) or {}
+    try:
+        resp = httpx.put(f"{GATEWAY_URL}/config", json=body, timeout=5.0)
+        resp.raise_for_status()
+        return jsonify(resp.json())
+    except (httpx.HTTPError, ValueError):
+        return jsonify({"error": "Gateway unreachable"}), 502
+
+
 @app.route("/health")
 def health():
     return jsonify({"status": "ok", "service": "camazotz-portal"})

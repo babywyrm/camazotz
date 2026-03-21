@@ -53,6 +53,18 @@ code,pre{font-family:var(--font-mono)}
   font-size:.8rem;font-weight:600;transition:all .2s}
 .nav-cta:hover{background:var(--accent2);color:#fff;transform:translateY(-1px)}
 
+.diff-switcher{display:flex;align-items:center;gap:.4rem;margin-left:.5rem}
+.diff-switcher label{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;font-weight:600}
+.diff-switcher select{background:var(--surface);color:var(--text);border:1px solid var(--border);
+  border-radius:6px;padding:.3rem .5rem;font-size:.78rem;cursor:pointer;font-family:inherit;
+  transition:border-color .2s}
+.diff-switcher select:focus{outline:none;border-color:var(--accent)}
+.diff-switcher select option{background:var(--bg);color:var(--text)}
+.diff-dot{width:6px;height:6px;border-radius:50%;transition:background .3s}
+.diff-dot.easy{background:#10b981}
+.diff-dot.medium{background:#eab308}
+.diff-dot.hard{background:#ef4444}
+
 .container{max-width:1100px;margin:0 auto;padding:0 2rem}
 .section{padding:4rem 0}
 
@@ -115,6 +127,14 @@ code,pre{font-family:var(--font-mono)}
       <a href="/playground" class="{% if request.path == '/playground' %}active{% endif %}">Playground</a>
       <a href="/scenarios" class="{% if request.path == '/scenarios' %}active{% endif %}">Scenarios</a>
       <a href="/observer" class="{% if request.path == '/observer' %}active{% endif %}">Observer</a>
+      <div class="diff-switcher">
+        <span class="diff-dot medium" id="diffDot"></span>
+        <select id="diffSelect" onchange="switchDifficulty(this.value)">
+          <option value="easy">Easy</option>
+          <option value="medium" selected>Medium</option>
+          <option value="hard">Hard</option>
+        </select>
+      </div>
       <a href="/playground" class="nav-cta">Launch Tools</a>
     </div>
   </div>
@@ -133,6 +153,25 @@ code,pre{font-family:var(--font-mono)}
   </div>
 </footer>
 
+<script>
+(function(){
+  fetch('/api/config').then(r=>r.json()).then(d=>{
+    if(d.difficulty){
+      document.getElementById('diffSelect').value=d.difficulty;
+      const dot=document.getElementById('diffDot');
+      dot.className='diff-dot '+d.difficulty;
+    }
+  }).catch(()=>{});
+})();
+function switchDifficulty(level){
+  fetch('/api/config',{method:'PUT',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({difficulty:level})})
+    .then(r=>r.json()).then(d=>{
+      const dot=document.getElementById('diffDot');
+      dot.className='diff-dot '+(d.difficulty||level);
+    }).catch(()=>{});
+}
+</script>
 {% block extra_js %}{% endblock %}
 </body>
 </html>

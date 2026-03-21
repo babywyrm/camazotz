@@ -140,3 +140,42 @@ def test_observer_gateway_error(frontend_client) -> None:
         resp = client.get("/api/observer")
     assert resp.status_code == 200
     assert resp.get_json() == {}
+
+
+def test_api_config_get(frontend_client) -> None:
+    client, _ = frontend_client
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {"difficulty": "medium", "show_tokens": False}
+    mock_resp.raise_for_status = MagicMock()
+    with patch.object(httpx, "get", return_value=mock_resp):
+        resp = client.get("/api/config")
+    assert resp.status_code == 200
+    assert resp.get_json()["difficulty"] == "medium"
+
+
+def test_api_config_get_gateway_error(frontend_client) -> None:
+    client, _ = frontend_client
+    with patch.object(httpx, "get", side_effect=httpx.ConnectError("refused")):
+        resp = client.get("/api/config")
+    assert resp.status_code == 200
+    assert resp.get_json()["difficulty"] == "medium"
+
+
+def test_api_config_put(frontend_client) -> None:
+    client, _ = frontend_client
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {"difficulty": "hard", "show_tokens": False}
+    mock_resp.raise_for_status = MagicMock()
+    with patch.object(httpx, "put", return_value=mock_resp):
+        resp = client.put("/api/config", json={"difficulty": "hard"})
+    assert resp.status_code == 200
+    assert resp.get_json()["difficulty"] == "hard"
+
+
+def test_api_config_put_gateway_error(frontend_client) -> None:
+    client, _ = frontend_client
+    with patch.object(httpx, "put", side_effect=httpx.ConnectError("refused")):
+        resp = client.put("/api/config", json={"difficulty": "hard"})
+    assert resp.status_code == 502

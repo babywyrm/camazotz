@@ -4,7 +4,7 @@ import httpx
 
 from brain_gateway.app.brain.factory import get_provider, reset_provider
 from brain_gateway.app.brain.local_ollama import LocalOllamaProvider
-from brain_gateway.app.config import get_ollama_host, get_ollama_model
+from brain_gateway.app.config import get_ollama_host, get_ollama_model, set_difficulty, reset_difficulty
 
 
 def test_default_provider_is_cloud(monkeypatch) -> None:
@@ -104,3 +104,28 @@ def test_config_ollama_overrides(monkeypatch) -> None:
     monkeypatch.setenv("CAMAZOTZ_OLLAMA_MODEL", "mistral:7b")
     assert get_ollama_host() == "http://gpu-box:11434"
     assert get_ollama_model() == "mistral:7b"
+
+
+def test_set_difficulty_valid() -> None:
+    reset_difficulty()
+    assert set_difficulty("hard") == "hard"
+    assert set_difficulty("easy") == "easy"
+    assert set_difficulty("MEDIUM") == "medium"
+    reset_difficulty()
+
+
+def test_set_difficulty_invalid() -> None:
+    reset_difficulty()
+    original = set_difficulty("medium")
+    result = set_difficulty("nightmare")
+    assert result == "medium"
+    reset_difficulty()
+
+
+def test_reset_difficulty(monkeypatch) -> None:
+    monkeypatch.delenv("CAMAZOTZ_DIFFICULTY", raising=False)
+    set_difficulty("hard")
+    from brain_gateway.app.config import get_difficulty
+    assert get_difficulty() == "hard"
+    reset_difficulty()
+    assert get_difficulty() == "medium"
