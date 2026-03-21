@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: brain-gateway
+  namespace: camazotz
+  labels:
+    app: brain-gateway
+    app.kubernetes.io/part-of: camazotz
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: brain-gateway
+  template:
+    metadata:
+      labels:
+        app: brain-gateway
+    spec:
+      containers:
+        - name: brain-gateway
+          image: camazotz/brain-gateway:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: camazotz-config
+            - secretRef:
+                name: camazotz-secrets
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: brain-gateway
+  namespace: camazotz
+  labels:
+    app: brain-gateway
+    app.kubernetes.io/part-of: camazotz
+spec:
+  selector:
+    app: brain-gateway
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP

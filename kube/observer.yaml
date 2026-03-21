@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: observer
+  namespace: camazotz
+  labels:
+    app: observer
+    app.kubernetes.io/part-of: camazotz
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: observer
+  template:
+    metadata:
+      labels:
+        app: observer
+    spec:
+      containers:
+        - name: observer
+          image: camazotz/observer:latest
+          imagePullPolicy: Never
+          envFrom:
+            - configMapRef:
+                name: camazotz-config
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi

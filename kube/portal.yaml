@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: portal
+  namespace: camazotz
+  labels:
+    app: portal
+    app.kubernetes.io/part-of: camazotz
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: portal
+  template:
+    metadata:
+      labels:
+        app: portal
+    spec:
+      containers:
+        - name: portal
+          image: camazotz/portal:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - configMapRef:
+                name: camazotz-config
+            - secretRef:
+                name: camazotz-secrets
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: portal
+  namespace: camazotz
+  labels:
+    app: portal
+    app.kubernetes.io/part-of: camazotz
+spec:
+  type: LoadBalancer
+  selector:
+    app: portal
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+      protocol: TCP
