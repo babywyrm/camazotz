@@ -1,20 +1,19 @@
 services:
   brain-gateway:
-    image: python:3.13-slim
-    working_dir: /workspace
-    volumes:
-      - ..:/workspace
-    command: sh -c "pip install uv && uv sync && uv run uvicorn brain_gateway.app.main:app --host 0.0.0.0 --port 8080"
+    build:
+      context: ..
+      dockerfile: compose/Dockerfile
     environment:
       - BRAIN_PROVIDER=${BRAIN_PROVIDER:-cloud}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - CAMAZOTZ_MODEL=${CAMAZOTZ_MODEL:-claude-sonnet-4-20250514}
     ports:
       - "8080:8080"
 
   observer:
-    image: python:3.13-slim
-    working_dir: /workspace
-    volumes:
-      - ..:/workspace
-    command: sh -c "pip install uv && uv sync && uv run python -c 'print(\"observer sidecar active\")'"
+    build:
+      context: ..
+      dockerfile: compose/Dockerfile
+    command: python -c "import time; print('observer sidecar active'); time.sleep(999999)"
     environment:
       - LOG_LEVEL=${LOG_LEVEL:-info}

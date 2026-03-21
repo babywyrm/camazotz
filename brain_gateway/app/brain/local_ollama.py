@@ -1,6 +1,5 @@
 class LocalOllamaProvider:
     name = "local"
 
-    def generate(self, prompt: str) -> str:
-        # Placeholder for local Ollama integration.
-        return f"[local] {prompt}"
+    def generate(self, prompt: str, system: str = "") -> str:
+        return f"[local-stub] {prompt}"

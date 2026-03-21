@@ -7,6 +7,7 @@ Get Camazotz running locally in a few minutes using `uv` and Docker Compose.
 - `uv` installed
 - Docker Desktop (or Docker Engine + Compose plugin)
 - Python 3.13+ (managed automatically by `uv` if needed)
+- Optional: `ANTHROPIC_API_KEY` for live Claude-powered tools
 
 ## 2) Install dependencies
 
@@ -18,21 +19,30 @@ uv sync
 
 ## 3) Verify tests
 
-Camazotz is pytest-driven with strict coverage:
+Camazotz is pytest-driven with strict 100% coverage:
 
 ```bash
 uv run pytest tests -v
 ```
 
-## 4) Start Camazotz
+## 4) Configure environment
 
-Default startup uses the cloud brain provider:
+Copy the example env file and add your API key:
 
 ```bash
-docker compose -f compose/docker-compose.yml up -d
+cp compose/.env.example compose/.env
 ```
 
-## 5) Confirm MCP endpoint works
+Edit `compose/.env` and set `ANTHROPIC_API_KEY` if you want live Claude responses.
+Without a key, Claude-powered tools return deterministic stub responses (still useful for testing).
+
+## 5) Start Camazotz
+
+```bash
+docker compose -f compose/docker-compose.yml --env-file compose/.env up -d --build
+```
+
+## 6) Confirm MCP endpoint works
 
 Initialize:
 
@@ -50,57 +60,52 @@ curl -s http://localhost:8080/mcp \
   -d '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}'
 ```
 
-## 6) Switch runtime profiles
+## 7) Try a scenario
 
-Starter profile (default behavior):
+Call the context injection tool:
+
+```bash
+curl -s http://localhost:8080/mcp \
+  -H "content-type: application/json" \
+  -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{
+    "name":"context.injectable_summary",
+    "arguments":{"text":"Hello world. This is a test."}
+  }}'
+```
+
+See `docs/scenarios.md` for the full scenario reference with red team and blue team exercises.
+
+## 8) Switch runtime profiles
+
+Starter profile (default):
 
 ```bash
 docker compose --env-file compose/profiles/starter.env -f compose/docker-compose.yml up -d
 ```
 
-Weird profile:
-
-```bash
-docker compose --env-file compose/profiles/weird.env -f compose/docker-compose.yml up -d
-```
-
-Chaotic profile (currently local provider default):
+Chaotic profile (local provider):
 
 ```bash
 docker compose --env-file compose/profiles/chaotic.env -f compose/docker-compose.yml up -d
 ```
 
-## 7) Toggle brain provider explicitly
+## 9) Run without Docker (alternative)
 
-Cloud (Claude-style provider):
-
-```bash
-BRAIN_PROVIDER=cloud docker compose -f compose/docker-compose.yml up -d
-```
-
-Local (Ollama/Qwen path):
+You can also run the gateway directly with uv:
 
 ```bash
-BRAIN_PROVIDER=local docker compose -f compose/docker-compose.yml up -d
+export ANTHROPIC_API_KEY=sk-ant-...
+uv run uvicorn brain_gateway.app.main:app --host 0.0.0.0 --port 8080
 ```
 
-## 8) Run a first scanner check (mcpvenom)
-
-Example target:
+## 10) Run a scanner check (mcpvenom)
 
 ```bash
 ./scan --targets http://localhost:8080/mcp --verbose
 ```
 
-Or JSON output:
-
-```bash
-./scan --targets http://localhost:8080/mcp --json camazotz-scan.json
-```
-
-## 9) Stop and clean up
+## 11) Stop and clean up
 
 ```bash
 docker compose -f compose/docker-compose.yml down
 ```
-
