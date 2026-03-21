@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Camazotz Observer Event",
+  "type": "object",
+  "required": ["request_id", "module", "tool_name", "timestamp"],
+  "properties": {
+    "request_id": {
+      "type": "string"
+    },
+    "module": {
+      "type": "string"
+    },
+    "tool_name": {
+      "type": "string"
+    },
+    "timestamp": {
+      "type": "string"
+    },
+    "severity": {
+      "type": "string"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

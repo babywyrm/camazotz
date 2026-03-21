@@ -1,0 +1,1 @@
+"""Egress lab app."""

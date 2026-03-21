@@ -1,0 +1,14 @@
+{
+  "profile": "starter",
+  "description": "Initial Camazotz baseline for scanner regression checks.",
+  "expected_tools": [
+    "auth.issue_token",
+    "tool.mutate_behavior",
+    "context.injectable_summary",
+    "egress.fetch_url"
+  ],
+  "notes": [
+    "Use this as a baseline input for differential scans.",
+    "Update intentionally when adding/removing default tools."
+  ]
+}
