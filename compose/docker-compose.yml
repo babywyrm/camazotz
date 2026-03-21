@@ -9,8 +9,24 @@ services:
       - CAMAZOTZ_MODEL=${CAMAZOTZ_MODEL:-claude-sonnet-4-20250514}
       - CAMAZOTZ_DIFFICULTY=${CAMAZOTZ_DIFFICULTY:-easy}
       - CAMAZOTZ_SHOW_TOKENS=${CAMAZOTZ_SHOW_TOKENS:-false}
+      - OLLAMA_HOST=${OLLAMA_HOST:-http://ollama:11434}
+      - CAMAZOTZ_OLLAMA_MODEL=${CAMAZOTZ_OLLAMA_MODEL:-llama3.2:3b}
     ports:
       - "8080:8080"
+    depends_on:
+      ollama:
+        condition: service_started
+        required: false
+
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-models:/root/.ollama
+    profiles:
+      - local
+      - full
 
   observer:
     build:
@@ -19,3 +35,6 @@ services:
     command: python -c "import time; print('observer sidecar active'); time.sleep(999999)"
     environment:
       - LOG_LEVEL=${LOG_LEVEL:-info}
+
+volumes:
+  ollama-models:

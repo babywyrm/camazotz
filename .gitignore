@@ -27,6 +27,11 @@ htmlcov/
 .idea/
 .vscode/
 
+# Env files with secrets (keep .env.example, ignore actual .env)
+compose/.env
+.env
+*.env.local
+
 # Runtime and logs
 *.log
 *.pid

@@ -17,3 +17,11 @@ def estimate_cost(input_tokens: int, output_tokens: int) -> float:
         input_tokens * SONNET_INPUT_COST_PER_M / 1_000_000
         + output_tokens * SONNET_OUTPUT_COST_PER_M / 1_000_000
     )
+
+
+def get_ollama_host() -> str:
+    return os.getenv("OLLAMA_HOST", "http://localhost:11434")
+
+
+def get_ollama_model() -> str:
+    return os.getenv("CAMAZOTZ_OLLAMA_MODEL", "llama3.2:3b")

@@ -59,6 +59,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "anthropic" },
     { name = "fastapi" },
+    { name = "httpx" },
     { name = "pydantic" },
     { name = "uvicorn" },
 ]
@@ -74,6 +75,7 @@ dev = [
 requires-dist = [
     { name = "anthropic", specifier = ">=0.86.0" },
     { name = "fastapi", specifier = ">=0.116.0" },
+    { name = "httpx", specifier = ">=0.28.0" },
     { name = "pydantic", specifier = ">=2.11.0" },
     { name = "uvicorn", specifier = ">=0.35.0" },
 ]

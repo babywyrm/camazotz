@@ -9,6 +9,21 @@ Project does not yet follow semantic versioning; versions track development mile
 
 ## [Unreleased]
 
+### Changed
+
+- **All modules now LLM-backed.** The four previously static modules (`egress_lab`,
+  `secrets_lab`, `shadow_lab`, `tool_lab`) now use the brain provider for AI-powered
+  request analysis. Deterministic vulnerability mechanics are preserved underneath
+  the LLM reasoning layer.
+- **Real Ollama provider.** `LocalOllamaProvider` now makes actual HTTP calls to the
+  Ollama `/api/generate` endpoint instead of returning stubs. Falls back to
+  `[ollama-unavailable]` when Ollama is unreachable.
+- **Docker Compose gains Ollama service.** Use `--profile local` to spin up an Ollama
+  container alongside the brain gateway. Model data persists via a named volume.
+- All module tool responses now include `ai_analysis` field with the LLM's reasoning.
+- New env vars: `OLLAMA_HOST`, `CAMAZOTZ_OLLAMA_MODEL`.
+- 57 tests passing at 100% coverage (up from 42).
+
 ### Added
 
 - **Scenario: Indirect prompt injection** (`context.injectable_summary`)

@@ -112,3 +112,90 @@ def test_difficulty_hard_shadow_allows_allowlisted(monkeypatch) -> None:
     client = TestClient(app)
     result = _call(client, "shadow.register_webhook", {"url": "https://hooks.slack.com/trigger"})
     assert result["registered"] is True
+
+
+def test_egress_show_tokens(monkeypatch) -> None:
+    monkeypatch.setenv("CAMAZOTZ_SHOW_TOKENS", "true")
+    client = TestClient(app)
+    result = _call(client, "egress.fetch_url", {"url": "http://example.com"})
+    assert "_usage" in result
+    assert "ai_analysis" in result
+
+
+def test_secrets_show_tokens(monkeypatch) -> None:
+    monkeypatch.setenv("CAMAZOTZ_SHOW_TOKENS", "true")
+    client = TestClient(app)
+    result = _call(client, "secrets.leak_config", {})
+    assert "_usage" in result
+    assert "ai_analysis" in result
+
+
+def test_shadow_register_show_tokens(monkeypatch) -> None:
+    monkeypatch.setenv("CAMAZOTZ_SHOW_TOKENS", "true")
+    client = TestClient(app)
+    result = _call(client, "shadow.register_webhook", {"url": "https://evil.com/hook"})
+    assert "_usage" in result
+    assert "ai_analysis" in result
+
+
+def test_shadow_register_hard_rejected_show_tokens(monkeypatch) -> None:
+    monkeypatch.setenv("CAMAZOTZ_SHOW_TOKENS", "true")
+    monkeypatch.setenv("CAMAZOTZ_DIFFICULTY", "hard")
+    client = TestClient(app)
+    result = _call(client, "shadow.register_webhook", {"url": "https://attacker.com/hook"})
+    assert result["registered"] is False
+    assert "_usage" in result
+    assert "ai_analysis" in result
+
+
+def test_tool_mutate_show_tokens_before_threshold(monkeypatch) -> None:
+    monkeypatch.setenv("CAMAZOTZ_SHOW_TOKENS", "true")
+    client = TestClient(app)
+    result = _call(client, "tool.mutate_behavior", {"mode": "status"})
+    assert "_usage" in result
+    assert "ai_analysis" in result
+    assert result["status"] == "ok"
+
+
+def test_tool_mutate_show_tokens_after_threshold(monkeypatch) -> None:
+    monkeypatch.setenv("CAMAZOTZ_SHOW_TOKENS", "true")
+    client = TestClient(app)
+    for _ in range(3):
+        _call(client, "tool.mutate_behavior", {})
+    result = _call(client, "tool.mutate_behavior", {})
+    assert "_usage" in result
+    assert result["_rug_pull"] is True
+
+
+def test_tool_hidden_exec_show_tokens(monkeypatch) -> None:
+    monkeypatch.setenv("CAMAZOTZ_SHOW_TOKENS", "true")
+    client = TestClient(app)
+    for _ in range(3):
+        _call(client, "tool.mutate_behavior", {})
+    result = _call(client, "tool.hidden_exec", {"command": "id"})
+    assert "_usage" in result
+    assert "ai_analysis" in result
+
+
+def test_egress_with_reason(monkeypatch) -> None:
+    monkeypatch.delenv("CAMAZOTZ_DIFFICULTY", raising=False)
+    client = TestClient(app)
+    result = _call(client, "egress.fetch_url", {"url": "http://example.com", "reason": "testing connectivity"})
+    assert result["status"] == "allow"
+    assert "ai_analysis" in result
+
+
+def test_secrets_with_reason(monkeypatch) -> None:
+    monkeypatch.delenv("CAMAZOTZ_DIFFICULTY", raising=False)
+    client = TestClient(app)
+    result = _call(client, "secrets.leak_config", {"reason": "debugging auth failure"})
+    assert "ai_analysis" in result
+    assert result["count"] > 0
+
+
+def test_shadow_register_with_reason(monkeypatch) -> None:
+    monkeypatch.delenv("CAMAZOTZ_DIFFICULTY", raising=False)
+    client = TestClient(app)
+    result = _call(client, "shadow.register_webhook", {"url": "https://hooks.slack.com/test", "reason": "alerting"})
+    assert result["registered"] is True
+    assert "ai_analysis" in result

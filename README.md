@@ -5,7 +5,7 @@ MCP security playground with intentionally vulnerable module labs.
 Camazotz is a local-first sandbox for learning MCP security. It provides
 explorable vulnerability scenarios mapped to the
 [OWASP MCP Top 10 (2025)](https://owasp.org/www-project-mcp-top-10/) taxonomy.
-Three scenarios use a live Claude LLM; the rest are fully deterministic.
+All scenarios use a live LLM (Claude or Ollama) for AI-powered reasoning.
 Configurable difficulty levels (`easy`/`medium`/`hard`) control guardrail
 strength across all modules, and optional token usage tracking shows API
 cost per call. Designed for both manual exploration and automated scanner
@@ -44,17 +44,21 @@ See `CHANGELOG.md` for release history.
 
 ## Scenario inventory
 
-| Tool | Module | Type | OWASP MCP ID | Easy | Hard |
-|------|--------|------|--------------|------|------|
-| `context.injectable_summary` | context_lab | Claude | MCP06, MCP10 | Payload echoed unsanitized | Injection blocked |
-| `auth.issue_token` | auth_lab | Claude | MCP02, MCP07 | Admin granted via fallback | Downgraded to reader |
-| `supply.install_package` | supply_lab | Claude | MCP04 | Evil registry approved | All installs denied |
-| `secrets.leak_config` | secrets_lab | Static | MCP01 | All creds exposed | Sensitive values redacted |
-| `egress.fetch_url` | egress_lab | Static | — | Zero filtering | Metadata + internal blocked |
-| `tool.mutate_behavior` | tool_lab | Static | MCP03 | Rug pull after 3 calls | Same (always active) |
-| `tool.hidden_exec` | tool_lab | Static | MCP03, MCP05 | Appears post-threshold | Same (always active) |
-| `shadow.register_webhook` | shadow_lab | Static | MCP09 | Any URL accepted | Allowlist enforced |
-| `shadow.list_webhooks` | shadow_lab | Static | MCP09 | Full list, no audit | Allowlist warning |
+All modules are now LLM-backed. Each tool uses an AI reasoning layer (Claude
+or Ollama) for request analysis, with deterministic vulnerability mechanics
+underneath.
+
+| Tool | Module | OWASP MCP ID | Easy | Hard |
+|------|--------|--------------|------|------|
+| `context.injectable_summary` | context_lab | MCP06, MCP10 | Payload echoed unsanitized | Injection blocked |
+| `auth.issue_token` | auth_lab | MCP02, MCP07 | Admin granted via fallback | Downgraded to reader |
+| `supply.install_package` | supply_lab | MCP04 | Evil registry approved | All installs denied |
+| `secrets.leak_config` | secrets_lab | MCP01 | All creds exposed | Sensitive values redacted |
+| `egress.fetch_url` | egress_lab | — | Zero filtering | Metadata + internal blocked |
+| `tool.mutate_behavior` | tool_lab | MCP03 | Rug pull after 3 calls | Same (always active) |
+| `tool.hidden_exec` | tool_lab | MCP03, MCP05 | Appears post-threshold | Same (always active) |
+| `shadow.register_webhook` | shadow_lab | MCP09 | Any URL accepted | Allowlist enforced |
+| `shadow.list_webhooks` | shadow_lab | MCP09 | Full list, no audit | Allowlist warning |
 
 ---
 
@@ -92,9 +96,11 @@ tool response:
 
 | Env var | Values | Default | Description |
 |---------|--------|---------|-------------|
-| `BRAIN_PROVIDER` | `cloud`, `local` | `cloud` | Brain provider selection |
+| `BRAIN_PROVIDER` | `cloud`, `local` | `cloud` | Brain provider: `cloud` (Claude) or `local` (Ollama) |
 | `ANTHROPIC_API_KEY` | API key string | (empty) | Required for live Claude calls |
 | `CAMAZOTZ_MODEL` | Model name | `claude-sonnet-4-20250514` | Claude model to use |
+| `OLLAMA_HOST` | URL | `http://localhost:11434` | Ollama API endpoint |
+| `CAMAZOTZ_OLLAMA_MODEL` | Model name | `llama3.2:3b` | Ollama model to use |
 | `CAMAZOTZ_DIFFICULTY` | `easy`, `medium`, `hard` | `easy` | Guardrail strength |
 | `CAMAZOTZ_SHOW_TOKENS` | `true`, `false` | `false` | Show token usage and cost |
 | `LOG_LEVEL` | `info`, `debug` | `info` | Observer log level |
@@ -110,18 +116,33 @@ tool response:
 
 ## Local run
 
-With Docker Compose:
+With Docker Compose (Claude):
 
 ```bash
 cp compose/.env.example compose/.env
-# Edit compose/.env to add ANTHROPIC_API_KEY for live Claude tools
+# Edit compose/.env to add ANTHROPIC_API_KEY
 docker compose -f compose/docker-compose.yml --env-file compose/.env up -d --build
+```
+
+With Docker Compose (Ollama — fully local, no API key needed):
+
+```bash
+cp compose/.env.example compose/.env
+# Set BRAIN_PROVIDER=local in compose/.env
+docker compose -f compose/docker-compose.yml --env-file compose/.env --profile local up -d --build
+# Pull the model into the Ollama container:
+docker compose -f compose/docker-compose.yml exec ollama ollama pull llama3.2:3b
 ```
 
 Without Docker:
 
 ```bash
+# Cloud (Claude):
 export ANTHROPIC_API_KEY=sk-ant-...
+uv run uvicorn brain_gateway.app.main:app --host 0.0.0.0 --port 8080
+
+# Local (Ollama — requires ollama running on localhost:11434):
+export BRAIN_PROVIDER=local
 uv run uvicorn brain_gateway.app.main:app --host 0.0.0.0 --port 8080
 ```
 
