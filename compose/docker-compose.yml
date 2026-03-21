@@ -1,4 +1,16 @@
 services:
+  portal:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    environment:
+      - GATEWAY_URL=http://brain-gateway:8080
+      - FLASK_SECRET=${FLASK_SECRET:-cztz-dev-key}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - brain-gateway
+
   brain-gateway:
     build:
       context: ..
@@ -32,7 +44,7 @@ services:
     build:
       context: ..
       dockerfile: compose/Dockerfile
-    command: python -c "import time; print('observer sidecar active'); time.sleep(999999)"
+    command: python3 -c "import time; print('observer sidecar active'); time.sleep(999999)"
     environment:
       - LOG_LEVEL=${LOG_LEVEL:-info}
 

@@ -20,9 +20,15 @@ Project does not yet follow semantic versioning; versions track development mile
   `[ollama-unavailable]` when Ollama is unreachable.
 - **Docker Compose gains Ollama service.** Use `--profile local` to spin up an Ollama
   container alongside the brain gateway. Model data persists via a named volume.
+- **Camazotz Security Portal** — branded Flask/Jinja2 frontend with dark theme and
+  crimson accent. Pages: landing (OWASP coverage stats), playground (interactive
+  MCP tool explorer with live JSON responses), scenarios (red/blue team walkthrough
+  matrix with difficulty cards), observer (telemetry view with auto-refresh and
+  client-side event log). Served as a separate container on port 3000.
 - All module tool responses now include `ai_analysis` field with the LLM's reasoning.
-- New env vars: `OLLAMA_HOST`, `CAMAZOTZ_OLLAMA_MODEL`.
-- 57 tests passing at 100% coverage (up from 42).
+- New env vars: `OLLAMA_HOST`, `CAMAZOTZ_OLLAMA_MODEL`, `GATEWAY_URL`, `FLASK_SECRET`.
+- 70 tests passing at 100% coverage (up from 42).
+- Cross-platform verified: macOS (Intel + Apple Silicon) and Linux (Debian/Ubuntu/CentOS).
 
 ### Added
 

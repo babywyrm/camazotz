@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+{% block title %}Observer — Camazotz{% endblock %}
+
+{% block extra_css %}
+<style>
+.obs-header{padding:3rem 0 2rem;text-align:center}
+.obs-header h1{font-size:2.2rem;font-weight:800;letter-spacing:-.03em;margin-bottom:.5rem}
+.obs-header p{color:var(--text2);font-size:1rem;max-width:600px;margin:0 auto}
+
+.obs-layout{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;padding:2rem 0}
+
+.obs-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  overflow:hidden}
+.obs-card-header{display:flex;justify-content:space-between;align-items:center;
+  padding:.75rem 1rem;background:var(--bg2);border-bottom:1px solid var(--border)}
+.obs-card-header span{font-size:.75rem;font-weight:600;text-transform:uppercase;
+  letter-spacing:.04em;color:var(--muted)}
+.obs-card-body{padding:1rem}
+.obs-card-body pre{font-family:var(--font-mono);font-size:.8rem;line-height:1.6;
+  color:var(--text);white-space:pre-wrap;word-break:break-word}
+
+.obs-event-empty{padding:2rem;text-align:center;color:var(--muted);font-size:.85rem}
+
+.obs-kv{display:grid;grid-template-columns:140px 1fr;gap:.5rem .75rem;font-size:.85rem}
+.obs-kv dt{font-weight:600;color:var(--muted);font-family:var(--font-mono);font-size:.78rem}
+.obs-kv dd{color:var(--text);font-family:var(--font-mono);font-size:.78rem;word-break:break-all}
+
+.obs-actions{display:flex;gap:1rem;justify-content:center;padding:1rem 0}
+.obs-refresh{background:var(--surface);color:var(--text);border:1px solid var(--border);
+  border-radius:8px;padding:.5rem 1.2rem;font-size:.82rem;font-weight:600;cursor:pointer;
+  transition:all .2s;font-family:inherit}
+.obs-refresh:hover{border-color:var(--border2);background:var(--surface2)}
+.obs-auto{display:flex;align-items:center;gap:.5rem;font-size:.8rem;color:var(--text2)}
+.obs-auto input{accent-color:var(--accent)}
+
+.obs-warning{background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.12);
+  border-radius:var(--radius);padding:1.25rem;margin:1.5rem 0}
+.obs-warning h3{font-size:.9rem;font-weight:700;color:var(--orange);margin-bottom:.5rem;
+  display:flex;align-items:center;gap:.5rem}
+.obs-warning p{font-size:.82rem;color:var(--text2);line-height:1.6}
+
+.obs-event-log{margin-top:1.5rem}
+.obs-event-log h3{font-size:.8rem;font-weight:700;text-transform:uppercase;
+  letter-spacing:.06em;color:var(--muted);margin-bottom:.75rem}
+.event-row{display:flex;align-items:center;gap:1rem;padding:.5rem .75rem;
+  border-radius:8px;font-size:.78rem;font-family:var(--font-mono);margin-bottom:.25rem;
+  background:var(--surface);border:1px solid var(--border)}
+.event-row .event-time{color:var(--muted);min-width:80px}
+.event-row .event-tool{color:var(--accent2);flex:1}
+.event-row .event-module{color:var(--text2)}
+
+@media(max-width:768px){
+  .obs-layout{grid-template-columns:1fr}
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="obs-header">
+    <h1>Observer</h1>
+    <p>Telemetry and audit trail for MCP tool invocations. This is intentionally
+       weak &mdash; OWASP MCP08 in action.</p>
+  </div>
+
+  <div class="obs-warning">
+    <h3>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      MCP08: Lack of Audit and Telemetry
+    </h3>
+    <p>This observer only tracks the <strong>last event</strong> &mdash; there is no persistent log,
+       no request correlation, no user attribution, and no tamper protection.
+       A real deployment would need structured logging, immutable audit trails,
+       and alerting on anomalous tool invocation patterns.</p>
+  </div>
+
+  <div class="obs-actions">
+    <button class="obs-refresh" id="refreshBtn" onclick="refreshEvent()">Refresh</button>
+    <label class="obs-auto">
+      <input type="checkbox" id="autoRefresh" onchange="toggleAuto()">
+      Auto-refresh (3s)
+    </label>
+  </div>
+
+  <div class="obs-layout">
+    <div class="obs-card">
+      <div class="obs-card-header">
+        <span>Last Event</span>
+        <span id="eventAge">—</span>
+      </div>
+      <div class="obs-card-body" id="eventBody">
+        {% if last_event and last_event.get('tool_name') %}
+        <dl class="obs-kv">
+          <dt>request_id</dt>
+          <dd>{{ last_event.get('request_id', '—') }}</dd>
+          <dt>tool_name</dt>
+          <dd>{{ last_event.get('tool_name', '—') }}</dd>
+          <dt>module</dt>
+          <dd>{{ last_event.get('module', '—') }}</dd>
+          <dt>timestamp</dt>
+          <dd>{{ last_event.get('timestamp', '—') }}</dd>
+        </dl>
+        {% else %}
+        <div class="obs-event-empty">No events recorded yet. Use the Playground to invoke a tool.</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="obs-card">
+      <div class="obs-card-header">
+        <span>Raw JSON</span>
+        <span>/_observer/last-event</span>
+      </div>
+      <div class="obs-card-body">
+        <pre id="rawJson">{{ last_event | tojson(indent=2) if last_event else '{}' }}</pre>
+      </div>
+    </div>
+  </div>
+
+  <div class="obs-event-log">
+    <h3>Client-Side Event Log</h3>
+    <div id="eventLog">
+      <div class="event-row" style="color:var(--muted);justify-content:center;border:none;background:transparent">
+        Events will appear here as you refresh.
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let autoTimer = null;
+const eventLog = [];
+
+async function refreshEvent() {
+  try {
+    const resp = await fetch('/api/observer');
+    const data = await resp.json();
+    document.getElementById('rawJson').textContent = JSON.stringify(data, null, 2);
+
+    const body = document.getElementById('eventBody');
+    if (data.tool_name) {
+      body.innerHTML = '<dl class="obs-kv">' +
+        '<dt>request_id</dt><dd>' + esc(data.request_id || '—') + '</dd>' +
+        '<dt>tool_name</dt><dd>' + esc(data.tool_name || '—') + '</dd>' +
+        '<dt>module</dt><dd>' + esc(data.module || '—') + '</dd>' +
+        '<dt>timestamp</dt><dd>' + esc(data.timestamp || '—') + '</dd>' +
+        '</dl>';
+      document.getElementById('eventAge').textContent = 'just now';
+
+      const last = eventLog[eventLog.length - 1];
+      if (!last || last.request_id !== data.request_id) {
+        eventLog.push(data);
+        renderLog();
+      }
+    } else {
+      body.innerHTML = '<div class="obs-event-empty">No events recorded yet.</div>';
+    }
+  } catch (e) {
+    document.getElementById('rawJson').textContent = 'Error: ' + e.message;
+  }
+}
+
+function renderLog() {
+  const el = document.getElementById('eventLog');
+  el.innerHTML = '';
+  for (let i = eventLog.length - 1; i >= 0; i--) {
+    const ev = eventLog[i];
+    const row = document.createElement('div');
+    row.className = 'event-row';
+    const ts = ev.timestamp ? ev.timestamp.split('T')[1]?.split('.')[0] || '' : '';
+    row.innerHTML =
+      '<span class="event-time">' + esc(ts) + '</span>' +
+      '<span class="event-tool">' + esc(ev.tool_name) + '</span>' +
+      '<span class="event-module">' + esc(ev.module) + '</span>';
+    el.appendChild(row);
+  }
+}
+
+function toggleAuto() {
+  if (document.getElementById('autoRefresh').checked) {
+    autoTimer = setInterval(refreshEvent, 3000);
+  } else {
+    clearInterval(autoTimer);
+    autoTimer = null;
+  }
+}
+
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+</script>
+{% endblock %}

@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}Camazotz{% endblock %}</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#08060a;
+  --bg2:#0e0a12;
+  --surface:#141018;
+  --surface2:#1a1520;
+  --border:#241e2c;
+  --border2:#2e2638;
+  --text:#ede8f2;
+  --text2:#a89cb8;
+  --muted:#6b5f7a;
+  --accent:#dc2626;
+  --accent2:#f87171;
+  --accent-glow:rgba(220,38,38,.12);
+  --crimson:#991b1b;
+  --green:#10b981;
+  --red:#ef4444;
+  --orange:#f59e0b;
+  --yellow:#eab308;
+  --blue:#3b82f6;
+  --radius:12px;
+  --font-mono:'JetBrains Mono','Fira Code',Consolas,'Courier New',monospace;
+}
+body{
+  font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  background:var(--bg);color:var(--text);min-height:100vh;
+  line-height:1.6;-webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent2);text-decoration:none;transition:color .2s}
+a:hover{color:#fca5a5}
+code,pre{font-family:var(--font-mono)}
+
+.nav{position:sticky;top:0;z-index:100;background:rgba(8,6,10,.88);
+  backdrop-filter:blur(16px);border-bottom:1px solid var(--border)}
+.nav-inner{max-width:1100px;margin:0 auto;padding:0 2rem;height:60px;
+  display:flex;align-items:center;justify-content:space-between}
+.nav-brand{display:flex;align-items:center;gap:10px;font-weight:700;
+  font-size:1.05rem;letter-spacing:-.02em;color:var(--text)}
+.nav-brand:hover{color:var(--text)}
+.nav-brand svg{width:30px;height:30px}
+.nav-brand .brand-text span{color:var(--accent2)}
+.nav-links{display:flex;gap:2rem;align-items:center}
+.nav-links a{color:var(--text2);font-size:.875rem;font-weight:500;transition:color .2s}
+.nav-links a:hover,.nav-links a.active{color:var(--text)}
+.nav-cta{background:var(--accent);color:#fff;padding:.45rem 1.1rem;border-radius:8px;
+  font-size:.8rem;font-weight:600;transition:all .2s}
+.nav-cta:hover{background:var(--accent2);color:#fff;transform:translateY(-1px)}
+
+.container{max-width:1100px;margin:0 auto;padding:0 2rem}
+.section{padding:4rem 0}
+
+.footer{border-top:1px solid var(--border);padding:2rem 0;margin-top:4rem}
+.footer-inner{max-width:1100px;margin:0 auto;padding:0 2rem;
+  display:flex;justify-content:space-between;align-items:center}
+.footer-text{font-size:.75rem;color:var(--muted)}
+.footer-links{display:flex;gap:1.5rem}
+.footer-links a{font-size:.75rem;color:var(--muted);transition:color .2s}
+.footer-links a:hover{color:var(--text2)}
+
+.card{background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);padding:1.5rem;transition:border-color .2s}
+.card:hover{border-color:var(--border2)}
+
+.badge{display:inline-flex;align-items:center;gap:4px;padding:.2rem .6rem;
+  border-radius:6px;font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.badge-critical{background:rgba(239,68,68,.12);color:#f87171;border:1px solid rgba(239,68,68,.2)}
+.badge-high{background:rgba(245,158,11,.12);color:#fbbf24;border:1px solid rgba(245,158,11,.2)}
+.badge-medium{background:rgba(234,179,8,.1);color:#facc15;border:1px solid rgba(234,179,8,.15)}
+.badge-low{background:rgba(59,130,246,.1);color:#60a5fa;border:1px solid rgba(59,130,246,.15)}
+.badge-info{background:rgba(16,185,129,.1);color:#34d399;border:1px solid rgba(16,185,129,.15)}
+.badge-accent{background:var(--accent-glow);color:var(--accent2);border:1px solid rgba(220,38,38,.2)}
+
+.glow-line{height:1px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:.3;margin:2rem 0}
+
+.btn-primary{background:var(--accent);color:#fff;padding:.7rem 1.6rem;border-radius:10px;
+  font-weight:600;font-size:.9rem;transition:all .25s;border:none;cursor:pointer;display:inline-block}
+.btn-primary:hover{background:var(--accent2);color:#fff;transform:translateY(-2px);
+  box-shadow:0 8px 24px rgba(220,38,38,.25)}
+.btn-secondary{background:var(--surface);color:var(--text);padding:.7rem 1.6rem;border-radius:10px;
+  font-weight:600;font-size:.9rem;border:1px solid var(--border);transition:all .25s;
+  cursor:pointer;display:inline-block}
+.btn-secondary:hover{border-color:var(--border2);background:var(--surface2);color:#fff}
+
+@media(max-width:640px){
+  .nav-inner{padding:0 1rem}
+  .container{padding:0 1rem}
+  .nav-links{gap:1rem}
+  .footer-inner{flex-direction:column;gap:.75rem;text-align:center}
+}
+</style>
+{% block extra_css %}{% endblock %}
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-brand">
+      <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M16 2C16 2 6 6 6 14c0 4 2 7 4 9l-4 5h6l2-3c.6.2 1.3.3 2 .3s1.4-.1 2-.3l2 3h6l-4-5c2-2 4-5 4-9 0-8-10-12-10-12z" fill="#dc2626" opacity=".85"/>
+        <circle cx="12" cy="13" r="2" fill="#08060a"/>
+        <circle cx="20" cy="13" r="2" fill="#08060a"/>
+        <path d="M13 18c0 0 1.5 2 3 2s3-2 3-2" stroke="#08060a" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+      <span class="brand-text">Camazotz <span>Security</span></span>
+    </a>
+    <div class="nav-links">
+      <a href="/" class="{% if request.path == '/' %}active{% endif %}">Home</a>
+      <a href="/playground" class="{% if request.path == '/playground' %}active{% endif %}">Playground</a>
+      <a href="/scenarios" class="{% if request.path == '/scenarios' %}active{% endif %}">Scenarios</a>
+      <a href="/observer" class="{% if request.path == '/observer' %}active{% endif %}">Observer</a>
+      <a href="/playground" class="nav-cta">Launch Tools</a>
+    </div>
+  </div>
+</nav>
+
+{% block content %}{% endblock %}
+
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="footer-text">&copy; 2026 Camazotz Security Corp. &mdash; MCP Security Platform</div>
+    <div class="footer-links">
+      <a href="/scenarios">Scenarios</a>
+      <a href="/playground">Playground</a>
+      <a href="/observer">Observer</a>
+    </div>
+  </div>
+</footer>
+
+{% block extra_js %}{% endblock %}
+</body>
+</html>

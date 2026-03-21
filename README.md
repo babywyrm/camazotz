@@ -16,6 +16,10 @@ See `docs/scenarios.md` for the full red/blue team exercise reference.
 See `docs/module-authoring.md` for adding new modules.
 See `CHANGELOG.md` for release history.
 
+The **Camazotz Security Portal** provides a branded web interface for
+interacting with all MCP tools: landing page, interactive playground,
+scenario walkthroughs, and an observer telemetry view.
+
 ---
 
 ## OWASP MCP Top 10 Coverage
@@ -122,6 +126,7 @@ With Docker Compose (Claude):
 cp compose/.env.example compose/.env
 # Edit compose/.env to add ANTHROPIC_API_KEY
 docker compose -f compose/docker-compose.yml --env-file compose/.env up -d --build
+# Portal at http://localhost:3000, API at http://localhost:8080
 ```
 
 With Docker Compose (Ollama — fully local, no API key needed):
@@ -132,6 +137,7 @@ cp compose/.env.example compose/.env
 docker compose -f compose/docker-compose.yml --env-file compose/.env --profile local up -d --build
 # Pull the model into the Ollama container:
 docker compose -f compose/docker-compose.yml exec ollama ollama pull llama3.2:3b
+# Portal at http://localhost:3000, API at http://localhost:8080
 ```
 
 Without Docker:
@@ -140,10 +146,13 @@ Without Docker:
 # Cloud (Claude):
 export ANTHROPIC_API_KEY=sk-ant-...
 uv run uvicorn brain_gateway.app.main:app --host 0.0.0.0 --port 8080
+# In a separate terminal, run the portal:
+cd frontend && pip install -r requirements.txt && python app.py
 
 # Local (Ollama — requires ollama running on localhost:11434):
 export BRAIN_PROVIDER=local
 uv run uvicorn brain_gateway.app.main:app --host 0.0.0.0 --port 8080
+cd frontend && GATEWAY_URL=http://localhost:8080 python app.py
 ```
 
 ## Regression checks
