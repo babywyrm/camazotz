@@ -61,9 +61,16 @@ Project does not yet follow semantic versioning; versions track development mile
 - **Module adapter system** with stable internal contract.
 - **Contract schemas** for module registration and observer events.
 - **Scanner regression harness** with baseline for `mcpvenom` differential scans.
-- **Documentation:** `QUICKSTART.md`, `docs/scenarios.md`, `docs/module-authoring.md`.
-- 90 tests passing at 100% coverage.
+- **Kubernetes manifests** (`kube/`). K3s-ready deployment with namespace,
+  ConfigMap, Secret, Deployments (brain-gateway, portal, observer), Services
+  (portal LoadBalancer on port 3000, brain-gateway ClusterIP), optional Ollama
+  with PVC. Automated `deploy.sh` builds images, imports into K3s containerd,
+  and applies manifests. Tested on K3s v1.34.5.
+- **Documentation:** `QUICKSTART.md`, `docs/scenarios.md`, `docs/module-authoring.md`,
+  `kube/README.md`.
+- 91 tests passing at 100% coverage.
 - Cross-platform: macOS (Intel + Apple Silicon) and Linux (Debian/Ubuntu/CentOS).
+- Deployed and verified on K3s cluster (NUC).
 
 ---
 

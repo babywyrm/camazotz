@@ -83,7 +83,7 @@ bypass paths.
 
 ## Token usage tracking
 
-Set `CAMAZOTZ_SHOW_TOKENS=true` to add `_usage` metadata to every Claude-powered
+Set `CAMAZOTZ_SHOW_TOKENS=true` to add `_usage` metadata to every LLM-powered
 tool response:
 
 ```json
@@ -146,6 +146,18 @@ make status        # health check all services
 make logs          # tail all logs
 make test          # run pytest with coverage
 ```
+
+## Kubernetes deployment
+
+K3s-ready manifests in `kube/`. See `kube/README.md` for full instructions.
+
+```bash
+# On the target node with the repo at /opt/camazotz:
+bash /opt/camazotz/kube/deploy.sh
+```
+
+Portal exposed via LoadBalancer on port 3000. Gateway and Ollama are
+internal ClusterIP services.
 
 ## Regression checks
 

@@ -104,6 +104,17 @@ docker compose -f compose/docker-compose.yml --env-file compose/profiles/starter
 docker compose -f compose/docker-compose.yml --env-file compose/profiles/chaotic.env --profile local up -d
 ```
 
+## Option C: Kubernetes (K3s)
+
+See `kube/README.md` for full instructions.
+
+```bash
+# On the K3s node with the repo at /opt/camazotz:
+bash /opt/camazotz/kube/deploy.sh
+```
+
+Portal at `http://<node-ip>:3000`.
+
 ## Development (without Docker)
 
 ```bash
