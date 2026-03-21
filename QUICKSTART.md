@@ -33,8 +33,11 @@ Copy the example env file and add your API key:
 cp compose/.env.example compose/.env
 ```
 
-Edit `compose/.env` and set `ANTHROPIC_API_KEY` if you want live Claude responses.
-Without a key, Claude-powered tools return deterministic stub responses (still useful for testing).
+Edit `compose/.env`:
+
+- Set `ANTHROPIC_API_KEY` for live Claude responses (without it, Claude tools return stubs).
+- Set `CAMAZOTZ_DIFFICULTY` to `easy`, `medium`, or `hard` to control guardrail strength.
+- Set `CAMAZOTZ_SHOW_TOKENS=true` to see token usage and cost on every Claude call.
 
 ## 5) Start Camazotz
 
@@ -95,6 +98,8 @@ You can also run the gateway directly with uv:
 
 ```bash
 export ANTHROPIC_API_KEY=sk-ant-...
+export CAMAZOTZ_DIFFICULTY=easy
+export CAMAZOTZ_SHOW_TOKENS=true
 uv run uvicorn brain_gateway.app.main:app --host 0.0.0.0 --port 8080
 ```
 

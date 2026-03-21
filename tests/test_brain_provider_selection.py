@@ -8,7 +8,8 @@ def test_default_provider_is_cloud(monkeypatch) -> None:
     provider = get_provider()
     assert provider.name == "cloud"
     result = provider.generate("hello")
-    assert "[cloud-stub]" in result
+    assert "[cloud-stub]" in result.text
+    assert result.input_tokens == 0
     reset_provider()
 
 
@@ -18,7 +19,7 @@ def test_local_provider_selected(monkeypatch) -> None:
     provider = get_provider()
     assert provider.name == "local"
     result = provider.generate("hello")
-    assert "[local-stub]" in result
+    assert "[local-stub]" in result.text
     reset_provider()
 
 
@@ -28,5 +29,5 @@ def test_provider_generate_accepts_system_kwarg(monkeypatch) -> None:
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     provider = get_provider()
     result = provider.generate("test", system="custom system")
-    assert "[cloud-stub]" in result
+    assert "[cloud-stub]" in result.text
     reset_provider()
