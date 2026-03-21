@@ -32,6 +32,7 @@ addopts = [
     "--cov=brain_gateway",
     "--cov=camazotz_modules",
     "--cov=frontend",
+    "--cov=compose/observer",
     "--cov=tests",
     "--cov-report=term-missing",
     "--cov-report=xml",

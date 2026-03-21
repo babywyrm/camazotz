@@ -9,7 +9,17 @@ services:
     ports:
       - "3000:3000"
     depends_on:
-      - brain-gateway
+      brain-gateway:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:3000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - camazotz
 
   brain-gateway:
     build:
@@ -29,6 +39,30 @@ services:
       ollama:
         condition: service_started
         required: false
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - camazotz
+
+  observer:
+    build:
+      context: ./observer
+      dockerfile: Dockerfile
+    environment:
+      - GATEWAY_URL=http://brain-gateway:8080
+      - OBSERVER_POLL_INTERVAL=${OBSERVER_POLL_INTERVAL:-2}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    depends_on:
+      brain-gateway:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - camazotz
 
   ollama:
     image: ollama/ollama:latest
@@ -36,17 +70,37 @@ services:
       - "11434:11434"
     volumes:
       - ollama-models:/root/.ollama
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:11434/api/tags || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     profiles:
       - local
       - full
+    networks:
+      - camazotz
 
-  observer:
-    build:
-      context: ..
-      dockerfile: compose/Dockerfile
-    command: python3 -c "import time; print('observer sidecar active'); time.sleep(999999)"
+  ollama-init:
+    image: ollama/ollama:latest
+    depends_on:
+      ollama:
+        condition: service_healthy
+    restart: "no"
+    entrypoint: ["ollama", "pull", "${CAMAZOTZ_OLLAMA_MODEL:-llama3.2:3b}"]
     environment:
-      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - OLLAMA_HOST=http://ollama:11434
+    profiles:
+      - local
+      - full
+    networks:
+      - camazotz
+
+networks:
+  camazotz:
+    name: camazotz
 
 volumes:
   ollama-models:

@@ -1,0 +1,69 @@
+.PHONY: help up up-local down logs test build clean status ps env
+
+COMPOSE := docker compose -f compose/docker-compose.yml
+ENV_FILE := compose/.env
+
+help: ## Show available targets
+	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | sort | \
+		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
+
+env: ## Create .env from example if missing
+	@test -f $(ENV_FILE) || cp compose/.env.example $(ENV_FILE)
+	@echo "$(ENV_FILE) ready — edit to add ANTHROPIC_API_KEY"
+
+build: env ## Build all container images
+	$(COMPOSE) --env-file $(ENV_FILE) build
+
+up: env ## Start with cloud provider (Claude)
+	$(COMPOSE) --env-file $(ENV_FILE) up -d --build
+	@echo ""
+	@echo "  Portal:  http://localhost:3000"
+	@echo "  Gateway: http://localhost:8080"
+	@echo ""
+
+up-local: env ## Start with local provider (Ollama)
+	BRAIN_PROVIDER=local $(COMPOSE) --env-file $(ENV_FILE) --profile local up -d --build
+	@echo ""
+	@echo "  Portal:  http://localhost:3000"
+	@echo "  Gateway: http://localhost:8080"
+	@echo "  Ollama:  http://localhost:11434"
+	@echo ""
+	@echo "  Model will be pulled automatically by ollama-init."
+	@echo "  Run 'make logs-init' to watch progress."
+	@echo ""
+
+down: ## Stop all services and remove containers
+	$(COMPOSE) --env-file $(ENV_FILE) --profile local down
+
+clean: down ## Stop services and remove volumes
+	$(COMPOSE) --env-file $(ENV_FILE) --profile local down -v
+	docker network rm camazotz 2>/dev/null || true
+
+ps: ## Show running services
+	$(COMPOSE) --env-file $(ENV_FILE) --profile local ps
+
+status: ## Health check all services
+	@echo "brain-gateway:"; curl -sf http://localhost:8080/health 2>/dev/null && echo "" || echo "  DOWN"
+	@echo "portal:"; curl -sf http://localhost:3000/health 2>/dev/null && echo "" || echo "  DOWN"
+	@echo "ollama:"; curl -sf http://localhost:11434/api/tags 2>/dev/null | head -c 120 && echo "" || echo "  DOWN or not running"
+
+logs: ## Tail logs from all services
+	$(COMPOSE) --env-file $(ENV_FILE) --profile local logs -f
+
+logs-gateway: ## Tail brain-gateway logs
+	$(COMPOSE) --env-file $(ENV_FILE) logs -f brain-gateway
+
+logs-portal: ## Tail portal logs
+	$(COMPOSE) --env-file $(ENV_FILE) logs -f portal
+
+logs-observer: ## Tail observer sidecar logs
+	$(COMPOSE) --env-file $(ENV_FILE) logs -f observer
+
+logs-init: ## Tail ollama-init model pull logs
+	$(COMPOSE) --env-file $(ENV_FILE) --profile local logs -f ollama-init
+
+test: ## Run pytest with coverage
+	uv run pytest -q
+
+test-v: ## Run pytest verbose
+	uv run pytest -v

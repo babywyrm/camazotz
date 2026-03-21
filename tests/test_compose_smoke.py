@@ -20,3 +20,14 @@ def test_frontend_files_exist() -> None:
     assert (root / "frontend/templates/playground.html").exists()
     assert (root / "frontend/templates/scenarios.html").exists()
     assert (root / "frontend/templates/observer.html").exists()
+
+
+def test_observer_sidecar_files_exist() -> None:
+    root = Path(__file__).resolve().parents[1]
+    assert (root / "compose/observer/main.py").exists()
+    assert (root / "compose/observer/Dockerfile").exists()
+
+
+def test_makefile_exists() -> None:
+    root = Path(__file__).resolve().parents[1]
+    assert (root / "Makefile").exists()

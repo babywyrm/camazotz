@@ -27,7 +27,19 @@ Project does not yet follow semantic versioning; versions track development mile
   client-side event log). Served as a separate container on port 3000.
 - All module tool responses now include `ai_analysis` field with the LLM's reasoning.
 - New env vars: `OLLAMA_HOST`, `CAMAZOTZ_OLLAMA_MODEL`, `GATEWAY_URL`, `FLASK_SECRET`.
-- 70 tests passing at 100% coverage (up from 42).
+- **Docker Compose production polish.** Health checks on all services (portal,
+  brain-gateway, ollama). Restart policies. Explicit `camazotz` Docker network.
+  `ollama-init` sidecar auto-pulls the configured model on first run.
+- **Real observer sidecar.** Replaces placeholder sleep loop with a polling
+  daemon that tails `/_observer/last-event` and emits structured JSON logs.
+  Deduplicates by `request_id`. Debug mode logs gateway connectivity.
+- **Hardened gateway Dockerfile.** Multi-stage build, non-root `camazotz` user,
+  matching the frontend security posture.
+- **Makefile.** Cross-platform (macOS + Linux) targets: `make up`, `make up-local`,
+  `make down`, `make clean`, `make logs`, `make status`, `make test`, and more.
+- **Rewritten QUICKSTART.md** with portal workflow, Makefile-first instructions,
+  and Option A (cloud) / Option B (local) setup paths.
+- 80 tests passing at 100% coverage (up from 42).
 - Cross-platform verified: macOS (Intel + Apple Silicon) and Linux (Debian/Ubuntu/CentOS).
 
 ### Added

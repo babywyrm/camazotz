@@ -29,3 +29,11 @@ def test_unknown_method_returns_jsonrpc_error() -> None:
     assert resp.status_code == 200
     body = resp.json()
     assert body["error"]["code"] == -32601
+
+
+def test_gateway_health_endpoint() -> None:
+    client = TestClient(app)
+    resp = client.get("/health")
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "ok"
+    assert resp.json()["service"] == "brain-gateway"

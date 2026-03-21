@@ -1,53 +1,59 @@
 # Camazotz Quickstart
 
-Get Camazotz running locally in a few minutes using `uv` and Docker Compose.
+Get Camazotz running locally in a few minutes.
 
-## 1) Prerequisites
+## Prerequisites
 
-- `uv` installed
 - Docker Desktop (or Docker Engine + Compose plugin)
-- Python 3.13+ (managed automatically by `uv` if needed)
-- Optional: `ANTHROPIC_API_KEY` for live Claude-powered tools
+- `uv` installed (for local development / tests)
+- Python 3.12+ (managed automatically by `uv` if needed)
 
-## 2) Install dependencies
+Works on macOS (Intel + Apple Silicon) and Linux (Debian, Ubuntu, CentOS).
 
-From the project root:
+## Option A: Cloud provider (Claude)
 
-```bash
-uv sync
-```
-
-## 3) Verify tests
-
-Camazotz is pytest-driven with strict 100% coverage:
+Requires an `ANTHROPIC_API_KEY`.
 
 ```bash
-uv run pytest tests -v
+make env                        # creates compose/.env from example
+# Edit compose/.env — add your ANTHROPIC_API_KEY
+make up                         # builds and starts all services
 ```
 
-## 4) Configure environment
+Services:
 
-Copy the example env file and add your API key:
+| Service | URL | Description |
+|---------|-----|-------------|
+| Portal | http://localhost:3000 | Branded web interface |
+| Gateway | http://localhost:8080 | MCP JSON-RPC API |
+
+## Option B: Local provider (Ollama)
+
+No API key needed. Runs entirely offline.
 
 ```bash
-cp compose/.env.example compose/.env
+make env                        # creates compose/.env from example
+make up-local                   # builds and starts all services + Ollama
 ```
 
-Edit `compose/.env`:
+The `ollama-init` service automatically pulls the model on first run.
+Watch progress with `make logs-init`.
 
-- Set `ANTHROPIC_API_KEY` for live Claude responses (without it, Claude tools return stubs).
-- Set `CAMAZOTZ_DIFFICULTY` to `easy`, `medium`, or `hard` to control guardrail strength.
-- Set `CAMAZOTZ_SHOW_TOKENS=true` to see token usage and cost on every Claude call.
+Services:
 
-## 5) Start Camazotz
+| Service | URL | Description |
+|---------|-----|-------------|
+| Portal | http://localhost:3000 | Branded web interface |
+| Gateway | http://localhost:8080 | MCP JSON-RPC API |
+| Ollama | http://localhost:11434 | Local LLM inference |
+
+## Verify it works
 
 ```bash
-docker compose -f compose/docker-compose.yml --env-file compose/.env up -d --build
+make status                     # health check all services
 ```
 
-## 6) Confirm MCP endpoint works
-
-Initialize:
+Or hit the gateway directly:
 
 ```bash
 curl -s http://localhost:8080/mcp \
@@ -55,62 +61,59 @@ curl -s http://localhost:8080/mcp \
   -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}'
 ```
 
-List tools:
+Then open http://localhost:3000 in your browser.
+
+## Common operations
 
 ```bash
-curl -s http://localhost:8080/mcp \
-  -H "content-type: application/json" \
-  -d '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}'
+make help         # show all targets
+make ps           # show running services
+make logs         # tail all logs
+make logs-gateway # tail brain-gateway logs
+make logs-portal  # tail portal logs
+make logs-observer # tail observer sidecar
+make down         # stop all services
+make clean        # stop + remove volumes
+make test         # run pytest (100% coverage)
 ```
 
-## 7) Try a scenario
+## Configuration
 
-Call the context injection tool:
+Edit `compose/.env` to tune behavior:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `BRAIN_PROVIDER` | `cloud` | `cloud` (Claude) or `local` (Ollama) |
+| `ANTHROPIC_API_KEY` | (empty) | Required for Claude |
+| `CAMAZOTZ_DIFFICULTY` | `easy` | `easy`, `medium`, or `hard` |
+| `CAMAZOTZ_SHOW_TOKENS` | `false` | Show token usage and cost |
+| `CAMAZOTZ_OLLAMA_MODEL` | `llama3.2:3b` | Ollama model name |
+
+See `README.md` for the full configuration reference.
+
+## Runtime profiles
+
+Switch scenario profiles by pointing to a different env file:
 
 ```bash
-curl -s http://localhost:8080/mcp \
-  -H "content-type: application/json" \
-  -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{
-    "name":"context.injectable_summary",
-    "arguments":{"text":"Hello world. This is a test."}
-  }}'
+# Starter (default — cloud provider)
+docker compose -f compose/docker-compose.yml --env-file compose/profiles/starter.env up -d
+
+# Chaotic (local provider)
+docker compose -f compose/docker-compose.yml --env-file compose/profiles/chaotic.env --profile local up -d
 ```
 
-See `docs/scenarios.md` for the full scenario reference with red team and blue team exercises.
-
-## 8) Switch runtime profiles
-
-Starter profile (default):
+## Development (without Docker)
 
 ```bash
-docker compose --env-file compose/profiles/starter.env -f compose/docker-compose.yml up -d
-```
+uv sync                          # install dependencies
+uv run pytest -q                 # run tests (100% coverage)
 
-Chaotic profile (local provider):
-
-```bash
-docker compose --env-file compose/profiles/chaotic.env -f compose/docker-compose.yml up -d
-```
-
-## 9) Run without Docker (alternative)
-
-You can also run the gateway directly with uv:
-
-```bash
+# Start the gateway:
 export ANTHROPIC_API_KEY=sk-ant-...
-export CAMAZOTZ_DIFFICULTY=easy
-export CAMAZOTZ_SHOW_TOKENS=true
 uv run uvicorn brain_gateway.app.main:app --host 0.0.0.0 --port 8080
-```
 
-## 10) Run a scanner check (mcpvenom)
-
-```bash
-./scan --targets http://localhost:8080/mcp --verbose
-```
-
-## 11) Stop and clean up
-
-```bash
-docker compose -f compose/docker-compose.yml down
+# In another terminal, start the portal:
+cd frontend && pip install -r requirements.txt
+GATEWAY_URL=http://localhost:8080 python3 app.py
 ```

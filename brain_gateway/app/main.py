@@ -15,3 +15,8 @@ def mcp_endpoint(payload: JsonRpcRequest) -> dict:
 @app.get("/_observer/last-event")
 def observer_last_event() -> dict:
     return get_last_event()
+
+
+@app.get("/health")
+def health() -> dict:
+    return {"status": "ok", "service": "brain-gateway"}
