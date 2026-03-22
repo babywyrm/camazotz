@@ -1,34 +1,6 @@
-<div align="center">
-
-```
-                        ▄▄▄
-                      ▄█████▄
-                    ▄█████████▄
-                  ▄████▀▀▀▀▀████▄
-                 ████▀  ▄▄▄  ▀████
-                ████  ▄█████▄  ████
-               ████  ████ ████  ████
-              ▐███▌ ████   ████ ▐███▌
-              ████  ████   ████  ████
-              ████  ▀████ ████▀  ████
-              ▐███▌  ▀███████▀  ▐███▌
-               ████    ▀███▀    ████
-                ████▄         ▄████
-                 █████▄▄   ▄▄█████
-                  ▀▀█████████████▀
-                ▄██▀▀    █    ▀▀██▄
-               ████     ███     ████
-              ▐███▌    █████    ▐███▌
-              ████    ███████    ████
-             ▐███▌   ████ ████   ▐███▌
-             ████   ████   ████   ████
-            ▐███▀  ▐███▌   ▐███▌  ▀███▌
-            ▀▀▀    ▀▀▀▀     ▀▀▀▀    ▀▀▀
-```
-
 </div>
 
-<h1 align="center">CAMAZOTZ</h1>
+<h1 align="center">CAMAZOTZ ..beta..</h1>
 <p align="center"><strong>MCP Security Playground</strong></p>
 
 <p align="center">
@@ -90,7 +62,7 @@ For Kubernetes deployment: `make helm-deploy` (see [deploy/README.md](deploy/REA
 │  Brain Gateway :8080                                            │
 │  ┌───────────────────┐  ┌──────────────┐  ┌──────────────────┐  │
 │  │ MCP JSON-RPC      │─▶│ LabRegistry  │  │ Observer         │──┘
-│  │ Handler           │  │ + Middleware  │  │ Telemetry        │
+│  │ Handler           │  │ + Middleware │  │ Telemetry        │
 │  └───────────────────┘  └──────┬───────┘  └──────────────────┘  │
 └────────────────────────────────┼────────────────────────────────┘
                                  │
@@ -129,7 +101,7 @@ For Kubernetes deployment: `make helm-deploy` (see [deploy/README.md](deploy/REA
      │                 │                  │  json.loads fails on markdown     │
      │                 │                  ├──────────────────────────────────▶│
      │                 │                  │          fallback: grant admin    │
-     │                 │                  │◀─────────────────────────────────┤
+     │                 │                  │◀─────────────────-────────────────┤
      │                 │  token + result  │                  │                │
      │                 │◀─────────────────┤                  │                │
      │ cztz-eve-admin  │                  │                  │                │
