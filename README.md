@@ -1,171 +1,247 @@
-# camazotz
+# Camazotz
 
-MCP security playground with intentionally vulnerable module labs.
+**MCP security playground with intentionally vulnerable AI-powered tool labs.**
 
-Camazotz is a local-first sandbox for learning MCP security. It provides
-explorable vulnerability scenarios mapped to the
-[OWASP MCP Top 10 (2025)](https://owasp.org/www-project-mcp-top-10/) taxonomy.
-All scenarios use a live LLM (Claude or Ollama) for AI-powered reasoning.
-Configurable difficulty levels (`easy`/`medium`/`hard`) control guardrail
-strength across all modules, and optional token usage tracking shows API
-cost per call. Designed for both manual exploration and automated scanner
-regression with [mcpvenom](https://github.com/babywyrm/mcpvenom).
+Camazotz is a hands-on training platform for understanding how
+[Model Context Protocol (MCP)](https://modelcontextprotocol.io/) tools
+can be exploited when backed by large language models. Every scenario is
+mapped to the [OWASP MCP Top 10 (2025)](https://owasp.org/www-project-mcp-top-10/)
+taxonomy and backed by a live LLM (Claude or Ollama) so exploits emerge
+from real AI behavior, not static mock responses.
 
-See `QUICKSTART.md` for setup.
-See `deploy/README.md` for the deployment workflow (Helm + Compose).
-See `docs/scenarios.md` for the full red/blue team exercise reference.
-See `docs/module-authoring.md` for adding new modules.
-See `CHANGELOG.md` for release history.
-
-The **Camazotz Security Portal** provides a branded web interface for
-interacting with all MCP tools: landing page, interactive playground,
-scenario walkthroughs, and an observer telemetry view.
+The core insight Camazotz teaches: **LLM guardrails are not security
+controls.** The AI may warn, refuse, or flag a request in its reasoning
+while the underlying tool logic executes the vulnerable action anyway.
 
 ---
+
+## Architecture
+
+```mermaid
+graph TB
+    subgraph portal [Portal :3000]
+        UI[Branded Web UI]
+        PG[Tool Playground]
+        SC[Scenario Walkthroughs]
+        OB[Observer View]
+    end
+
+    subgraph gateway [Brain Gateway :8080]
+        MCP[MCP JSON-RPC Handler]
+        CFG[Config API]
+        OBS[Observer Telemetry]
+    end
+
+    subgraph brain [AI Brain]
+        Claude[Claude API]
+        Ollama[Ollama Local]
+    end
+
+    subgraph labs [Vulnerability Labs]
+        AUTH[auth_lab - MCP02/07]
+        CTX[context_lab - MCP06/10]
+        SUP[supply_lab - MCP04]
+        SEC[secrets_lab - MCP01]
+        EGR[egress_lab - SSRF]
+        TOOL[tool_lab - MCP03/05]
+        SHAD[shadow_lab - MCP09]
+    end
+
+    UI --> MCP
+    PG --> MCP
+    MCP --> labs
+    labs --> brain
+    OBS --> OB
+
+    style portal fill:#1a1520,stroke:#dc2626,color:#ede8f2
+    style gateway fill:#141018,stroke:#dc2626,color:#ede8f2
+    style brain fill:#0e0a12,stroke:#f87171,color:#ede8f2
+    style labs fill:#0e0a12,stroke:#f87171,color:#ede8f2
+```
+
+## How a Vulnerable Tool Call Works
+
+```mermaid
+sequenceDiagram
+    participant U as Attacker
+    participant P as Portal
+    participant G as Gateway
+    participant L as LLM Brain
+    participant V as Vuln Logic
+
+    U->>P: Call auth.issue_token (admin, fake reason)
+    P->>G: JSON-RPC tools/call
+    G->>L: Generate with system prompt
+    L-->>G: AI reasoning (may refuse!)
+    G->>V: Deterministic vuln check
+    V-->>G: Fallback grants admin anyway
+    G-->>P: Token + ai_analysis + decision
+    P-->>U: cztz-attacker-admin
+
+    Note over L,V: The LLM said no.<br/>The code said yes.<br/>That's the vulnerability.
+```
+
+## The Key Teaching Moment
+
+Every tool response includes two things:
+
+- **`ai_analysis`** — what the LLM *thinks* should happen
+- **The actual result** — what the deterministic logic *actually did*
+
+On easy mode, they align (both permissive). On medium and hard, they
+diverge: the AI flags the risk while the underlying vulnerability still
+fires. This teaches that **prompt-based guardrails cannot replace
+proper security engineering**.
+
+---
+
+## Quick Start
+
+```bash
+make env          # create .env from example
+make up           # start with Claude (needs ANTHROPIC_API_KEY in .env)
+# — or —
+make up-local     # start with Ollama (fully offline, no API key)
+```
+
+Open http://localhost:3000 in your browser.
+
+For Kubernetes: `make helm-deploy` (see [deploy/README.md](deploy/README.md)).
 
 ## OWASP MCP Top 10 Coverage
 
-| # | OWASP MCP ID | Risk | Camazotz Scenario | Status |
-|---|-------------|------|--------------------|--------|
-| 1 | MCP01:2025 | Token Mismanagement & Secret Exposure | `secrets.leak_config` | **Implemented** |
-| 2 | MCP02:2025 | Privilege Escalation via Scope Creep | `auth.issue_token` | **Implemented** |
-| 3 | MCP03:2025 | Tool Poisoning | `tool.mutate_behavior` / `tool.hidden_exec` | **Implemented** |
-| 4 | MCP04:2025 | Software Supply Chain Attacks | `supply.install_package` | **Implemented** |
-| 5 | MCP05:2025 | Command Injection & Execution | `tool.hidden_exec` (post rug pull) | **Implemented** |
-| 6 | MCP06:2025 | Intent Flow Subversion | `context.injectable_summary` | **Implemented** |
-| 7 | MCP07:2025 | Insufficient Authentication & Authorization | `auth.issue_token` | **Implemented** |
-| 8 | MCP08:2025 | Lack of Audit and Telemetry | `/_observer/last-event` (weak) | **Implemented** |
-| 9 | MCP09:2025 | Shadow MCP Servers | `shadow.register_webhook` / `shadow.list_webhooks` | **Implemented** |
-| 10 | MCP10:2025 | Context Injection & Over-Sharing | `context.injectable_summary` | **Implemented** |
+All 10 categories are implemented with exploitable scenarios:
 
-**Additional coverage (not in OWASP MCP Top 10):**
+| OWASP ID | Risk | Scenario | What Happens |
+|----------|------|----------|-------------|
+| MCP01 | Secret Exposure | `secrets.leak_config` | AI explains creds while dumping them |
+| MCP02 | Privilege Escalation | `auth.issue_token` | LLM denies, JSON fallback grants admin |
+| MCP03 | Tool Poisoning | `tool.mutate_behavior` | Tool builds trust, then rug-pulls |
+| MCP04 | Supply Chain | `supply.install_package` | Evil registry accepted despite LLM warning |
+| MCP05 | Command Injection | `tool.hidden_exec` | Appears after rug pull threshold |
+| MCP06 | Intent Subversion | `context.injectable_summary` | Prompt injection in summarization |
+| MCP07 | Weak Auth | `auth.issue_token` | Social engineering bypasses access control |
+| MCP08 | No Audit Trail | `/_observer/last-event` | Only last event, no persistence |
+| MCP09 | Shadow MCP | `shadow.register_webhook` | Persistent callback with zero validation |
+| MCP10 | Context Injection | `context.injectable_summary` | Unsanitized LLM output shared downstream |
 
-| Risk | Camazotz Scenario | Status |
-|------|--------------------|--------|
-| SSRF via MCP tool | `egress.fetch_url` | Implemented |
-| Rug pull / tool behavior drift | `tool.mutate_behavior` | Implemented |
+Plus: **SSRF** via `egress.fetch_url` (AI proxy with configurable egress filtering).
 
----
+## Difficulty Levels
 
-## Scenario inventory
+Switch live from the portal nav bar — no restart needed.
 
-All modules are now LLM-backed. Each tool uses an AI reasoning layer (Claude
-or Ollama) for request analysis, with deterministic vulnerability mechanics
-underneath.
+| Level | What it teaches |
+|-------|----------------|
+| **Easy** | The vulnerability class. Everything works, zero guardrails. |
+| **Medium** (default) | Partial controls. The LLM flags issues but gaps remain exploitable. Auth requires valid tickets. Secrets partially redacted. Rug pull at 5 calls. |
+| **Hard** | Naive guardrails. Strict LLM prompts, allowlists, full redaction — but creative bypasses still work. Rug pull at 8 calls with obfuscated tool description. |
 
-| Tool | Module | OWASP MCP ID | Easy | Hard |
-|------|--------|--------------|------|------|
-| `context.injectable_summary` | context_lab | MCP06, MCP10 | Payload echoed unsanitized | Injection blocked |
-| `auth.issue_token` | auth_lab | MCP02, MCP07 | Admin granted via fallback | Downgraded to reader |
-| `supply.install_package` | supply_lab | MCP04 | Evil registry approved | All installs denied |
-| `secrets.leak_config` | secrets_lab | MCP01 | All creds exposed | Sensitive values redacted |
-| `egress.fetch_url` | egress_lab | — | Zero filtering | Metadata + internal blocked |
-| `tool.mutate_behavior` | tool_lab | MCP03 | Rug pull after 3 calls | Same (always active) |
-| `tool.hidden_exec` | tool_lab | MCP03, MCP05 | Appears post-threshold | Same (always active) |
-| `shadow.register_webhook` | shadow_lab | MCP09 | Any URL accepted | Allowlist enforced |
-| `shadow.list_webhooks` | shadow_lab | MCP09 | Full list, no audit | Allowlist warning |
+## Project Structure
 
----
-
-## Difficulty levels
-
-Default is **medium**. Switch live from the portal nav bar or via API
-(`PUT /config {"difficulty":"..."}`).
-
-| Level | LLM behavior | Deterministic controls |
-|-------|-------------|----------------------|
-| `easy` | Wide-open system prompts, no filtering | Zero validation, all data exposed |
-| `medium` (default) | Partial guardrails, notes injections but may still leak | Metadata blocked, partial redaction |
-| `hard` | Strict rejection of injections and escalation | Allowlists enforced, sensitive values redacted |
-
-All difficulty levels remain exploitable through different techniques. Easy mode
-teaches the vulnerability class; hard mode teaches that naive guardrails have
-bypass paths.
-
-## Token usage tracking
-
-Set `CAMAZOTZ_SHOW_TOKENS=true` to add `_usage` metadata to every LLM-powered
-tool response:
-
-```json
-"_usage": {
-    "input_tokens": 127,
-    "output_tokens": 85,
-    "cost_usd": 0.0021,
-    "model": "claude-sonnet-4-20250514"
-}
+```
+camazotz/
+├── brain_gateway/           # FastAPI backend (MCP JSON-RPC, config, observer)
+│   └── app/brain/           # LLM provider abstraction (Claude + Ollama)
+├── camazotz_modules/        # 7 vulnerability lab modules
+│   ├── auth_lab/            # Confused deputy, privilege escalation
+│   ├── context_lab/         # Prompt injection, context over-sharing
+│   ├── egress_lab/          # SSRF via AI proxy
+│   ├── secrets_lab/         # Credential leak with partial redaction
+│   ├── shadow_lab/          # Persistent webhook registration
+│   ├── supply_lab/          # Supply chain attack via package approval
+│   └── tool_lab/            # Rug pull, tool mutation, hidden exec
+├── frontend/                # Flask portal (dark theme, crimson accent)
+├── compose/                 # Docker Compose (generated from Helm values)
+├── deploy/                  # Helm chart (single source of truth) + compose generator
+├── kube/                    # Legacy raw K8s manifests + deploy.sh
+├── tests/                   # 110 tests, 100% coverage
+└── Makefile                 # Cross-platform dev/deploy targets
 ```
 
----
+## Deployment Options
 
-## Configuration reference
+```mermaid
+graph LR
+    subgraph dev [Local Development]
+        UV[uv run uvicorn]
+        Flask[python app.py]
+    end
 
-| Env var | Values | Default | Description |
-|---------|--------|---------|-------------|
-| `BRAIN_PROVIDER` | `cloud`, `local` | `cloud` | Brain provider: `cloud` (Claude) or `local` (Ollama) |
-| `ANTHROPIC_API_KEY` | API key string | (empty) | Required for live Claude calls |
-| `CAMAZOTZ_MODEL` | Model name | `claude-sonnet-4-20250514` | Claude model to use |
-| `OLLAMA_HOST` | URL | `http://localhost:11434` | Ollama API endpoint |
-| `CAMAZOTZ_OLLAMA_MODEL` | Model name | `llama3.2:3b` | Ollama model to use |
-| `CAMAZOTZ_DIFFICULTY` | `easy`, `medium`, `hard` | `medium` | Guardrail strength (switchable from portal) |
-| `CAMAZOTZ_SHOW_TOKENS` | `true`, `false` | `false` | Show token usage and cost |
-| `LOG_LEVEL` | `info`, `debug` | `info` | Observer log level |
+    subgraph compose [Docker Compose]
+        Portal_C[Portal :3000]
+        GW_C[Gateway :8080]
+        Obs_C[Observer]
+        Ollama_C[Ollama :11434]
+    end
 
----
+    subgraph k8s [Kubernetes / K3s]
+        Portal_K[Portal LB :3000]
+        GW_K[Gateway ClusterIP]
+        Obs_K[Observer]
+        Ollama_K[Ollama + PVC]
+    end
 
-## Quick start
-
-```bash
-make env          # create compose/.env from example
-# Edit compose/.env to add ANTHROPIC_API_KEY (or use make up-local for Ollama)
-make up           # build + start portal, gateway, observer
-make status       # verify all services healthy
+    dev --> compose
+    compose --> k8s
 ```
 
-Portal at http://localhost:3000 — Gateway at http://localhost:8080
+| Path | Command | When to use |
+|------|---------|-------------|
+| Docker Compose (Claude) | `make up` | Quick local setup with API key |
+| Docker Compose (Ollama) | `make up-local` | Offline, no API key, free |
+| Kubernetes (Helm) | `make helm-deploy` | Cluster deployment, production-like |
+| No Docker | `uv run uvicorn ...` | Development, debugging |
 
-See `QUICKSTART.md` for full setup options, Ollama local mode, and
-development without Docker.
+## Configuration
 
-## Development workflow
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `BRAIN_PROVIDER` | `cloud` | `cloud` (Claude) or `local` (Ollama) |
+| `ANTHROPIC_API_KEY` | (empty) | Required for Claude |
+| `CAMAZOTZ_DIFFICULTY` | `medium` | Guardrail strength (switchable from portal) |
+| `CAMAZOTZ_SHOW_TOKENS` | `false` | Show LLM token usage and cost per call |
+| `CAMAZOTZ_OLLAMA_MODEL` | `llama3.2:3b` | Ollama model name |
 
-- Use `uv` for dependency management and command execution.
-- Run `uv sync` after dependency changes.
-- Run tests with `uv run pytest` or `make test`.
-- Coverage is enforced at 100%.
+Full reference in [QUICKSTART.md](QUICKSTART.md).
 
-## Makefile targets
+## Makefile Targets
 
 ```bash
-make help           # show all targets
-make up             # start with Claude (cloud)
-make up-local       # start with Ollama (local, no API key)
+make up             # start with Claude
+make up-local       # start with Ollama
 make down           # stop all services
-make clean          # stop + remove volumes
-make ps             # show running services
+make test           # run 110 tests (100% coverage)
 make status         # health check all services
-make logs           # tail all logs
-make test           # run pytest with coverage
 make compose-gen    # regenerate docker-compose.yml from Helm values
-make helm-template  # render Helm templates (dry-run)
-make helm-deploy    # deploy to K8s via Helm
+make helm-deploy    # deploy to K8s
+make help           # show all targets
 ```
 
-## Kubernetes deployment
+## Roadmap
 
-Helm chart at `deploy/helm/camazotz/`. See `deploy/README.md` for the
-full workflow.
+Camazotz is designed to grow as the MCP threat landscape evolves:
 
-```bash
-make helm-deploy                    # deploy via Helm
-make helm-deploy-local              # deploy with Ollama enabled
-```
+- **New vulnerability modules** — multi-step attack chains, cross-tool
+  exploitation, resource poisoning, prompt caching attacks
+- **Scanner integration** — automated regression with
+  [mcpvenom](https://github.com/babywyrm/mcpvenom) baselines
+- **Multi-player mode** — concurrent sessions with isolated state for
+  workshops and CTF events
+- **Scoring engine** — track which vulnerabilities each participant
+  discovers, time-to-exploit metrics
+- **Additional LLM providers** — OpenAI, Gemini, local GGUF models
 
-Legacy raw manifests in `kube/` with `deploy.sh` for K3s image import.
-Portal exposed via LoadBalancer on port 3000.
+## Documentation
 
-## Regression checks
+| Document | What it covers |
+|----------|---------------|
+| [QUICKSTART.md](QUICKSTART.md) | Setup options, configuration, first run |
+| [deploy/README.md](deploy/README.md) | Helm chart, compose generation, deployment workflows |
+| [docs/scenarios.md](docs/scenarios.md) | Red/blue team exercises for every scenario |
+| [docs/module-authoring.md](docs/module-authoring.md) | How to add new vulnerability modules |
+| [CHANGELOG.md](CHANGELOG.md) | Release history |
 
-- Baseline file: `tests/regression/baselines/starter.json`
-- Run baseline tests: `uv run pytest tests/regression -v`
-- Use these assets to compare `mcpvenom` scan deltas over time.
+## License
+
+MIT

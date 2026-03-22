@@ -78,7 +78,20 @@ Project does not yet follow semantic versioning; versions track development mile
 - **Playground UX.** Difficulty badge on responses, client-side request history
   with sessionStorage (compare easy/medium/hard), auto-refresh tools/list after
   rug pull with highlight animation for new/changed tools.
-- 105 tests passing at 100% coverage.
+- **Security hardening.** Threading locks on all mutable globals for FastAPI
+  thread safety. JSON parse fallbacks changed to deny-by-default (auth and supply
+  labs). URL classification upgraded from string manipulation to `urllib.parse`
+  (fixes scheme bypass, IPv6, URL-encoding attacks). Shadow lab allowlist check
+  changed from substring to hostname comparison. CloudClaudeProvider wrapped
+  in try/except for API errors. `_redact` handles short strings safely.
+- **Code quality.** Shared type definitions (`Difficulty` enum, `ToolDefinition`,
+  `ObserverEvent`, `UsageInfo` TypedDicts). `BrainResult.usage_dict()` and
+  `attach_usage()` helper eliminate 10 duplicated blocks. Cached module registry.
+  Fixed double `datetime.now()` in observer. Return type annotations on Flask routes.
+- **README rewrite** with mermaid architecture diagrams, sequence diagram showing
+  the vulnerable tool call flow, project structure tree, deployment options
+  visualization, roadmap, and clearer narrative about the core teaching insight.
+- 110 tests passing at 100% coverage.
 - Cross-platform: macOS (Intel + Apple Silicon) and Linux (Debian/Ubuntu/CentOS).
 - Deployed and verified on K3s cluster (NUC).
 
