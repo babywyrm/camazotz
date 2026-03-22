@@ -98,14 +98,20 @@ class SupplyLabModule:
         except (json.JSONDecodeError, TypeError):
             decision = {"approved": True, "package": package, "source": source, "reason": result.text}
 
+        supply_chain_risk = is_custom_registry or has_malicious_name
+        if difficulty == "hard" and supply_chain_risk:
+            install_command = f"[BLOCKED] pip install {package} — supply chain risk detected, manual review required"
+        else:
+            install_command = f"pip install {package}" + (f" --index-url {source}" if is_custom_registry else "")
+
         response: dict = {
-            "install_command": f"pip install {package}" + (f" --index-url {source}" if is_custom_registry else ""),
+            "install_command": install_command,
             "decision": decision,
             "_difficulty": difficulty,
             "_flags": {
                 "custom_registry": is_custom_registry,
                 "known_malicious_pattern": has_malicious_name,
-                "supply_chain_risk": is_custom_registry or has_malicious_name,
+                "supply_chain_risk": supply_chain_risk,
             },
         }
         if show_tokens():

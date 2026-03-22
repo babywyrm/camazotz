@@ -97,11 +97,13 @@ class SecretsLabModule:
         provider = get_provider()
         result = provider.generate(prompt=prompt, system=system)
 
+        MEDIUM_PASS_THROUGH = {"DATABASE_URL", "OLLAMA_HOST"}
+
         if difficulty == "hard":
             leaked = {k: _redact(v) if k in REDACT_KEYS else v for k, v in raw.items()}
             redacted = True
         elif difficulty == "medium":
-            leaked = {k: _redact(v) if k == "AWS_SECRET_ACCESS_KEY" else v for k, v in raw.items()}
+            leaked = {k: _redact(v) if k in REDACT_KEYS and k not in MEDIUM_PASS_THROUGH else v for k, v in raw.items()}
             redacted = False
         else:
             leaked = raw

@@ -179,3 +179,22 @@ def test_api_config_put_gateway_error(frontend_client) -> None:
     with patch.object(httpx, "put", side_effect=httpx.ConnectError("refused")):
         resp = client.put("/api/config", json={"difficulty": "hard"})
     assert resp.status_code == 502
+
+
+def test_api_reset(frontend_client) -> None:
+    client, _ = frontend_client
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {"reset": True, "tool_lab": "reset", "shadow_lab": "reset"}
+    mock_resp.raise_for_status = MagicMock()
+    with patch.object(httpx, "post", return_value=mock_resp):
+        resp = client.post("/api/reset")
+    assert resp.status_code == 200
+    assert resp.get_json()["reset"] is True
+
+
+def test_api_reset_gateway_error(frontend_client) -> None:
+    client, _ = frontend_client
+    with patch.object(httpx, "post", side_effect=httpx.ConnectError("refused")):
+        resp = client.post("/api/reset")
+    assert resp.status_code == 502

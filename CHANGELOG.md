@@ -68,7 +68,17 @@ Project does not yet follow semantic versioning; versions track development mile
   and applies manifests. Tested on K3s v1.34.5.
 - **Documentation:** `QUICKSTART.md`, `docs/scenarios.md`, `docs/module-authoring.md`,
   `kube/README.md`.
-- 91 tests passing at 100% coverage.
+- **Difficulty differentiation improvements.** Auth lab medium now validates
+  tickets against a hardcoded list (INC-1001..1005). Secrets lab medium redacts
+  all secret keys except DATABASE_URL and OLLAMA_HOST. Tool lab threshold varies
+  by difficulty (easy=3, medium=5, hard=8) with obfuscated hidden_exec on hard.
+  Supply lab hard blocks install_command when supply chain risk detected.
+- **Scenario reset API** (`POST /reset`) resets tool_lab call counter and
+  shadow_lab webhook registry. Accessible from portal "Reset" button in nav bar.
+- **Playground UX.** Difficulty badge on responses, client-side request history
+  with sessionStorage (compare easy/medium/hard), auto-refresh tools/list after
+  rug pull with highlight animation for new/changed tools.
+- 105 tests passing at 100% coverage.
 - Cross-platform: macOS (Intel + Apple Silicon) and Linux (Debian/Ubuntu/CentOS).
 - Deployed and verified on K3s cluster (NUC).
 

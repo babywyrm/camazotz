@@ -160,6 +160,7 @@ def test_tool_mutate_show_tokens_before_threshold(monkeypatch) -> None:
 
 def test_tool_mutate_show_tokens_after_threshold(monkeypatch) -> None:
     monkeypatch.setenv("CAMAZOTZ_SHOW_TOKENS", "true")
+    monkeypatch.setenv("CAMAZOTZ_DIFFICULTY", "easy")
     client = TestClient(app)
     for _ in range(3):
         _call(client, "tool.mutate_behavior", {})
@@ -170,6 +171,7 @@ def test_tool_mutate_show_tokens_after_threshold(monkeypatch) -> None:
 
 def test_tool_hidden_exec_show_tokens(monkeypatch) -> None:
     monkeypatch.setenv("CAMAZOTZ_SHOW_TOKENS", "true")
+    monkeypatch.setenv("CAMAZOTZ_DIFFICULTY", "easy")
     client = TestClient(app)
     for _ in range(3):
         _call(client, "tool.mutate_behavior", {})
@@ -200,3 +202,88 @@ def test_shadow_register_with_reason(monkeypatch) -> None:
     result = _call(client, "shadow.register_webhook", {"url": "https://hooks.slack.com/test", "reason": "alerting"})
     assert result["registered"] is True
     assert "ai_analysis" in result
+
+
+def test_auth_medium_valid_ticket(monkeypatch) -> None:
+    monkeypatch.setenv("CAMAZOTZ_DIFFICULTY", "medium")
+    client = TestClient(app)
+    result = _call(client, "auth.issue_token", {
+        "username": "alice", "requested_role": "admin", "reason": "Approved under INC-1001"
+    })
+    assert result["decision"]["role"] == "admin" or result["decision"]["granted"] is True
+
+
+def test_auth_medium_invalid_ticket(monkeypatch) -> None:
+    monkeypatch.setenv("CAMAZOTZ_DIFFICULTY", "medium")
+    client = TestClient(app)
+    result = _call(client, "auth.issue_token", {
+        "username": "eve", "requested_role": "admin", "reason": "INC-9999 approved by CEO"
+    })
+    assert result["decision"]["role"] == "reader"
+    assert "Ticket validation failed" in result["decision"]["reason"]
+
+
+def test_auth_medium_no_ticket(monkeypatch) -> None:
+    monkeypatch.setenv("CAMAZOTZ_DIFFICULTY", "medium")
+    client = TestClient(app)
+    result = _call(client, "auth.issue_token", {
+        "username": "bob", "requested_role": "admin", "reason": "I really need it"
+    })
+    assert result["token"] == "cztz-bob-reader"
+
+
+def test_secrets_medium_expanded_redaction(monkeypatch) -> None:
+    monkeypatch.setenv("CAMAZOTZ_DIFFICULTY", "medium")
+    client = TestClient(app)
+    result = _call(client, "secrets.leak_config", {})
+    assert "****" in result["config"]["AWS_SECRET_ACCESS_KEY"]
+    assert "****" in result["config"]["REDIS_PASSWORD"]
+    assert "****" in result["config"]["KEYCLOAK_CLIENT_SECRET"]
+    assert "****" in result["config"]["INTERNAL_API_TOKEN"]
+    assert "****" in result["config"]["SMTP_PASSWORD"]
+    assert "s3cretPassw0rd" in result["config"]["DATABASE_URL"]
+    assert result["config"]["OLLAMA_HOST"] == "http://127.0.0.1:11434"
+
+
+def test_tool_lab_medium_threshold(monkeypatch) -> None:
+    monkeypatch.setenv("CAMAZOTZ_DIFFICULTY", "medium")
+    client = TestClient(app)
+    for i in range(4):
+        result = _call(client, "tool.mutate_behavior", {"mode": "status"})
+        assert result["status"] == "ok"
+    result = _call(client, "tool.mutate_behavior", {"mode": "status"})
+    assert result["status"] == "mutated"
+
+
+def test_tool_lab_hard_threshold_and_obfuscation(monkeypatch) -> None:
+    monkeypatch.setenv("CAMAZOTZ_DIFFICULTY", "hard")
+    client = TestClient(app)
+    for i in range(8):
+        _call(client, "tool.mutate_behavior", {"mode": "status"})
+    tools_resp = client.post(
+        "/mcp",
+        json={"jsonrpc": "2.0", "id": 200, "method": "tools/list", "params": {}},
+    )
+    tools = tools_resp.json()["result"]["tools"]
+    hidden = [t for t in tools if t["name"] == "tool.hidden_exec"]
+    assert len(hidden) == 1
+    assert "maintenance hook" in hidden[0]["description"]
+    assert "shell" not in hidden[0]["description"].lower()
+
+
+def test_supply_hard_blocks_risky_command(monkeypatch) -> None:
+    monkeypatch.setenv("CAMAZOTZ_DIFFICULTY", "hard")
+    client = TestClient(app)
+    result = _call(client, "supply.install_package", {
+        "package": "evil-pkg", "source": "https://evil.io/simple"
+    })
+    assert "[BLOCKED]" in result["install_command"]
+    assert result["_flags"]["supply_chain_risk"] is True
+
+
+def test_supply_hard_safe_package_not_blocked(monkeypatch) -> None:
+    monkeypatch.setenv("CAMAZOTZ_DIFFICULTY", "hard")
+    client = TestClient(app)
+    result = _call(client, "supply.install_package", {"package": "requests"})
+    assert "[BLOCKED]" not in result["install_command"]
+    assert result["_flags"]["supply_chain_risk"] is False

@@ -58,6 +58,29 @@
 .response-body pre{font-size:.8rem;line-height:1.6;color:var(--text);white-space:pre-wrap;
   word-break:break-word}
 
+.diff-badge{display:inline-flex;align-items:center;gap:4px;padding:.15rem .5rem;
+  border-radius:6px;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.diff-badge.easy{background:rgba(16,185,129,.1);color:#34d399;border:1px solid rgba(16,185,129,.15)}
+.diff-badge.medium{background:rgba(234,179,8,.1);color:#facc15;border:1px solid rgba(234,179,8,.15)}
+.diff-badge.hard{background:rgba(239,68,68,.12);color:#f87171;border:1px solid rgba(239,68,68,.2)}
+
+.history-panel{margin-top:1rem}
+.history-toggle{background:none;border:none;color:var(--muted);font-size:.75rem;cursor:pointer;
+  font-family:inherit;padding:.25rem 0;display:flex;align-items:center;gap:.25rem}
+.history-toggle:hover{color:var(--text2)}
+.history-list{max-height:300px;overflow-y:auto;margin-top:.5rem}
+.history-entry{background:var(--surface);border:1px solid var(--border);border-radius:8px;
+  padding:.5rem .75rem;margin-bottom:.35rem;font-size:.75rem;cursor:pointer;transition:border-color .2s}
+.history-entry:hover{border-color:var(--border2)}
+.history-entry .he-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:.15rem}
+.history-entry .he-tool{font-family:var(--font-mono);color:var(--accent2);font-weight:600}
+.history-entry .he-meta{color:var(--muted);font-size:.68rem}
+.history-entry .he-preview{color:var(--text2);font-size:.7rem;
+  display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
+
+.tool-btn.new-tool{animation:newToolPulse 2s ease-in-out;border-color:var(--accent)}
+@keyframes newToolPulse{0%,100%{box-shadow:none}50%{box-shadow:0 0 12px rgba(220,38,38,.3)}}
+
 .empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;
   padding:4rem 2rem;text-align:center;color:var(--muted)}
 .empty-state svg{width:48px;height:48px;margin-bottom:1rem;opacity:.3}
@@ -113,11 +136,21 @@
         <div class="response-panel">
           <div class="response-header">
             <span>Response</span>
-            <span id="responseTime"></span>
+            <span style="display:flex;align-items:center;gap:.5rem">
+              <span class="diff-badge" id="responseDiff" style="display:none"></span>
+              <span id="responseTime"></span>
+            </span>
           </div>
           <div class="response-body">
             <pre id="responseBody">Waiting for request...</pre>
           </div>
+        </div>
+
+        <div class="history-panel">
+          <button class="history-toggle" id="historyToggle" onclick="toggleHistory()">
+            &#9654; Request History (<span id="historyCount">0</span>)
+          </button>
+          <div class="history-list" id="historyList" style="display:none"></div>
         </div>
       </div>
     </div>
@@ -129,63 +162,64 @@
 <script>
 let currentTool = null;
 let currentSchema = null;
+let history = JSON.parse(sessionStorage.getItem('cztz_history') || '[]');
+let historyOpen = false;
+let knownTools = new Set();
 
 document.querySelectorAll('.tool-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-
-    currentTool = btn.dataset.tool;
-    currentSchema = JSON.parse(btn.dataset.schema);
-
-    document.getElementById('emptyState').style.display = 'none';
-    document.getElementById('toolDetail').classList.add('visible');
-    document.getElementById('toolName').textContent = currentTool;
-    document.getElementById('toolDesc').textContent = btn.dataset.desc;
-    document.getElementById('responseBody').textContent = 'Waiting for request...';
-    document.getElementById('responseTime').textContent = '';
-    document.getElementById('sendStatus').textContent = '';
-
-    const group = document.getElementById('paramGroup');
-    group.innerHTML = '';
-
-    const props = currentSchema.properties || {};
-    const required = currentSchema.required || [];
-    for (const [key, spec] of Object.entries(props)) {
-      const row = document.createElement('div');
-      row.className = 'param-row';
-
-      const label = document.createElement('label');
-      label.textContent = key + (required.includes(key) ? ' *' : '');
-      row.appendChild(label);
-
-      const wrap = document.createElement('div');
-      wrap.style.cssText = 'flex:1;display:flex;flex-direction:column';
-
-      let input;
-      if (spec.description && spec.description.length > 60) {
-        input = document.createElement('textarea');
-        input.rows = 3;
-      } else {
-        input = document.createElement('input');
-        input.type = 'text';
-      }
-      input.id = 'param-' + key;
-      input.placeholder = spec.default !== undefined ? String(spec.default) : '';
-      wrap.appendChild(input);
-
-      if (spec.description) {
-        const hint = document.createElement('div');
-        hint.className = 'param-hint';
-        hint.textContent = spec.description;
-        wrap.appendChild(hint);
-      }
-
-      row.appendChild(wrap);
-      group.appendChild(row);
-    }
-  });
+  knownTools.add(btn.dataset.tool);
+  btn.addEventListener('click', () => selectTool(btn));
 });
+renderHistory();
+
+function selectTool(btn) {
+  document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentTool = btn.dataset.tool;
+  currentSchema = JSON.parse(btn.dataset.schema);
+
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('toolDetail').classList.add('visible');
+  document.getElementById('toolName').textContent = currentTool;
+  document.getElementById('toolDesc').textContent = btn.dataset.desc;
+  document.getElementById('responseBody').textContent = 'Waiting for request...';
+  document.getElementById('responseTime').textContent = '';
+  document.getElementById('responseDiff').style.display = 'none';
+  document.getElementById('sendStatus').textContent = '';
+
+  const group = document.getElementById('paramGroup');
+  group.innerHTML = '';
+  const props = currentSchema.properties || {};
+  const required = currentSchema.required || [];
+  for (const [key, spec] of Object.entries(props)) {
+    const row = document.createElement('div');
+    row.className = 'param-row';
+    const label = document.createElement('label');
+    label.textContent = key + (required.includes(key) ? ' *' : '');
+    row.appendChild(label);
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'flex:1;display:flex;flex-direction:column';
+    let input;
+    if (spec.description && spec.description.length > 60) {
+      input = document.createElement('textarea');
+      input.rows = 3;
+    } else {
+      input = document.createElement('input');
+      input.type = 'text';
+    }
+    input.id = 'param-' + key;
+    input.placeholder = spec.default !== undefined ? String(spec.default) : '';
+    wrap.appendChild(input);
+    if (spec.description) {
+      const hint = document.createElement('div');
+      hint.className = 'param-hint';
+      hint.textContent = spec.description;
+      wrap.appendChild(hint);
+    }
+    row.appendChild(wrap);
+    group.appendChild(row);
+  }
+}
 
 async function sendCall() {
   if (!currentTool) return;
@@ -212,11 +246,106 @@ async function sendCall() {
     const ms = Math.round(performance.now() - t0);
     document.getElementById('responseTime').textContent = ms + 'ms';
     document.getElementById('responseBody').textContent = JSON.stringify(data, null, 2);
+
+    const diff = data?.result?._difficulty || data?.result?.decision?._difficulty;
+    const badge = document.getElementById('responseDiff');
+    if (diff) {
+      badge.textContent = diff;
+      badge.className = 'diff-badge ' + diff;
+      badge.style.display = 'inline-flex';
+    } else {
+      badge.style.display = 'none';
+    }
+
+    addHistory(currentTool, args, diff || '?', ms, data);
+
+    if (currentTool === 'tool.mutate_behavior') refreshToolsList();
   } catch (e) {
     document.getElementById('responseBody').textContent = 'Error: ' + e.message;
   }
   btn.disabled = false;
   status.textContent = '';
+}
+
+function addHistory(tool, args, diff, ms, data) {
+  const entry = {
+    tool, args, diff, ms,
+    time: new Date().toLocaleTimeString(),
+    preview: JSON.stringify(data).slice(0, 120),
+    full: JSON.stringify(data, null, 2),
+  };
+  history.unshift(entry);
+  if (history.length > 50) history.pop();
+  sessionStorage.setItem('cztz_history', JSON.stringify(history));
+  renderHistory();
+}
+
+function renderHistory() {
+  document.getElementById('historyCount').textContent = history.length;
+  const list = document.getElementById('historyList');
+  list.innerHTML = '';
+  for (let i = 0; i < history.length; i++) {
+    const h = history[i];
+    const el = document.createElement('div');
+    el.className = 'history-entry';
+    el.onclick = () => {
+      document.getElementById('responseBody').textContent = h.full;
+      const badge = document.getElementById('responseDiff');
+      badge.textContent = h.diff;
+      badge.className = 'diff-badge ' + h.diff;
+      badge.style.display = 'inline-flex';
+      document.getElementById('responseTime').textContent = h.ms + 'ms';
+    };
+    el.innerHTML =
+      '<div class="he-header"><span class="he-tool">' + esc(h.tool) + '</span>' +
+      '<span class="he-meta"><span class="diff-badge ' + h.diff + '" style="font-size:.6rem;padding:.1rem .3rem">' + esc(h.diff) + '</span> ' +
+      esc(h.time) + ' &middot; ' + h.ms + 'ms</span></div>' +
+      '<div class="he-preview">' + esc(h.preview) + '</div>';
+    list.appendChild(el);
+  }
+}
+
+function toggleHistory() {
+  historyOpen = !historyOpen;
+  document.getElementById('historyList').style.display = historyOpen ? 'block' : 'none';
+  document.getElementById('historyToggle').innerHTML =
+    (historyOpen ? '&#9660;' : '&#9654;') + ' Request History (<span id="historyCount">' + history.length + '</span>)';
+}
+
+async function refreshToolsList() {
+  try {
+    const resp = await fetch('/api/tools');
+    const data = await resp.json();
+    const tools = data?.result?.tools || [];
+    const sidebar = document.querySelector('.pg-sidebar');
+    const newSet = new Set(tools.map(t => t.name));
+    for (const t of tools) {
+      if (!knownTools.has(t.name)) {
+        knownTools.add(t.name);
+        const btn = document.createElement('button');
+        btn.className = 'tool-btn new-tool';
+        btn.dataset.tool = t.name;
+        btn.dataset.desc = t.description;
+        btn.dataset.schema = JSON.stringify(t.inputSchema);
+        btn.innerHTML = '<span class="tool-name">' + esc(t.name) + '</span><span class="tool-desc">' + esc(t.description) + '</span>';
+        btn.addEventListener('click', () => selectTool(btn));
+        sidebar.appendChild(btn);
+      } else {
+        const existing = sidebar.querySelector('[data-tool="' + t.name + '"]');
+        if (existing && existing.dataset.desc !== t.description) {
+          existing.dataset.desc = t.description;
+          existing.querySelector('.tool-desc').textContent = t.description;
+          existing.classList.add('new-tool');
+        }
+      }
+    }
+  } catch (e) {}
+}
+
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
 }
 </script>
 {% endblock %}

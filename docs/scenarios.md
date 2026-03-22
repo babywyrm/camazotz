@@ -290,17 +290,18 @@ curl -s http://localhost:8080/mcp \
 ## Difficulty levels
 
 Default is **medium**. Switch from the portal nav bar or via
-`PUT /config {"difficulty":"..."}`.
+`PUT /config {"difficulty":"..."}`. Use `POST /reset` to reset tool_lab
+and shadow_lab state.
 
 | Module | easy | medium | hard |
 |--------|------|--------|------|
 | `context_lab` | No filtering, echoes everything | Notes injections but doesn't follow them | Blocks injection, refuses summary |
-| `auth_lab` | Grants if reason is convincing | Requires ticket number for admin | Always denies elevated roles |
-| `supply_lab` | Approves custom registries | Rejects non-corp registries | Denies all installs |
-| `secrets_lab` | All creds exposed | AWS secret key partially redacted | All sensitive values redacted |
+| `auth_lab` | Grants if reason is convincing | Requires valid ticket from INC-1001..1005 | Always denies elevated roles |
+| `supply_lab` | Approves custom registries | Rejects non-corp registries | Denies all + blocks install_command |
+| `secrets_lab` | All creds exposed | All secrets redacted except DATABASE_URL, OLLAMA_HOST | All sensitive values redacted |
 | `egress_lab` | Zero filtering | Blocks metadata IPs only | Blocks metadata + internal ranges |
 | `shadow_lab` | Any URL accepted | External URLs warned but accepted | External URLs rejected unless allowlisted |
-| `tool_lab` | Rug pull always active | Same | Same |
+| `tool_lab` | Rug pull at 3 calls | Rug pull at 5 calls | Rug pull at 8 calls, obfuscated exec description |
 
 All difficulty levels remain exploitable through different techniques:
 

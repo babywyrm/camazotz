@@ -67,3 +67,13 @@ def test_gateway_config_put_invalid_difficulty() -> None:
     assert resp.status_code == 200
     assert resp.json()["difficulty"] in ("easy", "medium", "hard")
     reset_difficulty()
+
+
+def test_gateway_reset_endpoint() -> None:
+    client = TestClient(app)
+    resp = client.post("/reset")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["reset"] is True
+    assert "tool_lab" in data
+    assert "shadow_lab" in data

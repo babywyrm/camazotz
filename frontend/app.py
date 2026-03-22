@@ -100,6 +100,16 @@ def api_config_put():
         return jsonify({"error": "Gateway unreachable"}), 502
 
 
+@app.route("/api/reset", methods=["POST"])
+def api_reset():
+    try:
+        resp = httpx.post(f"{GATEWAY_URL}/reset", timeout=5.0)
+        resp.raise_for_status()
+        return jsonify(resp.json())
+    except (httpx.HTTPError, ValueError):
+        return jsonify({"error": "Gateway unreachable"}), 502
+
+
 @app.route("/health")
 def health():
     return jsonify({"status": "ok", "service": "camazotz-portal"})
