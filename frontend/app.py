@@ -35,24 +35,24 @@ def _observer_last() -> dict:
 
 
 @app.route("/")
-def index():
+def index() -> str:
     return render_template("index.html")
 
 
 @app.route("/playground")
-def playground():
+def playground() -> str:
     data = _mcp_call("tools/list")
     tools = data.get("result", {}).get("tools", [])
     return render_template("playground.html", tools=tools)
 
 
 @app.route("/scenarios")
-def scenarios():
+def scenarios() -> str:
     return render_template("scenarios.html")
 
 
 @app.route("/observer")
-def observer():
+def observer() -> str:
     event = _observer_last()
     return render_template("observer.html", last_event=event)
 

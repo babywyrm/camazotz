@@ -129,3 +129,46 @@ def test_reset_difficulty(monkeypatch) -> None:
     assert get_difficulty() == "hard"
     reset_difficulty()
     assert get_difficulty() == "medium"
+
+
+def test_shared_types_importable() -> None:
+    from brain_gateway.app.types import Difficulty, ToolDefinition, ObserverEvent, UsageInfo
+    assert Difficulty.EASY == "easy"
+    assert Difficulty.MEDIUM == "medium"
+    assert Difficulty.HARD == "hard"
+    td: ToolDefinition = {"name": "test", "description": "desc", "inputSchema": {}}
+    assert td["name"] == "test"
+    oe: ObserverEvent = {"request_id": "r1", "tool_name": "t1", "module": "m1", "timestamp": "ts"}
+    assert oe["tool_name"] == "t1"
+    ui: UsageInfo = {"input_tokens": 10, "output_tokens": 20, "cost_usd": 0.001, "model": "m"}
+    assert ui["cost_usd"] == 0.001
+
+
+def test_brain_result_usage_dict() -> None:
+    from brain_gateway.app.brain.provider import BrainResult
+    r = BrainResult(text="hi", input_tokens=10, output_tokens=20, cost_usd=0.00123456789, model="test")
+    d = r.usage_dict()
+    assert d["input_tokens"] == 10
+    assert d["cost_usd"] == 0.001235
+
+
+def test_cloud_provider_error_handling() -> None:
+    from unittest.mock import patch, MagicMock
+    from brain_gateway.app.brain.cloud_claude import CloudClaudeProvider
+
+    with patch("brain_gateway.app.brain.cloud_claude.os.getenv", side_effect=lambda k, d="": "sk-fake" if k == "ANTHROPIC_API_KEY" else d):
+        with patch("brain_gateway.app.brain.cloud_claude.anthropic.Anthropic") as mock_cls:
+            mock_client = MagicMock()
+            mock_client.messages.create.side_effect = Exception("API rate limit")
+            mock_cls.return_value = mock_client
+            provider = CloudClaudeProvider()
+            result = provider.generate("test prompt")
+    assert "[cloud-error]" in result.text
+
+
+def test_redact_short_string() -> None:
+    from camazotz_modules.secrets_lab.app.main import _redact
+    assert _redact("short") == "****"
+    assert _redact("ab") == "****"
+    assert _redact("") == "****"
+    assert _redact("longerthan8chars") == "long****hars"

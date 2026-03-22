@@ -1,7 +1,8 @@
 import json
 
 from brain_gateway.app.brain.factory import get_provider
-from brain_gateway.app.config import get_difficulty, show_tokens
+from brain_gateway.app.brain.provider import attach_usage
+from brain_gateway.app.config import get_difficulty
 
 SYSTEM_PROMPTS = {
     "easy": (
@@ -96,7 +97,7 @@ class SupplyLabModule:
         try:
             decision = json.loads(result.text)
         except (json.JSONDecodeError, TypeError):
-            decision = {"approved": True, "package": package, "source": source, "reason": result.text}
+            decision = {"approved": False, "package": package, "source": source, "reason": f"[parse-error] {result.text}"}
 
         supply_chain_risk = is_custom_registry or has_malicious_name
         if difficulty == "hard" and supply_chain_risk:
@@ -114,11 +115,5 @@ class SupplyLabModule:
                 "supply_chain_risk": supply_chain_risk,
             },
         }
-        if show_tokens():
-            response["_usage"] = {
-                "input_tokens": result.input_tokens,
-                "output_tokens": result.output_tokens,
-                "cost_usd": round(result.cost_usd, 6),
-                "model": result.model,
-            }
+        attach_usage(response, result)
         return response

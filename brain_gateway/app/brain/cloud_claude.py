@@ -18,12 +18,16 @@ class CloudClaudeProvider:
             return BrainResult(text=f"[cloud-stub] {prompt}")
 
         model = os.getenv("CAMAZOTZ_MODEL", "claude-sonnet-4-20250514")
-        resp = self._client.messages.create(
-            model=model,
-            max_tokens=512,
-            system=system or "You are a tool inside the Camazotz MCP security lab.",
-            messages=[{"role": "user", "content": prompt}],
-        )
+        try:
+            resp = self._client.messages.create(
+                model=model,
+                max_tokens=512,
+                system=system or "You are a tool inside the Camazotz MCP security lab.",
+                messages=[{"role": "user", "content": prompt}],
+            )
+        except Exception:
+            return BrainResult(text=f"[cloud-error] {prompt}")
+
         inp = resp.usage.input_tokens
         out = resp.usage.output_tokens
         return BrainResult(

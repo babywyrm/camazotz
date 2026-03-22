@@ -17,16 +17,22 @@ class ModuleAdapter(Protocol):
         """Call a module tool if supported."""
 
 
+_modules: list[ModuleAdapter] | None = None
+
+
 def get_registered_modules() -> list[ModuleAdapter]:
-    return [
-        AuthLabModule(),
-        ToolLabModule(),
-        ContextLabModule(),
-        EgressLabModule(),
-        SecretsLabModule(),
-        SupplyLabModule(),
-        ShadowLabModule(),
-    ]
+    global _modules
+    if _modules is None:
+        _modules = [
+            AuthLabModule(),
+            ToolLabModule(),
+            ContextLabModule(),
+            EgressLabModule(),
+            SecretsLabModule(),
+            SupplyLabModule(),
+            ShadowLabModule(),
+        ]
+    return _modules
 
 
 def list_all_tools() -> list[dict]:

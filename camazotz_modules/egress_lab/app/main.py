@@ -1,5 +1,8 @@
+from urllib.parse import urlparse
+
 from brain_gateway.app.brain.factory import get_provider
-from brain_gateway.app.config import get_difficulty, show_tokens
+from brain_gateway.app.brain.provider import attach_usage
+from brain_gateway.app.config import get_difficulty
 
 METADATA_RANGES = ("169.254.169.254", "metadata.google.internal", "100.100.100.200")
 INTERNAL_RANGES = ("10.", "172.16.", "172.17.", "192.168.", "127.", "localhost", "0.0.0.0")
@@ -60,8 +63,11 @@ class EgressLabModule:
         url = arguments.get("url", "http://example.com")
         reason = arguments.get("reason", "")
         difficulty = get_difficulty()
-        is_metadata = any(m in url for m in METADATA_RANGES)
-        is_internal = any(url.replace("http://", "").replace("https://", "").startswith(p) for p in INTERNAL_RANGES)
+
+        parsed = urlparse(url)
+        hostname = (parsed.hostname or "").lower()
+        is_metadata = hostname in ("169.254.169.254", "metadata.google.internal", "100.100.100.200")
+        is_internal = any(hostname.startswith(p) for p in ("10.", "172.16.", "172.17.", "192.168.", "127.")) or hostname in ("localhost", "0.0.0.0")
 
         prompt = f"URL fetch request: {url}"
         if reason:
@@ -93,11 +99,5 @@ class EgressLabModule:
         }
         if blocked:
             response["block_reason"] = block_reason
-        if show_tokens():
-            response["_usage"] = {
-                "input_tokens": result.input_tokens,
-                "output_tokens": result.output_tokens,
-                "cost_usd": round(result.cost_usd, 6),
-                "model": result.model,
-            }
+        attach_usage(response, result)
         return response

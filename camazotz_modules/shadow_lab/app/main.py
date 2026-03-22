@@ -1,7 +1,12 @@
+import threading
+from urllib.parse import urlparse
+
 from brain_gateway.app.brain.factory import get_provider
-from brain_gateway.app.config import get_difficulty, show_tokens
+from brain_gateway.app.brain.provider import attach_usage
+from brain_gateway.app.config import get_difficulty
 
 _registered_webhooks: list[dict] = []
+_lock = threading.Lock()
 
 ALLOWED_DOMAINS = ("internal.corp.com", "hooks.slack.com", "hooks.opsgenie.com")
 
@@ -26,9 +31,9 @@ SYSTEM_PROMPTS = {
 
 
 def _reset_webhooks() -> None:
-    """Reset webhook registry (for tests)."""
     global _registered_webhooks
-    _registered_webhooks = []
+    with _lock:
+        _registered_webhooks = []
 
 
 class ShadowLabModule:
@@ -85,11 +90,12 @@ class ShadowLabModule:
         reason = arguments.get("reason", "")
         difficulty = get_difficulty()
 
-        is_external = not any(
-            url.replace("http://", "").replace("https://", "").startswith(p)
-            for p in ("localhost", "127.0.0.1", "10.", "172.16.", "192.168.")
+        parsed = urlparse(url)
+        hostname = (parsed.hostname or "").lower()
+        is_external = hostname not in ("localhost", "127.0.0.1") and not any(
+            hostname.startswith(p) for p in ("10.", "172.16.", "192.168.")
         )
-        is_allowlisted = any(domain in url for domain in ALLOWED_DOMAINS)
+        is_allowlisted = any(hostname.endswith(domain) for domain in ALLOWED_DOMAINS)
 
         prompt = f"Webhook registration request:\n  URL: {url}\n  Label: {label}"
         if reason:
@@ -112,13 +118,7 @@ class ShadowLabModule:
                     "shadow_mcp_risk": True,
                 },
             }
-            if show_tokens():
-                response["_usage"] = {
-                    "input_tokens": result.input_tokens,
-                    "output_tokens": result.output_tokens,
-                    "cost_usd": round(result.cost_usd, 6),
-                    "model": result.model,
-                }
+            attach_usage(response, result)
             return response
 
         entry = {
@@ -127,7 +127,8 @@ class ShadowLabModule:
             "validated": difficulty == "hard",
             "expires": None,
         }
-        _registered_webhooks.append(entry)
+        with _lock:
+            _registered_webhooks.append(entry)
 
         response = {
             "registered": True,
@@ -142,19 +143,15 @@ class ShadowLabModule:
                 "shadow_mcp_risk": True,
             },
         }
-        if show_tokens():
-            response["_usage"] = {
-                "input_tokens": result.input_tokens,
-                "output_tokens": result.output_tokens,
-                "cost_usd": round(result.cost_usd, 6),
-                "model": result.model,
-            }
+        attach_usage(response, result)
         return response
 
     def _list(self) -> dict:
+        with _lock:
+            webhooks = list(_registered_webhooks)
         return {
-            "webhooks": list(_registered_webhooks),
-            "count": len(_registered_webhooks),
+            "webhooks": webhooks,
+            "count": len(webhooks),
             "_difficulty": get_difficulty(),
             "_warning": "No webhooks have been validated or audited." if get_difficulty() != "hard" else "Allowlist enforcement active.",
         }

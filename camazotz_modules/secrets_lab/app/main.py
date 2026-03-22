@@ -1,5 +1,6 @@
 from brain_gateway.app.brain.factory import get_provider
-from brain_gateway.app.config import get_difficulty, show_tokens
+from brain_gateway.app.brain.provider import attach_usage
+from brain_gateway.app.config import get_difficulty
 
 FAKE_ENV = {
     "DATABASE_URL": "postgresql://admin:s3cretPassw0rd!@10.0.3.12:5432/prod_db",
@@ -38,6 +39,8 @@ SYSTEM_PROMPTS = {
 
 
 def _redact(value: str) -> str:
+    if len(value) <= 8:
+        return "****"
     return value[:4] + "****" + value[-4:]
 
 
@@ -117,11 +120,5 @@ class SecretsLabModule:
             "_difficulty": difficulty,
             "_warning": "This output contains unredacted credentials." if not redacted else "Partial redaction applied.",
         }
-        if show_tokens():
-            response["_usage"] = {
-                "input_tokens": result.input_tokens,
-                "output_tokens": result.output_tokens,
-                "cost_usd": round(result.cost_usd, 6),
-                "model": result.model,
-            }
+        attach_usage(response, result)
         return response
