@@ -1,14 +1,18 @@
-# Camazotz Quickstart
+# Quickstart
 
-Get Camazotz running locally in a few minutes.
+Get Camazotz running locally in under five minutes.
 
 ## Prerequisites
 
-- Docker Desktop (or Docker Engine + Compose plugin)
-- `uv` installed (for local development / tests)
-- Python 3.12+ (managed automatically by `uv` if needed)
+- **Docker Desktop** (or Docker Engine + Compose plugin)
+- **uv** (for local development / tests)
+- **Python 3.12+** (managed automatically by `uv` if needed)
 
 Works on macOS (Intel + Apple Silicon) and Linux (Debian, Ubuntu, CentOS).
+
+```bash
+git clone https://github.com/babywyrm/camazotz && cd camazotz
+```
 
 ## Option A: Cloud provider (Claude)
 
@@ -64,7 +68,7 @@ curl -s http://localhost:8080/mcp \
 Then open http://localhost:3000 in your browser. Use the difficulty
 dropdown in the nav bar to switch between easy/medium/hard in real-time.
 
-## Common operations
+## Common Operations
 
 ```bash
 make help         # show all targets
@@ -90,9 +94,9 @@ Edit `compose/.env` to tune behavior:
 | `CAMAZOTZ_SHOW_TOKENS` | `false` | Show token usage and cost |
 | `CAMAZOTZ_OLLAMA_MODEL` | `llama3.2:3b` | Ollama model name |
 
-See `README.md` for the full configuration reference.
+See [README.md](README.md) for the full configuration reference.
 
-## Runtime profiles
+## Runtime Profiles
 
 Switch scenario profiles by pointing to a different env file:
 
@@ -115,7 +119,7 @@ For K3s with local image builds, see `kube/deploy.sh` or `deploy/README.md`.
 
 Portal at `http://<node-ip>:3000`.
 
-## Changing deployment config
+## Changing Deployment Config
 
 All deployment config lives in `deploy/helm/camazotz/values.yaml`.
 After editing values, regenerate Docker Compose and redeploy:
@@ -127,9 +131,9 @@ make down && make up                # restart Compose
 make helm-deploy                    # redeploy K8s
 ```
 
-See `deploy/README.md` for the full workflow.
+See [deploy/README.md](deploy/README.md) for the full workflow.
 
-## Development (without Docker)
+## Development (Without Docker)
 
 ```bash
 uv sync                          # install dependencies

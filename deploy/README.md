@@ -1,10 +1,9 @@
 # Deployment & Configuration
 
-Camazotz uses a **Helm chart as the single source of truth** for all
-deployment configuration. Docker Compose is a generated artifact derived
-from the same Helm values.
+Helm chart as the single source of truth for all deployment config. Docker
+Compose is a generated artifact derived from the same Helm values.
 
-## Architecture
+## Layout
 
 ```
 deploy/
@@ -23,7 +22,7 @@ frontend/
   Dockerfile            <-- portal image (shared by both paths)
 ```
 
-## Developer workflow: I changed a scenario
+## Workflow: Changed a Scenario
 
 When you modify module code (add a tool, change a lab, etc.):
 
@@ -71,7 +70,7 @@ Or use the deploy script which does steps 3-5:
 bash /opt/camazotz/kube/deploy.sh
 ```
 
-## Developer workflow: I changed deployment config
+## Workflow: Changed Deployment Config
 
 When you modify ports, env vars, resource limits, add a new service, etc.:
 
@@ -114,10 +113,10 @@ sudo helm upgrade --install camazotz /opt/camazotz/deploy/helm/camazotz \
   --set secrets.anthropicApiKey=sk-ant-...
 ```
 
-## Developer workflow: I added a new module
+## Workflow: Added a New Module
 
 1. Create the module under `camazotz_modules/your_lab/app/main.py`
-   — inherit from `LabModule` (see `docs/module-authoring.md`)
+   — inherit from `LabModule` (see [module-authoring.md](../docs/module-authoring.md))
 2. **No registration needed** — the `LabRegistry` discovers all `LabModule`
    subclasses automatically via `pkgutil.walk_packages`
 3. Add tests, verify 100% coverage
@@ -131,7 +130,7 @@ sudo helm upgrade --install camazotz /opt/camazotz/deploy/helm/camazotz \
    - Run `make compose-gen` to update docker-compose.yml
 6. Deploy using either path above
 
-## Makefile targets
+## Makefile Targets
 
 | Target | What it does |
 |--------|-------------|
@@ -144,7 +143,7 @@ sudo helm upgrade --install camazotz /opt/camazotz/deploy/helm/camazotz \
 | `make down` | Stop all services |
 | `make test` | Run pytest with 100% coverage |
 
-## Key principle
+## Key Principle
 
 **Never edit `compose/docker-compose.yml` directly.** It is a generated
 file. All deployment configuration lives in `deploy/helm/camazotz/values.yaml`.

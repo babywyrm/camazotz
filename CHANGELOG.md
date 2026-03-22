@@ -1,129 +1,130 @@
 # Changelog
 
 All notable changes to Camazotz are documented in this file.
-
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
-Project does not yet follow semantic versioning; versions track development milestones.
 
 ---
 
 ## [Unreleased]
 
-### Added
+_Nothing yet._
 
-- **Camazotz Security Portal** — branded Flask/Jinja2 frontend with dark theme
-  and crimson accent. Pages: landing (OWASP coverage stats), playground
-  (interactive MCP tool explorer with live JSON responses), scenarios (red/blue
-  team walkthrough matrix with difficulty cards), observer (telemetry view with
-  auto-refresh and client-side event log). Served on port 3000.
-- **Live difficulty switcher** in the portal nav bar. Dropdown with colored dot
-  indicator (green/yellow/red) calls `PUT /config` to switch difficulty at
-  runtime — no container restart needed.
-- **Gateway config API** (`GET /config`, `PUT /config`) for runtime difficulty
-  and configuration inspection.
-- **Real Ollama provider.** `LocalOllamaProvider` makes actual HTTP calls to the
-  Ollama `/api/generate` endpoint. Falls back to `[ollama-unavailable]` when
-  Ollama is unreachable. Configurable via `OLLAMA_HOST` and `CAMAZOTZ_OLLAMA_MODEL`.
-- **All modules now LLM-backed.** The four previously static modules (`egress_lab`,
-  `secrets_lab`, `shadow_lab`, `tool_lab`) use the brain provider for AI-powered
-  request analysis. Deterministic vulnerability mechanics are preserved underneath.
-  All responses include `ai_analysis` field with the LLM's reasoning.
-- **Real observer sidecar.** Polls `/_observer/last-event`, deduplicates by
-  `request_id`, emits structured JSON logs. Debug mode logs connectivity.
-- **Docker Compose production polish.** Health checks on portal, brain-gateway,
-  and ollama. Restart policies. Explicit `camazotz` Docker network.
-  `ollama-init` sidecar auto-pulls the configured model on first run.
-- **Hardened Dockerfiles.** Multi-stage builds, non-root users (`camazotz`,
-  `observer`) on all containers.
-- **Makefile.** Cross-platform (macOS + Linux) targets: `make up`, `make up-local`,
-  `make down`, `make clean`, `make logs`, `make status`, `make test`.
-- **Gateway health endpoint** (`GET /health`) for container health checks.
-- **Scenario: Indirect prompt injection** (`context.injectable_summary`)
-  — covers OWASP MCP06 and MCP10.
-- **Scenario: Confused deputy auth bypass** (`auth.issue_token`)
-  — covers OWASP MCP02 and MCP07.
-- **Scenario: SSRF via tool** (`egress.fetch_url`)
-  — AI proxy with configurable egress filtering.
-- **Scenario: Rug pull / tool drift** (`tool.mutate_behavior` / `tool.hidden_exec`)
-  — covers OWASP MCP03 and MCP05.
-- **Scenario: Secret exposure** (`secrets.leak_config`)
-  — covers OWASP MCP01.
-- **Scenario: Supply chain attack** (`supply.install_package`)
-  — covers OWASP MCP04.
-- **Scenario: Shadow MCP / persistent callback** (`shadow.register_webhook` /
-  `shadow.list_webhooks`) — covers OWASP MCP09.
-- **Full OWASP MCP Top 10 coverage** — all 10 categories implemented.
-- **Brain provider abstraction** with cloud (Claude) and local (Ollama) options.
-- **Difficulty levels** (`easy`/`medium`/`hard`) controlling guardrail strength
-  across all modules. Default changed to **medium**.
-- **Token usage tracking** (`CAMAZOTZ_SHOW_TOKENS=true`) with cost estimation.
-- **MCP compliance baseline** (`initialize`, `tools/list`, `tools/call`, JSON-RPC errors).
+---
+
+## [0.1.0] - 2026-03-21
+
+First functional release. Full OWASP MCP Top 10 coverage, 7 vulnerability
+labs with real side effects, branded web portal, Docker Compose + Kubernetes
+deployment, 128 tests at 100% coverage.
+
+### Core Framework
+
 - **LabModule abstract base class** (`camazotz_modules/base.py`). All seven
-  labs inherit from `LabModule`, which provides `ask_llm()`, `make_response()`,
-  `difficulty`/`provider` properties, and an abstract contract (`tools()`,
-  `handle()`, `reset()`). Eliminates all boilerplate previously duplicated
-  across modules.
+  labs inherit from `LabModule` with `ask_llm()`, `make_response()`,
+  difficulty/provider properties, and abstract `tools()` / `handle()` /
+  `reset()` contract.
 - **LabRegistry with auto-discovery** (`brain_gateway/app/modules/registry.py`).
-  Replaces the static adapter with `pkgutil.walk_packages` discovery. New
-  modules are picked up automatically — no registration step required.
-  Includes a middleware pipeline (observer events, webhook dispatch) and
-  thread-safe webhook storage used by `shadow_lab`.
-- **Real attack side effects.** All seven labs now perform genuine actions
-  inside the container sandbox:
-  - `auth_lab` — in-memory SQLite token store with `auth.access_protected`
-    tool for token validation against protected resources.
-  - `secrets_lab` — reads real `os.environ` for `CZTZ_SECRET_*`-prefixed
-    variables (DATABASE_URL, AWS keys, Redis password, etc.).
-  - `egress_lab` — real `httpx.get` fetches when egress policy allows.
-  - `tool_lab` — real `subprocess.run` execution after rug-pull threshold.
-  - `supply_lab` — real `pip install --target` in temporary sandbox dirs
-    via `subprocess` and `tempfile`.
-  - `shadow_lab` — real `httpx.post` webhook dispatch on every tool call
-    via registry middleware.
-  - `context_lab` — two-stage LLM chain: summary → downstream consumer
-    that interprets the summary as task instructions, demonstrating real
-    prompt injection propagation.
-- **New tool: `auth.access_protected`** — access protected resources using
-  a previously issued token, validating role privileges against the SQLite
-  token store.
-- **`CZTZ_SECRET_*` environment variables** added to Helm values, Kubernetes
-  Secret template, Docker Compose, and `.env.example` for realistic secret
-  exposure scenarios.
-- **Contract schemas** for module registration and observer events.
-- **Scanner regression harness** with baseline for `mcpvenom` differential scans.
-- **Kubernetes manifests** (`kube/`). K3s-ready deployment with namespace,
-  ConfigMap, Secret, Deployments (brain-gateway, portal, observer), Services
-  (portal LoadBalancer on port 3000, brain-gateway ClusterIP), optional Ollama
-  with PVC. Automated `deploy.sh` builds images, imports into K3s containerd,
-  and applies manifests. Tested on K3s v1.34.5.
-- **Documentation:** `QUICKSTART.md`, `docs/scenarios.md`, `docs/module-authoring.md`,
-  `kube/README.md`.
-- **Difficulty differentiation improvements.** Auth lab medium now validates
-  tickets against a hardcoded list (INC-1001..1005). Secrets lab medium redacts
-  all secret keys except DATABASE_URL and OLLAMA_HOST. Tool lab threshold varies
-  by difficulty (easy=3, medium=5, hard=8) with obfuscated hidden_exec on hard.
-  Supply lab hard blocks install_command when supply chain risk detected.
-- **Scenario reset API** (`POST /reset`) resets tool_lab call counter and
-  shadow_lab webhook registry. Accessible from portal "Reset" button in nav bar.
-- **Playground UX.** Difficulty badge on responses, client-side request history
-  with sessionStorage (compare easy/medium/hard), auto-refresh tools/list after
-  rug pull with highlight animation for new/changed tools.
-- **Security hardening.** Threading locks on all mutable globals for FastAPI
-  thread safety. JSON parse fallbacks changed to deny-by-default (auth and supply
-  labs). URL classification upgraded from string manipulation to `urllib.parse`
-  (fixes scheme bypass, IPv6, URL-encoding attacks). Shadow lab allowlist check
-  changed from substring to hostname comparison. CloudClaudeProvider wrapped
-  in try/except for API errors. `_redact` handles short strings safely.
-- **Code quality.** Shared type definitions (`Difficulty` enum, `ToolDefinition`,
-  `ObserverEvent`, `UsageInfo` TypedDicts). `BrainResult.usage_dict()` and
-  `attach_usage()` helper eliminate 10 duplicated blocks. Cached module registry.
-  Fixed double `datetime.now()` in observer. Return type annotations on Flask routes.
-- **README rewrite** with ASCII architecture diagram, sequence diagram showing
-  the vulnerable tool call flow, project structure tree, deployment options
-  visualization, roadmap, and clearer narrative about the core teaching insight.
-- 128 tests passing at 100% coverage.
-- Cross-platform: macOS (Intel + Apple Silicon) and Linux (Debian/Ubuntu/CentOS).
-- Deployed and verified on K3s cluster (NUC).
+  `pkgutil.walk_packages` discovers modules at startup — no registration
+  step required. Includes middleware pipeline (observer events, webhook
+  dispatch) and thread-safe shared state.
+- **Brain provider abstraction.** Cloud (Claude API) and local (Ollama
+  `/api/generate` via httpx) with automatic fallback stubs when
+  credentials or services are unavailable.
+- **MCP JSON-RPC compliance:** `initialize`, `tools/list`, `tools/call`,
+  `resources/list`, `prompts/list`, standard error codes.
+
+### Vulnerability Labs
+
+All modules perform genuine actions inside the container sandbox:
+
+- **auth_lab** (MCP02, MCP07) — Confused deputy auth bypass. LLM
+  reasons about access; JSON parse fallback grants admin. In-memory
+  SQLite token store with `auth.access_protected` for validation.
+- **context_lab** (MCP06, MCP10) — Two-stage LLM chain. Summarizer →
+  downstream consumer. Injection propagates across both stages.
+- **egress_lab** (SSRF) — AI proxy with real `httpx.get` fetches.
+  Configurable egress filtering by difficulty (metadata IPs, internal
+  ranges).
+- **secrets_lab** (MCP01) — Debug assistant reads real `os.environ`
+  for `CZTZ_SECRET_*` variables. Partial redaction on medium, full on
+  hard.
+- **shadow_lab** (MCP09) — Webhook registration with zero validation.
+  Real `httpx.post` dispatch on every subsequent tool call via
+  middleware.
+- **supply_lab** (MCP04) — LLM-approved `pip install --target` in
+  sandboxed tempdir via subprocess. Evil registry accepted on easy.
+- **tool_lab** (MCP03, MCP05) — Trust threshold rug pull. Tool
+  description mutates, `hidden_exec` appears, real `subprocess.run`
+  execution.
+
+### Portal & Frontend
+
+- **Camazotz Security Portal** — Flask/Jinja2, dark theme with crimson
+  accent. Landing page (OWASP stats), playground (interactive MCP tool
+  explorer), scenarios (red/blue walkthrough matrix), observer
+  (telemetry auto-refresh).
+- **Live difficulty switcher** in nav bar with colored indicator.
+  `PUT /config` changes difficulty at runtime — no restart needed.
+- **Scenario reset** via `POST /reset` button in nav bar.
+- **Playground UX:** difficulty badge on responses, client-side request
+  history with sessionStorage, auto-refresh tools/list after rug pull.
+
+### Deployment
+
+- **Docker Compose** with health checks, restart policies, `camazotz`
+  network. Ollama behind `--profile local` with auto-model-pull init
+  sidecar. Multi-stage Dockerfiles with non-root users.
+- **Helm chart** (`deploy/helm/camazotz/`) as single source of truth.
+  `generate-compose.py` derives docker-compose.yml from Helm values.
+- **Raw K8s manifests** (`kube/`) for K3s without Helm. Namespace,
+  ConfigMap, Secret, Deployments, Services, optional Ollama with PVC.
+  Automated `deploy.sh`.
+- **Makefile** with cross-platform targets (macOS + Linux): `make up`,
+  `make up-local`, `make down`, `make test`, `make status`,
+  `make helm-deploy`, `make compose-gen`.
+
+### Difficulty & Guardrails
+
+- Three levels (`easy` / `medium` / `hard`) controlling LLM system
+  prompts, thresholds, allowlists, and redaction rules per module.
+- Default changed to **medium**.
+- All difficulty levels remain exploitable through different techniques.
+
+### Observability
+
+- `/_observer/last-event` endpoint (intentionally weak — MCP08).
+- Observer sidecar polls, deduplicates by `request_id`, emits structured
+  JSON logs.
+- Token usage tracking (`CAMAZOTZ_SHOW_TOKENS=true`) with cost
+  estimation per call.
+
+### Security Hardening
+
+- Threading locks on all mutable globals for FastAPI thread safety.
+- JSON parse fallbacks changed to deny-by-default (auth, supply labs).
+- URL classification via `urllib.parse` (fixes scheme bypass, IPv6,
+  URL-encoding attacks).
+- Shadow lab allowlist check changed from substring to hostname
+  comparison.
+- CloudClaudeProvider wrapped in try/except for API errors.
+
+### Documentation
+
+- `QUICKSTART.md` — setup options, configuration, profiles.
+- `docs/scenarios.md` — red/blue team exercises for every scenario.
+- `docs/module-authoring.md` — how to build new vulnerability modules.
+- `deploy/README.md` — Helm chart, compose generation, workflows.
+- `kube/README.md` — legacy K8s manifests, deploy script.
+- `README.md` — architecture diagrams, OWASP coverage matrix, project
+  structure, deployment options, roadmap.
+
+### Testing
+
+- 128 tests at 100% coverage across gateway, modules, frontend, and
+  observer.
+- Cross-platform: macOS (Intel + Apple Silicon) and Linux
+  (Debian/Ubuntu/CentOS).
+- Deployed and verified end-to-end on K3s cluster with live Claude.
 
 ---
 

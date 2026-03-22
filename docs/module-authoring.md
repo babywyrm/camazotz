@@ -1,6 +1,6 @@
-# Camazotz Module Authoring Guide
+# Module Authoring Guide
 
-## Architecture overview
+## Architecture Overview
 
 Every vulnerability lab is a Python class that inherits from `LabModule`
 (`camazotz_modules/base.py`). The `LabRegistry` discovers all subclasses
@@ -19,7 +19,7 @@ camazotz_modules/
 └── tool_lab/app/main.py     # class ToolLab(LabModule)
 ```
 
-## LabModule contract
+## LabModule Contract
 
 Every module must:
 
@@ -76,7 +76,7 @@ class YourLab(LabModule):
         pass
 ```
 
-## Base class helpers
+## Base Class Helpers
 
 `LabModule` provides these so you never need to import the brain factory
 or config module directly:
@@ -95,7 +95,7 @@ prompt to use, and `system_override` to bypass `system_prompts` entirely.
 `make_response()` automatically attaches `_usage` (token counts, cost,
 model name) when `CAMAZOTZ_SHOW_TOKENS=true`.
 
-## Auto-discovery
+## Auto-Discovery
 
 Place your module anywhere under `camazotz_modules/`. The registry walks
 all subpackages at startup. As long as your class:
@@ -106,13 +106,13 @@ all subpackages at startup. As long as your class:
 It will be discovered and registered. No import in `__init__.py`, no
 adapter registration, no config file.
 
-## Naming rules
+## Naming Rules
 
 - Prefix tool names by domain: `auth.`, `context.`, `egress.`, `secrets.`, `supply.`, `shadow.`, `tool.`, `your.`
 - Keep names stable so scanner regressions stay meaningful.
 - The `name` class attribute determines the domain prefix by convention.
 
-## Real side effects
+## Real Side Effects
 
 Camazotz labs perform genuine actions inside the container sandbox to make
 attacks realistic:
@@ -130,7 +130,7 @@ attacks realistic:
 When adding real side effects, always mock them in tests using
 `unittest.mock.patch` to prevent actual network/process calls during `pytest`.
 
-## Shared state via the registry
+## Shared State via the Registry
 
 The `LabRegistry` singleton holds shared state that multiple modules can
 access. For example, `shadow_lab` stores webhooks on the registry so the
@@ -144,7 +144,7 @@ hooks = self._registry.list_webhooks()
 If your module needs shared state, add accessors to `LabRegistry` rather
 than using module-level globals.
 
-## Telemetry expectations
+## Telemetry Expectations
 
 Tool calls are recorded by the gateway observer using:
 
@@ -153,7 +153,7 @@ Tool calls are recorded by the gateway observer using:
 - `module` (the class name, e.g. `AuthLab`)
 - `timestamp`
 
-## Testing rules
+## Testing Rules
 
 - Add `pytest` coverage for every code path in your module.
 - Keep global coverage at 100%.
@@ -164,14 +164,13 @@ Tool calls are recorded by the gateway observer using:
 - Use `reset_registry()` in `setup_function` to get a clean registry per test.
 - Run tests with `uv run pytest` or `make test`.
 
-## Deploying your changes
+## Deploying Your Changes
 
-After code + tests are done:
+After code + tests pass:
 
-**Docker Compose (local):** `make down && make up` — images rebuild from source.
-
-**Kubernetes:** Rebuild images on the node, import into K3s, restart deployments.
-See `deploy/README.md` for the full workflow.
+- **Docker Compose:** `make down && make up` — images rebuild from source.
+- **Kubernetes:** Rebuild images, import into K3s, restart deployments.
+  See [deploy/README.md](../deploy/README.md) for the full workflow.
 
 If your module adds new env vars, edit `deploy/helm/camazotz/values.yaml`
 and run `make compose-gen` to keep Docker Compose in sync.

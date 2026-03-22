@@ -1,12 +1,10 @@
-# Camazotz Kubernetes Deployment (Legacy Raw Manifests)
+# Kubernetes Deployment (Raw Manifests)
 
 > **Prefer the Helm chart** at `deploy/helm/camazotz/` for new deployments.
-> See `deploy/README.md` for the unified workflow.
+> See [deploy/README.md](../deploy/README.md) for the unified workflow.
 >
 > These raw manifests and `deploy.sh` remain useful for quick K3s deploys
 > where Helm isn't installed.
-
-K3s manifests for deploying Camazotz to a Kubernetes cluster.
 
 ## Prerequisites
 
@@ -14,7 +12,7 @@ K3s manifests for deploying Camazotz to a Kubernetes cluster.
 - Docker (for building images on the node)
 - `kubectl` access to the cluster
 
-## Quick deploy
+## Quick Deploy
 
 From the target node with the repo cloned to `/opt/camazotz`:
 
@@ -24,7 +22,7 @@ bash /opt/camazotz/kube/deploy.sh
 
 This builds images, imports them into K3s containerd, and applies all manifests.
 
-## Manual deploy
+## Manual Deploy
 
 ```bash
 # Build images
@@ -46,7 +44,7 @@ sudo k3s kubectl apply -f kube/portal.yaml
 sudo k3s kubectl apply -f kube/observer.yaml
 ```
 
-## Set the API key
+## Set the API Key
 
 ```bash
 sudo k3s kubectl -n camazotz create secret generic camazotz-secrets \
@@ -56,7 +54,7 @@ sudo k3s kubectl -n camazotz create secret generic camazotz-secrets \
 sudo k3s kubectl -n camazotz rollout restart deployment/brain-gateway
 ```
 
-## Deploy Ollama (optional, for local LLM)
+## Deploy Ollama (Optional)
 
 ```bash
 sudo k3s kubectl apply -f kube/ollama.yaml

