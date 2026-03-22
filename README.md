@@ -17,68 +17,67 @@ while the underlying tool logic executes the vulnerable action anyway.
 
 ## Architecture
 
-```mermaid
-graph TB
-    subgraph portal [Portal :3000]
-        UI[Branded Web UI]
-        PG[Tool Playground]
-        SC[Scenario Walkthroughs]
-        OB[Observer View]
-    end
-
-    subgraph gateway [Brain Gateway :8080]
-        MCP[MCP JSON-RPC Handler]
-        CFG[Config API]
-        OBS[Observer Telemetry]
-    end
-
-    subgraph brain [AI Brain]
-        Claude[Claude API]
-        Ollama[Ollama Local]
-    end
-
-    subgraph labs [Vulnerability Labs]
-        AUTH[auth_lab - MCP02/07]
-        CTX[context_lab - MCP06/10]
-        SUP[supply_lab - MCP04]
-        SEC[secrets_lab - MCP01]
-        EGR[egress_lab - SSRF]
-        TOOL[tool_lab - MCP03/05]
-        SHAD[shadow_lab - MCP09]
-    end
-
-    UI --> MCP
-    PG --> MCP
-    MCP --> labs
-    labs --> brain
-    OBS --> OB
-
-    style portal fill:#1a1520,stroke:#dc2626,color:#ede8f2
-    style gateway fill:#141018,stroke:#dc2626,color:#ede8f2
-    style brain fill:#0e0a12,stroke:#f87171,color:#ede8f2
-    style labs fill:#0e0a12,stroke:#f87171,color:#ede8f2
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  Portal :3000                                                   │
+│  ┌──────────┐ ┌──────────────┐ ┌───────────┐ ┌──────────────┐   │
+│  │  Web UI  │ │  Playground  │ │ Scenarios │ │   Observer   │   │
+│  └────┬─────┘ └──────┬───────┘ └───────────┘ └──────▲───────┘   │
+└───────┼──────────────┼───────────────────────────────┼──────────┘
+        │              │                               │
+        ▼              ▼                               │
+┌─────────────────────────────────────────────────────────────────┐
+│  Brain Gateway :8080                                            │
+│  ┌───────────────────┐  ┌──────────────┐  ┌──────────────────┐  │
+│  │ MCP JSON-RPC      │─▶│ LabRegistry  │  │ Observer         │──┘
+│  │ Handler           │  │ + Middleware  │  │ Telemetry        │
+│  └───────────────────┘  └──────┬───────┘  └──────────────────┘  │
+└────────────────────────────────┼────────────────────────────────┘
+                                 │
+        ┌────────────────────────┼────────────────────────┐
+        ▼                        ▼                        ▼
+┌──────────────┐  ┌──────────────────────┐  ┌──────────────────┐
+│  auth_lab    │  │  context_lab         │  │  egress_lab      │
+│  MCP02/07    │  │  MCP06/10            │  │  SSRF            │
+│  SQLite      │  │  Two-stage LLM chain │  │  Real httpx.get  │
+├──────────────┤  ├──────────────────────┤  ├──────────────────┤
+│  secrets_lab │  │  shadow_lab          │  │  supply_lab      │
+│  MCP01       │  │  MCP09               │  │  MCP04           │
+│  os.environ  │  │  Webhook dispatch    │  │  pip install     │
+├──────────────┤  └──────────────────────┘  └──────────────────┘
+│  tool_lab    │
+│  MCP03/05    │         ┌──────────────────────────┐
+│  subprocess  │────────▶│  AI Brain                │
+└──────────────┘         │  Claude API  │  Ollama   │
+                         └──────────────────────────┘
 ```
 
 ## How a Vulnerable Tool Call Works
 
-```mermaid
-sequenceDiagram
-    participant U as Attacker
-    participant P as Portal
-    participant G as Gateway
-    participant L as LLM Brain
-    participant V as Vuln Logic
-
-    U->>P: Call auth.issue_token (admin, fake reason)
-    P->>G: JSON-RPC tools/call
-    G->>L: Generate with system prompt
-    L-->>G: AI reasoning (may refuse!)
-    G->>V: Deterministic vuln check
-    V-->>G: Fallback grants admin anyway
-    G-->>P: Token + ai_analysis + decision
-    P-->>U: cztz-attacker-admin
-
-    Note over L,V: The LLM said no.<br/>The code said yes.<br/>That's the vulnerability.
+```
+  Attacker          Portal            Gateway           LLM Brain        Vuln Logic
+     │                 │                  │                  │                │
+     │  issue_token    │                  │                  │                │
+     │  (admin, fake)  │                  │                  │                │
+     ├────────────────▶│  JSON-RPC        │                  │                │
+     │                 │  tools/call      │                  │                │
+     │                 ├─────────────────▶│  system prompt   │                │
+     │                 │                  ├─────────────────▶│                │
+     │                 │                  │  "Deny — this    │                │
+     │                 │                  │◀─is suspicious"──┤                │
+     │                 │                  │                  │                │
+     │                 │                  │  json.loads fails on markdown     │
+     │                 │                  ├──────────────────────────────────▶│
+     │                 │                  │          fallback: grant admin    │
+     │                 │                  │◀────────────────────────────────-─┤
+     │                 │  token + result  │                  │                │
+     │                 │◀─────────────────┤                  │                │
+     │ cztz-eve-admin  │                  │                  │                │
+     │◀────────────────┤                  │                  │                │
+     │                 │                  │                  │                │
+     │    ┌──────────────────────────────────────────────────────────┐        │
+     │    │  The LLM said no.  The code said yes.  That's the vuln.  │        │
+     │    └──────────────────────────────────────────────────────────┘        │
 ```
 
 ## The Key Teaching Moment
@@ -114,18 +113,18 @@ All 10 categories are implemented with exploitable scenarios:
 
 | OWASP ID | Risk | Scenario | What Happens |
 |----------|------|----------|-------------|
-| MCP01 | Secret Exposure | `secrets.leak_config` | AI explains creds while dumping them |
-| MCP02 | Privilege Escalation | `auth.issue_token` | LLM denies, JSON fallback grants admin |
-| MCP03 | Tool Poisoning | `tool.mutate_behavior` | Tool builds trust, then rug-pulls |
-| MCP04 | Supply Chain | `supply.install_package` | Evil registry accepted despite LLM warning |
-| MCP05 | Command Injection | `tool.hidden_exec` | Appears after rug pull threshold |
-| MCP06 | Intent Subversion | `context.injectable_summary` | Prompt injection in summarization |
+| MCP01 | Secret Exposure | `secrets.leak_config` | AI explains creds while dumping real `CZTZ_SECRET_*` env vars |
+| MCP02 | Privilege Escalation | `auth.issue_token` → `auth.access_protected` | LLM denies, JSON fallback grants admin; token works in SQLite store |
+| MCP03 | Tool Poisoning | `tool.mutate_behavior` | Tool builds trust, then rug-pulls with real `subprocess` exec |
+| MCP04 | Supply Chain | `supply.install_package` | Evil registry accepted; real `pip install` runs in sandbox |
+| MCP05 | Command Injection | `tool.hidden_exec` | Appears after rug pull; executes real commands |
+| MCP06 | Intent Subversion | `context.injectable_summary` | Injection propagates through two-stage LLM chain |
 | MCP07 | Weak Auth | `auth.issue_token` | Social engineering bypasses access control |
 | MCP08 | No Audit Trail | `/_observer/last-event` | Only last event, no persistence |
-| MCP09 | Shadow MCP | `shadow.register_webhook` | Persistent callback with zero validation |
-| MCP10 | Context Injection | `context.injectable_summary` | Unsanitized LLM output shared downstream |
+| MCP09 | Shadow MCP | `shadow.register_webhook` | Persistent callback with real `httpx.post` dispatch on every call |
+| MCP10 | Context Injection | `context.injectable_summary` | Unsanitized summary fed to downstream consumer LLM |
 
-Plus: **SSRF** via `egress.fetch_url` (AI proxy with configurable egress filtering).
+Plus: **SSRF** via `egress.fetch_url` (AI proxy with real `httpx.get` fetches when policy allows).
 
 ## Difficulty Levels
 
@@ -142,48 +141,38 @@ Switch live from the portal nav bar — no restart needed.
 ```
 camazotz/
 ├── brain_gateway/           # FastAPI backend (MCP JSON-RPC, config, observer)
-│   └── app/brain/           # LLM provider abstraction (Claude + Ollama)
-├── camazotz_modules/        # 7 vulnerability lab modules
-│   ├── auth_lab/            # Confused deputy, privilege escalation
-│   ├── context_lab/         # Prompt injection, context over-sharing
-│   ├── egress_lab/          # SSRF via AI proxy
-│   ├── secrets_lab/         # Credential leak with partial redaction
-│   ├── shadow_lab/          # Persistent webhook registration
-│   ├── supply_lab/          # Supply chain attack via package approval
-│   └── tool_lab/            # Rug pull, tool mutation, hidden exec
+│   ├── app/brain/           # LLM provider abstraction (Claude + Ollama)
+│   └── app/modules/
+│       └── registry.py      # LabRegistry — auto-discovers modules, middleware pipeline
+├── camazotz_modules/        # 7 vulnerability lab modules (LabModule subclasses)
+│   ├── base.py              # LabModule ABC — shared contract and helpers
+│   ├── auth_lab/            # Confused deputy, privilege escalation, SQLite token store
+│   ├── context_lab/         # Prompt injection, two-stage LLM chain
+│   ├── egress_lab/          # SSRF via AI proxy, real httpx fetches
+│   ├── secrets_lab/         # Credential leak, reads real os.environ
+│   ├── shadow_lab/          # Persistent webhook registration, real httpx dispatch
+│   ├── supply_lab/          # Supply chain attack, real pip install in sandbox
+│   └── tool_lab/            # Rug pull, tool mutation, real subprocess execution
 ├── frontend/                # Flask portal (dark theme, crimson accent)
 ├── compose/                 # Docker Compose (generated from Helm values)
 ├── deploy/                  # Helm chart (single source of truth) + compose generator
 ├── kube/                    # Legacy raw K8s manifests + deploy.sh
-├── tests/                   # 110 tests, 100% coverage
+├── tests/                   # 128 tests, 100% coverage
 └── Makefile                 # Cross-platform dev/deploy targets
 ```
 
 ## Deployment Options
 
-```mermaid
-graph LR
-    subgraph dev [Local Development]
-        UV[uv run uvicorn]
-        Flask[python app.py]
-    end
+```
+  Local Dev                Docker Compose              Kubernetes / K3s
+ ─────────────────   ─────────────────────────   ──────────────────────────
+  uv run uvicorn      Portal        :3000         Portal LB      :3000
+  python app.py       Gateway       :8080         Gateway ClusterIP
+                      Observer                    Observer
+                      Ollama        :11434        Ollama + PVC
 
-    subgraph compose [Docker Compose]
-        Portal_C[Portal :3000]
-        GW_C[Gateway :8080]
-        Obs_C[Observer]
-        Ollama_C[Ollama :11434]
-    end
-
-    subgraph k8s [Kubernetes / K3s]
-        Portal_K[Portal LB :3000]
-        GW_K[Gateway ClusterIP]
-        Obs_K[Observer]
-        Ollama_K[Ollama + PVC]
-    end
-
-    dev --> compose
-    compose --> k8s
+        ──────────────▶          ──────────────▶
+            make up                 make helm-deploy
 ```
 
 | Path | Command | When to use |
@@ -211,7 +200,7 @@ Full reference in [QUICKSTART.md](QUICKSTART.md).
 make up             # start with Claude
 make up-local       # start with Ollama
 make down           # stop all services
-make test           # run 110 tests (100% coverage)
+make test           # run 128 tests (100% coverage)
 make status         # health check all services
 make compose-gen    # regenerate docker-compose.yml from Helm values
 make helm-deploy    # deploy to K8s

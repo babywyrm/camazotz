@@ -53,10 +53,11 @@ sudo docker build -t camazotz/brain-gateway:latest -f compose/Dockerfile .
 sudo docker build -t camazotz/portal:latest -f frontend/Dockerfile frontend/
 sudo docker build -t camazotz/observer:latest -f compose/observer/Dockerfile compose/observer/
 
-# 4. Import into K3s
-sudo docker save camazotz/brain-gateway:latest | sudo k3s ctr images import -
-sudo docker save camazotz/portal:latest | sudo k3s ctr images import -
-sudo docker save camazotz/observer:latest | sudo k3s ctr images import -
+# 4. Import into K3s (save to file, then import — avoids sudo pipe issues)
+sudo docker save camazotz/brain-gateway:latest -o /tmp/bg.tar && sudo k3s ctr images import /tmp/bg.tar
+sudo docker save camazotz/portal:latest -o /tmp/portal.tar && sudo k3s ctr images import /tmp/portal.tar
+sudo docker save camazotz/observer:latest -o /tmp/obs.tar && sudo k3s ctr images import /tmp/obs.tar
+rm -f /tmp/bg.tar /tmp/portal.tar /tmp/obs.tar
 
 # 5. Restart deployments to pick up new images
 sudo k3s kubectl -n camazotz rollout restart deployment/brain-gateway
@@ -115,12 +116,14 @@ sudo helm upgrade --install camazotz /opt/camazotz/deploy/helm/camazotz \
 
 ## Developer workflow: I added a new module
 
-1. Create the module under `camazotz_modules/your_lab/`
-2. Register it in `brain_gateway/app/modules/adapter.py`
+1. Create the module under `camazotz_modules/your_lab/app/main.py`
+   — inherit from `LabModule` (see `docs/module-authoring.md`)
+2. **No registration needed** — the `LabRegistry` discovers all `LabModule`
+   subclasses automatically via `pkgutil.walk_packages`
 3. Add tests, verify 100% coverage
 4. If the module needs new env vars:
-   - Add them to `deploy/helm/camazotz/values.yaml` under `config:`
-   - Add them to the ConfigMap template if needed
+   - Add them to `deploy/helm/camazotz/values.yaml` under `config:` or `labSecrets:`
+   - Add them to the ConfigMap or Secret template if needed
    - Run `make compose-gen` to update docker-compose.yml
 5. If the module needs a new container (rare):
    - Add a new section in `values.yaml`

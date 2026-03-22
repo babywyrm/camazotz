@@ -58,7 +58,37 @@ Project does not yet follow semantic versioning; versions track development mile
   across all modules. Default changed to **medium**.
 - **Token usage tracking** (`CAMAZOTZ_SHOW_TOKENS=true`) with cost estimation.
 - **MCP compliance baseline** (`initialize`, `tools/list`, `tools/call`, JSON-RPC errors).
-- **Module adapter system** with stable internal contract.
+- **LabModule abstract base class** (`camazotz_modules/base.py`). All seven
+  labs inherit from `LabModule`, which provides `ask_llm()`, `make_response()`,
+  `difficulty`/`provider` properties, and an abstract contract (`tools()`,
+  `handle()`, `reset()`). Eliminates all boilerplate previously duplicated
+  across modules.
+- **LabRegistry with auto-discovery** (`brain_gateway/app/modules/registry.py`).
+  Replaces the static adapter with `pkgutil.walk_packages` discovery. New
+  modules are picked up automatically — no registration step required.
+  Includes a middleware pipeline (observer events, webhook dispatch) and
+  thread-safe webhook storage used by `shadow_lab`.
+- **Real attack side effects.** All seven labs now perform genuine actions
+  inside the container sandbox:
+  - `auth_lab` — in-memory SQLite token store with `auth.access_protected`
+    tool for token validation against protected resources.
+  - `secrets_lab` — reads real `os.environ` for `CZTZ_SECRET_*`-prefixed
+    variables (DATABASE_URL, AWS keys, Redis password, etc.).
+  - `egress_lab` — real `httpx.get` fetches when egress policy allows.
+  - `tool_lab` — real `subprocess.run` execution after rug-pull threshold.
+  - `supply_lab` — real `pip install --target` in temporary sandbox dirs
+    via `subprocess` and `tempfile`.
+  - `shadow_lab` — real `httpx.post` webhook dispatch on every tool call
+    via registry middleware.
+  - `context_lab` — two-stage LLM chain: summary → downstream consumer
+    that interprets the summary as task instructions, demonstrating real
+    prompt injection propagation.
+- **New tool: `auth.access_protected`** — access protected resources using
+  a previously issued token, validating role privileges against the SQLite
+  token store.
+- **`CZTZ_SECRET_*` environment variables** added to Helm values, Kubernetes
+  Secret template, Docker Compose, and `.env.example` for realistic secret
+  exposure scenarios.
 - **Contract schemas** for module registration and observer events.
 - **Scanner regression harness** with baseline for `mcpvenom` differential scans.
 - **Kubernetes manifests** (`kube/`). K3s-ready deployment with namespace,
@@ -88,10 +118,10 @@ Project does not yet follow semantic versioning; versions track development mile
   `ObserverEvent`, `UsageInfo` TypedDicts). `BrainResult.usage_dict()` and
   `attach_usage()` helper eliminate 10 duplicated blocks. Cached module registry.
   Fixed double `datetime.now()` in observer. Return type annotations on Flask routes.
-- **README rewrite** with mermaid architecture diagrams, sequence diagram showing
+- **README rewrite** with ASCII architecture diagram, sequence diagram showing
   the vulnerable tool call flow, project structure tree, deployment options
   visualization, roadmap, and clearer narrative about the core teaching insight.
-- 110 tests passing at 100% coverage.
+- 128 tests passing at 100% coverage.
 - Cross-platform: macOS (Intel + Apple Silicon) and Linux (Debian/Ubuntu/CentOS).
 - Deployed and verified on K3s cluster (NUC).
 

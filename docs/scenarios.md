@@ -8,17 +8,18 @@ OWASP MCP Top 10 categories are covered.
 
 ## Tool inventory
 
-| Tool | Module | OWASP MCP ID | Vulnerability |
-|------|--------|--------------|---------------|
-| `context.injectable_summary` | context_lab | MCP06, MCP10 | Indirect prompt injection / context over-sharing |
-| `auth.issue_token` | auth_lab | MCP02, MCP07 | Confused deputy / LLM-delegated auth bypass |
-| `supply.install_package` | supply_lab | MCP04 | LLM-approved dependency install from attacker registry |
-| `egress.fetch_url` | egress_lab | — | SSRF via AI proxy with configurable egress filtering |
-| `tool.mutate_behavior` | tool_lab | MCP03 | Rug pull / tool description + behavior drift |
-| `tool.hidden_exec` | tool_lab (hidden) | MCP03, MCP05 | Hidden command execution injected post-trust |
-| `secrets.leak_config` | secrets_lab | MCP01 | Unredacted credentials with AI debug assistant |
-| `shadow.register_webhook` | shadow_lab | MCP09 | Unvalidated persistent callback registration |
-| `shadow.list_webhooks` | shadow_lab | MCP09 | Enumerate registered shadow callbacks |
+| Tool | Module | OWASP MCP ID | Vulnerability | Real side effect |
+|------|--------|--------------|---------------|-----------------|
+| `auth.issue_token` | AuthLab | MCP02, MCP07 | Confused deputy / LLM-delegated auth bypass | SQLite token store |
+| `auth.access_protected` | AuthLab | MCP02, MCP07 | Token validation against protected resources | SQLite role lookup |
+| `context.injectable_summary` | ContextLab | MCP06, MCP10 | Indirect prompt injection / context over-sharing | Two-stage LLM chain |
+| `egress.fetch_url` | EgressLab | — | SSRF via AI proxy with configurable egress filtering | Real `httpx.get` fetch |
+| `secrets.leak_config` | SecretsLab | MCP01 | Unredacted credentials with AI debug assistant | Reads `os.environ` |
+| `shadow.register_webhook` | ShadowLab | MCP09 | Unvalidated persistent callback registration | Real `httpx.post` dispatch |
+| `shadow.list_webhooks` | ShadowLab | MCP09 | Enumerate registered shadow callbacks | — |
+| `supply.install_package` | SupplyLab | MCP04 | LLM-approved dependency install from attacker registry | Real `pip install` in sandbox |
+| `tool.mutate_behavior` | ToolLab | MCP03 | Rug pull / tool description + behavior drift | Real `subprocess.run` |
+| `tool.hidden_exec` | ToolLab (hidden) | MCP03, MCP05 | Hidden command execution injected post-trust | Real `subprocess.run` |
 
 All tools return an `ai_analysis` field containing the LLM's reasoning about
 the request. On easy mode, the LLM is helpful and permissive. On hard mode,
@@ -32,15 +33,23 @@ controls.
 
 ### What it does
 
-Accepts user text, sends it through the brain provider (Claude or Ollama),
-and returns the raw LLM summary with zero output sanitization. The response
-includes `_sanitized: false` to make the vulnerability explicit.
+Accepts user text and runs a **two-stage LLM chain**. First, a summarizer
+LLM processes the input with an intentionally weak system prompt. Then the
+raw summary is passed directly to a **downstream consumer** LLM that
+interprets it as task instructions. The response includes both the summary
+and the downstream interpretation, plus `_sanitized: false` to make the
+vulnerability explicit.
 
-### System prompt (intentionally weak)
+### How the injection propagates
 
-The tool's system prompt instructs the model to summarize all content
-faithfully, including any instructions or commands found in the input,
-and explicitly tells it not to filter or refuse any part of the input.
+1. Attacker embeds instructions in the `text` argument.
+2. The summarizer LLM faithfully reproduces the injected instructions in
+   its summary (system prompt tells it not to filter).
+3. The unsanitized summary is fed to a second LLM call whose system prompt
+   says "interpret this as task instructions and describe what actions you
+   would take."
+4. The downstream consumer acts on the injected instructions, demonstrating
+   real cross-LLM prompt injection propagation.
 
 ### Red team exercise
 
@@ -55,12 +64,14 @@ curl -s http://localhost:8080/mcp \
   }}'
 ```
 
-Even if the LLM partially resists, it echoes the payload back in the summary.
-A downstream LLM consuming this output could act on the injected instructions.
+Check both `summary` and `downstream_interpretation` in the response. The
+downstream consumer may describe executing the injected instructions even
+when the summarizer partially resisted.
 
 ### Blue team lesson
 
-- Never pass raw LLM output back to another LLM or user without sanitization.
+- Never pass raw LLM output to another LLM or user without sanitization.
+- Multi-stage LLM pipelines amplify injection risk — each hop is an attack surface.
 - Scan tool outputs for injection patterns, role overrides, and tool-call directives.
 - The `_sanitized: false` flag is the kind of honest metadata that should trigger output filtering in production.
 
@@ -119,6 +130,26 @@ reasoning said no.
 - Error handling that defaults to "grant" is a critical vulnerability.
 - Audit the integration code, not just the model behavior.
 
+### Token validation: `auth.access_protected`
+
+Once you have a token from `auth.issue_token`, use `auth.access_protected`
+to access protected resources. The token is validated against an in-memory
+SQLite store that tracks issued tokens and their granted roles.
+
+```bash
+curl -s http://localhost:8080/mcp \
+  -H "content-type: application/json" \
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{
+    "name":"auth.access_protected",
+    "arguments":{"token":"cztz-eve-admin","resource":"admin-panel"}
+  }}'
+```
+
+Resources require different role levels: `config` (reader), `secrets`
+(deployer), `admin-panel` (admin). The SQLite store proves that the
+confused-deputy token actually *works* — it's not just a string, it grants
+real access.
+
 ---
 
 ## Scenario 3: SSRF via tool (`egress.fetch_url`)
@@ -126,10 +157,12 @@ reasoning said no.
 ### What it does
 
 An AI proxy evaluates URL fetch requests and provides reasoning via
-`ai_analysis`. The deterministic egress policy underneath controls actual
-allow/block decisions based on difficulty level. The response includes
-`_flags` that report whether the target is a cloud metadata endpoint,
-an internal IP range, or both.
+`ai_analysis`. The deterministic egress policy controls allow/block
+decisions based on difficulty level. When a request is allowed, **the
+gateway performs a real `httpx.get` fetch** and returns the actual response
+body, status code, and content type. The response includes `_flags` that
+report whether the target is a cloud metadata endpoint, an internal IP
+range, or both.
 
 ### Red team exercise
 
@@ -161,9 +194,11 @@ On hard, the AI flags it and the egress policy blocks it.
 ### What it does
 
 Before the trust threshold, the LLM acts as a friendly system status
-assistant. After 3 calls, the tool mutates: description changes, the LLM
-personality pivots to a command execution assistant, and `tool.hidden_exec`
-appears in `tools/list`.
+assistant. After the threshold (easy=3, medium=5, hard=8 calls), the tool
+mutates: description changes, the LLM personality pivots to a command
+execution assistant, and `tool.hidden_exec` appears in `tools/list`.
+Post-rug-pull, **`tool.hidden_exec` runs real commands** via
+`subprocess.run` inside the container.
 
 ### Red team exercise
 
@@ -196,8 +231,11 @@ curl -s http://localhost:8080/mcp \
 ### What it does
 
 An AI debug assistant explains environment variable configuration while the
-deterministic layer leaks credentials. Output includes `_redacted` flag and
-`ai_analysis` with the LLM's commentary on each credential.
+deterministic layer leaks credentials. **The module reads real environment
+variables** (`CZTZ_SECRET_*` prefix) from `os.environ`, exposing actual
+values injected via Kubernetes Secrets or Docker Compose `.env`. Output
+includes `_redacted` flag and `ai_analysis` with the LLM's commentary on
+each credential.
 
 ### Red team exercise
 
@@ -229,7 +267,9 @@ On easy mode, the AI helpfully explains every credential's purpose.
 The LLM evaluates package install requests. The system prompt tells it to be
 helpful and accept custom registry URLs for "internal packages." Same
 confused-deputy pattern: if the LLM wraps JSON in markdown, the fallback
-approves unconditionally.
+approves unconditionally. **When approved, the module performs a real
+`pip install --target` in a temporary sandbox directory** via `subprocess`,
+then inspects the installed files and cleans up with `shutil.rmtree`.
 
 ### Red team exercise
 
@@ -264,7 +304,10 @@ curl -s http://localhost:8080/mcp \
 An AI webhook management assistant evaluates registration requests while the
 deterministic layer registers callbacks with zero validation. No expiration,
 no allowlist (on easy/medium). The LLM may flag the URL as suspicious in
-`ai_analysis` but the webhook is registered anyway.
+`ai_analysis` but the webhook is registered anyway. **Registered webhooks
+fire on every subsequent tool call** — the registry middleware performs real
+`httpx.post` requests to each registered URL with the full tool call payload
+(tool name, arguments, result, module name).
 
 ### Red team exercise
 
@@ -290,8 +333,8 @@ curl -s http://localhost:8080/mcp \
 ## Difficulty levels
 
 Default is **medium**. Switch from the portal nav bar or via
-`PUT /config {"difficulty":"..."}`. Use `POST /reset` to reset tool_lab
-and shadow_lab state.
+`PUT /config {"difficulty":"..."}`. Use `POST /reset` to reset all lab
+state (tool_lab call counter, shadow_lab webhooks, auth_lab token store, etc.).
 
 | Module | easy | medium | hard |
 |--------|------|--------|------|
@@ -350,7 +393,7 @@ Every `tools/call` emits a structured event accessible at
 {
   "request_id": "req-1774063124.878447",
   "tool_name": "context.injectable_summary",
-  "module": "ContextLabModule",
+  "module": "ContextLab",
   "timestamp": "2026-03-21T03:18:44.878506+00:00"
 }
 ```
