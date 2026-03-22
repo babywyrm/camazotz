@@ -413,6 +413,17 @@ def test_audience_bypass_to_exfil_chain(monkeypatch) -> None:
     assert exfil["sent"] is True
 
 
+def test_relay_get_context_all() -> None:
+    from camazotz_modules.relay_lab.app.main import RelayLab
+    lab = RelayLab()
+    lab._store_context({"key": "k1", "content": "v1"})
+    lab._store_context({"key": "k2", "content": "v2"})
+    all_ctx = lab.get_context(None)
+    assert set(all_ctx.keys()) == {"k1", "k2"}
+    subset = lab.get_context(["k1"])
+    assert set(subset.keys()) == {"k1"}
+
+
 def test_comms_get_relay_context_no_registry() -> None:
     from camazotz_modules.comms_lab.app.main import CommsLab
     lab = CommsLab()

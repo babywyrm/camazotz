@@ -122,12 +122,16 @@ class CommsLab(LabModule):
             self._outbox.clear()
 
     def _get_relay_context(self, keys: list[str]) -> dict[str, Any]:
-        """Read context entries from relay_lab via the registry."""
-        if not self._registry:
+        """Read context entries from relay_lab via the registry.
+
+        Unlike relay.execute_with_context (where empty = all), comms
+        only includes context that is explicitly requested by key.
+        """
+        if not keys or not self._registry:
             return {}
         for module in self._registry._modules:
             if module.name == "relay":
-                return module.get_context(keys if keys else None)
+                return module.get_context(keys)
         return {}
 
     def _send_message(self, arguments: dict) -> dict:

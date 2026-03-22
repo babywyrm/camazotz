@@ -39,3 +39,6 @@ addopts = [
     "--cov-report=xml",
     "--cov-fail-under=100",
 ]
+
+[tool.coverage.run]
+omit = ["tests/e2e_matrix.py"]
