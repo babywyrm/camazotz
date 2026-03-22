@@ -1,17 +1,18 @@
+from unittest.mock import patch, MagicMock
+
 from fastapi.testclient import TestClient
 
 from brain_gateway.app.brain.factory import reset_provider
+from brain_gateway.app.brain.provider import BrainResult
 from brain_gateway.app.config import reset_difficulty
 from brain_gateway.app.main import app
-from camazotz_modules.shadow_lab.app.main import _reset_webhooks
-from camazotz_modules.tool_lab.app.main import _reset_state
+from brain_gateway.app.modules.registry import get_registry, reset_registry
 
 
 def setup_function() -> None:
+    reset_registry()
     reset_provider()
     reset_difficulty()
-    _reset_state()
-    _reset_webhooks()
 
 
 def _call(client: TestClient, tool: str, arguments: dict) -> dict:
@@ -48,7 +49,9 @@ def test_auth_show_tokens(monkeypatch) -> None:
 def test_supply_show_tokens(monkeypatch) -> None:
     monkeypatch.setenv("CAMAZOTZ_SHOW_TOKENS", "true")
     client = TestClient(app)
-    result = _call(client, "supply.install_package", {"package": "requests"})
+    with patch("camazotz_modules.supply_lab.app.main.subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(returncode=1)
+        result = _call(client, "supply.install_package", {"package": "requests"})
     assert "_usage" in result
 
 
@@ -96,7 +99,12 @@ def test_difficulty_medium_egress_blocks_metadata_allows_internal(monkeypatch) -
     client = TestClient(app)
     meta = _call(client, "egress.fetch_url", {"url": "http://169.254.169.254/latest/"})
     assert meta["status"] == "blocked"
-    internal = _call(client, "egress.fetch_url", {"url": "http://10.0.0.1/admin"})
+    with patch("camazotz_modules.egress_lab.app.main.httpx.get") as mock_get:
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.text = "internal data"
+        mock_get.return_value = mock_resp
+        internal = _call(client, "egress.fetch_url", {"url": "http://10.0.0.1/admin"})
     assert internal["status"] == "allow"
 
 
@@ -118,7 +126,12 @@ def test_difficulty_hard_shadow_allows_allowlisted(monkeypatch) -> None:
 def test_egress_show_tokens(monkeypatch) -> None:
     monkeypatch.setenv("CAMAZOTZ_SHOW_TOKENS", "true")
     client = TestClient(app)
-    result = _call(client, "egress.fetch_url", {"url": "http://example.com"})
+    with patch("camazotz_modules.egress_lab.app.main.httpx.get") as mock_get:
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.text = "ok"
+        mock_get.return_value = mock_resp
+        result = _call(client, "egress.fetch_url", {"url": "http://example.com"})
     assert "_usage" in result
     assert "ai_analysis" in result
 
@@ -175,7 +188,9 @@ def test_tool_hidden_exec_show_tokens(monkeypatch) -> None:
     client = TestClient(app)
     for _ in range(3):
         _call(client, "tool.mutate_behavior", {})
-    result = _call(client, "tool.hidden_exec", {"command": "id"})
+    with patch("camazotz_modules.tool_lab.app.main.subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(stdout="uid=0", stderr="", returncode=0)
+        result = _call(client, "tool.hidden_exec", {"command": "id"})
     assert "_usage" in result
     assert "ai_analysis" in result
 
@@ -183,7 +198,12 @@ def test_tool_hidden_exec_show_tokens(monkeypatch) -> None:
 def test_egress_with_reason(monkeypatch) -> None:
     monkeypatch.delenv("CAMAZOTZ_DIFFICULTY", raising=False)
     client = TestClient(app)
-    result = _call(client, "egress.fetch_url", {"url": "http://example.com", "reason": "testing connectivity"})
+    with patch("camazotz_modules.egress_lab.app.main.httpx.get") as mock_get:
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.text = "ok"
+        mock_get.return_value = mock_resp
+        result = _call(client, "egress.fetch_url", {"url": "http://example.com", "reason": "testing connectivity"})
     assert result["status"] == "allow"
     assert "ai_analysis" in result
 
@@ -205,11 +225,9 @@ def test_shadow_register_with_reason(monkeypatch) -> None:
 
 
 def test_auth_medium_valid_ticket(monkeypatch) -> None:
-    from unittest.mock import patch, MagicMock
-    from brain_gateway.app.brain.provider import BrainResult
     monkeypatch.setenv("CAMAZOTZ_DIFFICULTY", "medium")
     mock_result = BrainResult(text='{"granted": true, "role": "admin", "reason": "Valid ticket"}')
-    with patch("camazotz_modules.auth_lab.app.main.get_provider") as mock_prov:
+    with patch("camazotz_modules.base.get_provider") as mock_prov:
         mock_prov.return_value.generate.return_value = mock_result
         client = TestClient(app)
         result = _call(client, "auth.issue_token", {
@@ -220,11 +238,9 @@ def test_auth_medium_valid_ticket(monkeypatch) -> None:
 
 
 def test_auth_medium_invalid_ticket(monkeypatch) -> None:
-    from unittest.mock import patch
-    from brain_gateway.app.brain.provider import BrainResult
     monkeypatch.setenv("CAMAZOTZ_DIFFICULTY", "medium")
     mock_result = BrainResult(text='{"granted": true, "role": "admin", "reason": "Approved"}')
-    with patch("camazotz_modules.auth_lab.app.main.get_provider") as mock_prov:
+    with patch("camazotz_modules.base.get_provider") as mock_prov:
         mock_prov.return_value.generate.return_value = mock_result
         client = TestClient(app)
         result = _call(client, "auth.issue_token", {
@@ -235,11 +251,9 @@ def test_auth_medium_invalid_ticket(monkeypatch) -> None:
 
 
 def test_auth_medium_no_ticket(monkeypatch) -> None:
-    from unittest.mock import patch
-    from brain_gateway.app.brain.provider import BrainResult
     monkeypatch.setenv("CAMAZOTZ_DIFFICULTY", "medium")
     mock_result = BrainResult(text='{"granted": true, "role": "admin", "reason": "Seems legit"}')
-    with patch("camazotz_modules.auth_lab.app.main.get_provider") as mock_prov:
+    with patch("camazotz_modules.base.get_provider") as mock_prov:
         mock_prov.return_value.generate.return_value = mock_result
         client = TestClient(app)
         result = _call(client, "auth.issue_token", {
@@ -311,6 +325,63 @@ def test_supply_hard_blocks_risky_command(monkeypatch) -> None:
 def test_supply_hard_safe_package_not_blocked(monkeypatch) -> None:
     monkeypatch.setenv("CAMAZOTZ_DIFFICULTY", "hard")
     client = TestClient(app)
-    result = _call(client, "supply.install_package", {"package": "requests"})
+    with patch("camazotz_modules.supply_lab.app.main.subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(returncode=1)
+        result = _call(client, "supply.install_package", {"package": "requests"})
     assert "[BLOCKED]" not in result["install_command"]
     assert result["_flags"]["supply_chain_risk"] is False
+
+
+def test_secrets_reads_real_env_vars(monkeypatch) -> None:
+    monkeypatch.setenv("CZTZ_SECRET_MY_KEY", "my-secret-value")
+    monkeypatch.setenv("CZTZ_SECRET_OTHER", "other-val")
+    monkeypatch.delenv("CAMAZOTZ_DIFFICULTY", raising=False)
+    reset_registry()
+    client = TestClient(app)
+    result = _call(client, "secrets.leak_config", {})
+    assert "MY_KEY" in result["config"]
+    assert result["config"]["MY_KEY"] == "my-secret-value"
+
+
+def test_context_downstream_interpretation() -> None:
+    client = TestClient(app)
+    result = _call(client, "context.injectable_summary", {"text": "Please summarize this document."})
+    assert "summary" in result
+    assert "downstream_interpretation" in result
+
+
+def test_egress_real_fetch_attempted(monkeypatch) -> None:
+    monkeypatch.setenv("CAMAZOTZ_DIFFICULTY", "easy")
+    client = TestClient(app)
+    with patch("camazotz_modules.egress_lab.app.main.httpx.get") as mock_get:
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.text = "fetched content"
+        mock_get.return_value = mock_resp
+        result = _call(client, "egress.fetch_url", {"url": "http://example.com"})
+    mock_get.assert_called_once()
+    assert result["_fetched_body"] == "fetched content"
+    assert result["_fetch_status"] == 200
+
+
+def test_tool_real_exec_after_threshold(monkeypatch) -> None:
+    monkeypatch.setenv("CAMAZOTZ_DIFFICULTY", "easy")
+    client = TestClient(app)
+    for _ in range(3):
+        _call(client, "tool.mutate_behavior", {})
+    with patch("camazotz_modules.tool_lab.app.main.subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(stdout="root", stderr="", returncode=0)
+        result = _call(client, "tool.hidden_exec", {"command": "whoami"})
+    mock_run.assert_called_once()
+    assert result["_real_output"] is True
+    assert result["output"] == "root"
+
+
+def test_webhook_dispatch_on_tool_call(monkeypatch) -> None:
+    client = TestClient(app)
+    _call(client, "shadow.register_webhook", {"url": "http://localhost:9999/hook", "label": "test"})
+    with patch("brain_gateway.app.modules.registry.httpx.post") as mock_post:
+        _call(client, "context.injectable_summary", {"text": "trigger dispatch"})
+    assert mock_post.called
+    call_args = mock_post.call_args
+    assert call_args[1]["json"]["tool_name"] == "context.injectable_summary"

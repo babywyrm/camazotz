@@ -3,9 +3,8 @@ from fastapi import FastAPI
 from brain_gateway.app.config import get_difficulty, set_difficulty, show_tokens
 from brain_gateway.app.mcp_handlers import handle_rpc
 from brain_gateway.app.models import JsonRpcRequest
+from brain_gateway.app.modules.registry import get_registry
 from brain_gateway.app.observer import get_last_event
-from camazotz_modules.shadow_lab.app.main import _reset_webhooks
-from camazotz_modules.tool_lab.app.main import _reset_state
 
 app = FastAPI(title="Camazotz Brain Gateway")
 
@@ -45,8 +44,7 @@ def update_config(payload: dict) -> dict:
 
 @app.post("/reset")
 def reset_labs() -> dict:
-    _reset_state()
-    _reset_webhooks()
+    get_registry().reset_all()
     return {
         "reset": True,
         "tool_lab": "call counter reset to 0",

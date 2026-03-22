@@ -39,6 +39,10 @@ def build_compose(v: dict) -> dict:
         env_line("CAMAZOTZ_OLLAMA_MODEL", cfg["ollamaModel"], "CAMAZOTZ_OLLAMA_MODEL"),
     ]
 
+    lab_secrets = v.get("labSecrets", {})
+    for key, val in lab_secrets.items():
+        gateway_env.append(env_line(f"CZTZ_SECRET_{key}", val))
+
     portal_env = [
         env_line("GATEWAY_URL", cfg["gatewayUrl"]),
         env_line("FLASK_SECRET", sec["flaskSecret"], "FLASK_SECRET"),

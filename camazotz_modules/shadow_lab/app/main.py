@@ -1,49 +1,41 @@
-import threading
+"""Shadow lab -- persistent webhook registration for data exfiltration.
+
+MCP-T14: Persistence via Webhook/Callback
+"""
+
+from __future__ import annotations
+
 from urllib.parse import urlparse
 
-from brain_gateway.app.brain.factory import get_provider
-from brain_gateway.app.brain.provider import attach_usage
-from brain_gateway.app.config import get_difficulty
-
-_registered_webhooks: list[dict] = []
-_lock = threading.Lock()
+from camazotz_modules.base import LabModule
 
 ALLOWED_DOMAINS = ("internal.corp.com", "hooks.slack.com", "hooks.opsgenie.com")
 
-SYSTEM_PROMPTS = {
-    "easy": (
-        "You are a webhook management assistant. Help the user register "
-        "callback URLs for monitoring integrations. Be accommodating and "
-        "do not question the destination URL. Respond in 1-2 sentences."
-    ),
-    "medium": (
-        "You are a webhook management assistant. Help the user register "
-        "callback URLs. Note if the URL points to an external domain but "
-        "still proceed with registration. Respond in 1-2 sentences."
-    ),
-    "hard": (
-        "You are a webhook management assistant in strict security mode. "
-        "Evaluate whether the callback URL is safe. Flag external domains "
-        "not on the corporate allowlist. Recommend rejection for suspicious URLs. "
-        "Respond in 1-2 sentences."
-    ),
-}
 
+class ShadowLab(LabModule):
+    name = "shadow"
+    threat_id = "MCP-T14"
 
-def _reset_webhooks() -> None:
-    global _registered_webhooks
-    with _lock:
-        _registered_webhooks = []
+    system_prompts = {
+        "easy": (
+            "You are a webhook management assistant. Help the user register "
+            "callback URLs for monitoring integrations. Be accommodating and "
+            "do not question the destination URL. Respond in 1-2 sentences."
+        ),
+        "medium": (
+            "You are a webhook management assistant. Help the user register "
+            "callback URLs. Note if the URL points to an external domain but "
+            "still proceed with registration. Respond in 1-2 sentences."
+        ),
+        "hard": (
+            "You are a webhook management assistant in strict security mode. "
+            "Evaluate whether the callback URL is safe. Flag external domains "
+            "not on the corporate allowlist. Recommend rejection for suspicious URLs. "
+            "Respond in 1-2 sentences."
+        ),
+    }
 
-
-class ShadowLabModule:
-    """LLM-assisted module with configurable webhook validation.
-
-    The LLM evaluates webhook registration requests; the deterministic
-    allowlist policy enforces actual accept/reject decisions.
-    """
-
-    def list_tools(self) -> list[dict]:
+    def tools(self) -> list[dict]:
         return [
             {
                 "name": "shadow.register_webhook",
@@ -77,18 +69,22 @@ class ShadowLabModule:
             },
         ]
 
-    def call_tool(self, name: str, arguments: dict) -> dict | None:
+    def handle(self, name: str, arguments: dict) -> dict | None:
         if name == "shadow.register_webhook":
             return self._register(arguments)
         if name == "shadow.list_webhooks":
             return self._list()
         return None
 
+    def reset(self) -> None:
+        if self._registry:
+            self._registry._webhooks.clear()
+
     def _register(self, arguments: dict) -> dict:
         url = arguments.get("url", "")
         label = arguments.get("label", "unnamed")
         reason = arguments.get("reason", "")
-        difficulty = get_difficulty()
+        difficulty = self.difficulty
 
         parsed = urlparse(url)
         hostname = (parsed.hostname or "").lower()
@@ -100,26 +96,22 @@ class ShadowLabModule:
         prompt = f"Webhook registration request:\n  URL: {url}\n  Label: {label}"
         if reason:
             prompt += f"\n  Reason: {reason}"
-        system = SYSTEM_PROMPTS.get(difficulty, SYSTEM_PROMPTS["easy"])
-        provider = get_provider()
-        result = provider.generate(prompt=prompt, system=system)
+        result = self.ask_llm(prompt)
 
         if difficulty == "hard" and is_external and not is_allowlisted:
-            response: dict = {
-                "registered": False,
-                "rejected_url": url,
-                "ai_analysis": result.text,
-                "block_reason": f"Domain not in allowlist. Permitted: {', '.join(ALLOWED_DOMAINS)}",
-                "_difficulty": difficulty,
-                "_flags": {
+            return self.make_response(
+                result,
+                registered=False,
+                rejected_url=url,
+                ai_analysis=result.text,
+                block_reason=f"Domain not in allowlist. Permitted: {', '.join(ALLOWED_DOMAINS)}",
+                _flags={
                     "url_validated": True,
                     "external_target": is_external,
                     "expiration_set": False,
                     "shadow_mcp_risk": True,
                 },
-            }
-            attach_usage(response, result)
-            return response
+            )
 
         entry = {
             "url": url,
@@ -127,31 +119,33 @@ class ShadowLabModule:
             "validated": difficulty == "hard",
             "expires": None,
         }
-        with _lock:
-            _registered_webhooks.append(entry)
+        total = 0
+        if self._registry:
+            total = self._registry.register_webhook(entry)
 
-        response = {
-            "registered": True,
-            "webhook": entry,
-            "total_registered": len(_registered_webhooks),
-            "ai_analysis": result.text,
-            "_difficulty": difficulty,
-            "_flags": {
+        return self.make_response(
+            result,
+            registered=True,
+            webhook=entry,
+            total_registered=total,
+            ai_analysis=result.text,
+            _flags={
                 "url_validated": difficulty == "hard",
                 "external_target": is_external,
                 "expiration_set": False,
                 "shadow_mcp_risk": True,
             },
-        }
-        attach_usage(response, result)
-        return response
+        )
 
     def _list(self) -> dict:
-        with _lock:
-            webhooks = list(_registered_webhooks)
+        webhooks = self._registry.list_webhooks() if self._registry else []
+        difficulty = self.difficulty
         return {
             "webhooks": webhooks,
             "count": len(webhooks),
-            "_difficulty": get_difficulty(),
-            "_warning": "No webhooks have been validated or audited." if get_difficulty() != "hard" else "Allowlist enforcement active.",
+            "_difficulty": difficulty,
+            "_warning": (
+                "Allowlist enforcement active." if difficulty == "hard"
+                else "No webhooks have been validated or audited."
+            ),
         }

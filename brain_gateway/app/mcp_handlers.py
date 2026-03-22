@@ -1,5 +1,5 @@
 from brain_gateway.app.models import JsonRpcRequest
-from brain_gateway.app.modules.adapter import call_tool_by_name, list_all_tools
+from brain_gateway.app.modules.registry import get_registry
 from brain_gateway.app.observer import record_event
 
 
@@ -15,13 +15,15 @@ def handle_rpc(req: JsonRpcRequest) -> dict:
             },
         }
 
+    registry = get_registry()
+
     if req.method == "tools/list":
-        return {"jsonrpc": "2.0", "id": req.id, "result": {"tools": list_all_tools()}}
+        return {"jsonrpc": "2.0", "id": req.id, "result": {"tools": registry.list_all_tools()}}
 
     if req.method == "tools/call":
         name = req.params.get("name", "")
         arguments = req.params.get("arguments", {})
-        result, module_name = call_tool_by_name(name=name, arguments=arguments)
+        result, module_name = registry.call(name=name, arguments=arguments)
         if result is None or module_name is None:
             return {
                 "jsonrpc": "2.0",

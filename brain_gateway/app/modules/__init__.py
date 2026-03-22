@@ -1,1 +1,1 @@
-"""Module adapter registry for Camazotz labs."""
+"""Module registry for Camazotz labs."""

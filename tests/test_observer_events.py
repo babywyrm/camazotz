@@ -3,13 +3,13 @@ from fastapi.testclient import TestClient
 from brain_gateway.app.brain.factory import reset_provider
 from brain_gateway.app.config import reset_difficulty
 from brain_gateway.app.main import app
-from camazotz_modules.tool_lab.app.main import _reset_state
+from brain_gateway.app.modules.registry import reset_registry
 
 
 def setup_function() -> None:
+    reset_registry()
     reset_provider()
     reset_difficulty()
-    _reset_state()
 
 
 def test_gateway_emits_observer_event_for_tool_invocation() -> None:

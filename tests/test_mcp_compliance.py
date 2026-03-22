@@ -1,6 +1,11 @@
 from fastapi.testclient import TestClient
 
 from brain_gateway.app.main import app
+from brain_gateway.app.modules.registry import reset_registry
+
+
+def setup_function() -> None:
+    reset_registry()
 
 
 def test_initialize_and_tools_list_contract() -> None:

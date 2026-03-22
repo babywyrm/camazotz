@@ -172,3 +172,144 @@ def test_redact_short_string() -> None:
     assert _redact("ab") == "****"
     assert _redact("") == "****"
     assert _redact("longerthan8chars") == "long****hars"
+
+
+def test_base_lab_module_abc() -> None:
+    from camazotz_modules.base import LabModule
+    import pytest
+    with pytest.raises(TypeError):
+        LabModule()
+
+
+def test_registry_auto_discovery() -> None:
+    from brain_gateway.app.modules.registry import get_registry, reset_registry
+    reset_registry()
+    registry = get_registry()
+    names = {m.name for m in registry._modules}
+    assert names == {"auth", "context", "egress", "secrets", "shadow", "supply", "tool"}
+    reset_registry()
+
+
+def test_registry_reset_all() -> None:
+    from brain_gateway.app.modules.registry import get_registry, reset_registry
+    reset_registry()
+    registry = get_registry()
+    registry.register_webhook({"url": "http://test.com", "label": "test"})
+    assert len(registry.list_webhooks()) == 1
+    registry.reset_all()
+    assert len(registry.list_webhooks()) == 0
+    reset_registry()
+
+
+def test_registry_middleware_pipeline() -> None:
+    from brain_gateway.app.modules.registry import get_registry, reset_registry
+    reset_registry()
+    registry = get_registry()
+    calls = []
+    registry.add_middleware(lambda t, a, r, m: calls.append(t))
+    registry.call("context.injectable_summary", {"text": "test"})
+    assert "context.injectable_summary" in calls
+    reset_registry()
+
+
+def test_registry_middleware_exception_handling() -> None:
+    from brain_gateway.app.modules.registry import get_registry, reset_registry
+    reset_registry()
+    registry = get_registry()
+
+    def failing_mw(t, a, r, m):
+        raise RuntimeError("middleware boom")
+
+    registry.add_middleware(failing_mw)
+    result, mod = registry.call("context.injectable_summary", {"text": "test"})
+    assert result is not None
+    reset_registry()
+
+
+def test_registry_webhook_dispatch_empty_url() -> None:
+    from brain_gateway.app.modules.registry import get_registry, reset_registry
+    reset_registry()
+    registry = get_registry()
+    registry.register_webhook({"url": "", "label": "empty"})
+    result, mod = registry.call("context.injectable_summary", {"text": "test"})
+    assert result is not None
+    reset_registry()
+
+
+def test_tool_lab_subprocess_failure_fallback() -> None:
+    from unittest.mock import patch, MagicMock
+    from brain_gateway.app.modules.registry import get_registry, reset_registry
+    reset_registry()
+    registry = get_registry()
+
+    from brain_gateway.app.config import set_difficulty, reset_difficulty
+    set_difficulty("easy")
+    for _ in range(3):
+        registry.call("tool.mutate_behavior", {})
+    with patch("camazotz_modules.tool_lab.app.main.subprocess.run", side_effect=OSError("exec failed")):
+        result, _ = registry.call("tool.hidden_exec", {"command": "fail"})
+    assert result is not None
+    assert result["_real_output"] is False
+    assert "simulated output" in result["output"]
+    reset_difficulty()
+    reset_registry()
+
+
+def test_supply_lab_real_install_success_path(tmp_path) -> None:
+    import os
+    from unittest.mock import patch, MagicMock
+    from camazotz_modules.supply_lab.app.main import SupplyLab
+
+    pkg_dir = tmp_path / "pkg"
+    pkg_dir.mkdir()
+    (pkg_dir / "mod.py").write_text("# dummy")
+    (tmp_path / "setup.py").write_text("# setup")
+
+    def fake_run(cmd, **kwargs):
+        target = None
+        for i, c in enumerate(cmd):
+            if c == "--target" and i + 1 < len(cmd):
+                target = cmd[i + 1]
+        if target:
+            os.makedirs(target, exist_ok=True)
+            sub = os.path.join(target, "installed_pkg")
+            os.makedirs(sub, exist_ok=True)
+            with open(os.path.join(sub, "module.py"), "w") as f:
+                f.write("# installed")
+        m = MagicMock()
+        m.returncode = 0
+        return m
+
+    with patch("camazotz_modules.supply_lab.app.main.subprocess.run", side_effect=fake_run):
+        files = SupplyLab._real_install("requests", "pypi", False)
+
+    assert files is not None
+    assert len(files) > 0
+
+
+def test_supply_lab_real_install_exception_path() -> None:
+    from unittest.mock import patch
+    from camazotz_modules.supply_lab.app.main import SupplyLab
+
+    with patch("camazotz_modules.supply_lab.app.main.subprocess.run", side_effect=OSError("boom")):
+        result = SupplyLab._real_install("requests", "pypi", False)
+    assert result is None
+
+
+def test_registry_discover_handles_bad_module() -> None:
+    from unittest.mock import patch
+    from brain_gateway.app.modules.registry import LabRegistry
+    import pkgutil
+
+    original_walk = pkgutil.walk_packages
+
+    class FakeInfo:
+        name = "camazotz_modules.fake_broken_lab"
+
+    def mock_walk(*args, **kwargs):
+        yield FakeInfo()
+        yield from original_walk(*args, **kwargs)
+
+    with patch("brain_gateway.app.modules.registry.pkgutil.walk_packages", side_effect=mock_walk):
+        reg = LabRegistry()
+    assert len(reg._modules) >= 7
