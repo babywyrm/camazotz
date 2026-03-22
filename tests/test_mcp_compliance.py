@@ -82,3 +82,5 @@ def test_gateway_reset_endpoint() -> None:
     assert data["reset"] is True
     assert "tool_lab" in data
     assert "shadow_lab" in data
+    assert "relay_lab" in data
+    assert "comms_lab" in data

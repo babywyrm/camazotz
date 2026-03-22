@@ -5,9 +5,10 @@
 
 <p align="center">
 <img src="https://img.shields.io/badge/python-3.12%2B-3776ab?style=flat-square&logo=python&logoColor=white" alt="Python 3.12+">
-<img src="https://img.shields.io/badge/tests-128_passing-10b981?style=flat-square" alt="128 tests">
+<img src="https://img.shields.io/badge/tests-161_passing-10b981?style=flat-square" alt="161 tests">
 <img src="https://img.shields.io/badge/coverage-100%25-10b981?style=flat-square" alt="100% coverage">
 <img src="https://img.shields.io/badge/OWASP_MCP_Top_10-10%2F10-dc2626?style=flat-square" alt="OWASP 10/10">
+<img src="https://img.shields.io/badge/Red_Team_Playbook-10%2F14-f59e0b?style=flat-square" alt="Playbook 10/14">
 <img src="https://img.shields.io/badge/license-MIT-a89cb8?style=flat-square" alt="MIT License">
 </p>
 <p align="center">
@@ -140,6 +141,14 @@ the risk while the underlying vulnerability still fires. This teaches that
 | MCP09 | Shadow MCP | `shadow.register_webhook` | Persistent callback with real `httpx.post` dispatch on every call |
 | MCP10 | Context Injection | `context.injectable_summary` | Unsanitized summary fed to downstream consumer LLM |
 
+**Plus cross-tool chain attacks (MCP Red Team Playbook):**
+
+| Playbook ID | Risk | Scenario | What Happens |
+|-------------|------|----------|-------------|
+| MCP-T04 | Token Audience Bypass | `auth.access_service_b` | Token scoped to service-a replayed against service-b — audience not validated |
+| MCP-T05 | Cross-Tool Context Poisoning | `relay.store_context` → `relay.execute_with_context` | Poisoned tool output enters shared context buffer, LLM follows embedded instructions |
+| MCP-T12 | Exfiltration via Chaining | `comms.send_message` | Sensitive data from relay context exits through messaging channel — no DLP |
+
 **Plus:** SSRF via `egress.fetch_url` — AI proxy with real `httpx.get` fetches when policy allows.
 
 ---
@@ -216,11 +225,13 @@ camazotz/
 │   ├── app/brain/           # LLM provider abstraction (Claude + Ollama)
 │   └── app/modules/
 │       └── registry.py      # LabRegistry — auto-discovers modules, middleware pipeline
-├── camazotz_modules/        # 7 vulnerability lab modules (LabModule subclasses)
+├── camazotz_modules/        # 9 vulnerability lab modules (LabModule subclasses)
 │   ├── base.py              # LabModule ABC — shared contract and helpers
-│   ├── auth_lab/            # Confused deputy, privilege escalation, SQLite token store
+│   ├── auth_lab/            # Confused deputy, privilege escalation, audience bypass
+│   ├── comms_lab/           # Exfiltration via messaging channel (MCP-T12)
 │   ├── context_lab/         # Prompt injection, two-stage LLM chain
 │   ├── egress_lab/          # SSRF via AI proxy, real httpx fetches
+│   ├── relay_lab/           # Cross-tool context poisoning broker (MCP-T05)
 │   ├── secrets_lab/         # Credential leak, reads real os.environ
 │   ├── shadow_lab/          # Persistent webhook registration, real httpx dispatch
 │   ├── supply_lab/          # Supply chain attack, real pip install in sandbox
@@ -229,7 +240,7 @@ camazotz/
 ├── compose/                 # Docker Compose (generated from Helm values)
 ├── deploy/                  # Helm chart (single source of truth) + compose generator
 ├── kube/                    # Legacy raw K8s manifests + deploy.sh
-├── tests/                   # 128 tests, 100% coverage
+├── tests/                   # 161 tests, 100% coverage
 └── Makefile                 # Cross-platform dev/deploy targets
 ```
 
@@ -239,7 +250,7 @@ camazotz/
 make up             # start with Claude
 make up-local       # start with Ollama
 make down           # stop all services
-make test           # run 128 tests (100% coverage)
+make test           # run 161 tests (100% coverage)
 make status         # health check all services
 make compose-gen    # regenerate docker-compose.yml from Helm values
 make helm-deploy    # deploy to K8s

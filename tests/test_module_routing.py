@@ -26,6 +26,7 @@ def test_gateway_routes_to_registered_modules() -> None:
     names = {t["name"] for t in tools}
     assert "auth.issue_token" in names
     assert "auth.access_protected" in names
+    assert "auth.access_service_b" in names
     assert "tool.mutate_behavior" in names
     assert "context.injectable_summary" in names
     assert "egress.fetch_url" in names
@@ -33,6 +34,10 @@ def test_gateway_routes_to_registered_modules() -> None:
     assert "supply.install_package" in names
     assert "shadow.register_webhook" in names
     assert "shadow.list_webhooks" in names
+    assert "relay.store_context" in names
+    assert "relay.execute_with_context" in names
+    assert "comms.send_message" in names
+    assert "comms.list_sent" in names
 
 
 def test_gateway_calls_auth_tool() -> None:

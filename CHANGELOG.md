@@ -7,7 +7,32 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-_Nothing yet._
+### Cross-Tool Chain Attacks (MCP Red Team Playbook)
+
+- **auth_lab — Token Audience Bypass (MCP-T04):** `auth.access_service_b`
+  tool validates (or fails to validate) `aud` field in SQLite token store.
+  Easy/medium accept any audience; hard validates but allows null-audience bypass.
+- **relay_lab — Cross-Tool Context Poisoning (MCP-T05):** New module with
+  `relay.store_context` and `relay.execute_with_context`. Shared context
+  broker stores tool outputs without trust labeling. LLM processes all
+  context entries as instructions on easy/medium.
+- **comms_lab — Exfiltration via Chaining (MCP-T12):** New module with
+  `comms.send_message` and `comms.list_sent`. Messaging channel reads from
+  relay context buffer. No DLP on easy; regex-based DLP on hard with
+  chunked/encoded bypass paths.
+- **Full kill chain integration:** T04→T05→T12 compose into a complete
+  CONTENT-TO-INFRA campaign (fetch→inject→escalate→exfil).
+
+### Testing
+
+- 33 new tests covering all three modules and cross-tool chains.
+- Total: 161 tests, 100% coverage maintained.
+
+### Documentation
+
+- Design document: `docs/plans/2026-03-22-cross-tool-chains-design.md`.
+- `docs/scenarios.md`: three new scenario sections with chain flow diagrams.
+- README: updated OWASP table, playbook badge, project structure, test count.
 
 ---
 

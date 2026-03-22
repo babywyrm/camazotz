@@ -49,4 +49,6 @@ def reset_labs() -> dict:
         "reset": True,
         "tool_lab": "call counter reset to 0",
         "shadow_lab": "webhook registry cleared",
+        "relay_lab": "context buffer cleared",
+        "comms_lab": "outbox cleared",
     }

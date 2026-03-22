@@ -10,13 +10,15 @@ registration step is required.
 ```
 camazotz_modules/
 ├── base.py                  # LabModule ABC
-├── auth_lab/app/main.py     # class AuthLab(LabModule)
-├── context_lab/app/main.py  # class ContextLab(LabModule)
-├── egress_lab/app/main.py   # class EgressLab(LabModule)
-├── secrets_lab/app/main.py  # class SecretsLab(LabModule)
-├── shadow_lab/app/main.py   # class ShadowLab(LabModule)
-├── supply_lab/app/main.py   # class SupplyLab(LabModule)
-└── tool_lab/app/main.py     # class ToolLab(LabModule)
+├── auth_lab/app/main.py     # class AuthLab(LabModule) — T03, T04
+├── comms_lab/app/main.py    # class CommsLab(LabModule) — T12
+├── context_lab/app/main.py  # class ContextLab(LabModule) — T01, T02
+├── egress_lab/app/main.py   # class EgressLab(LabModule) — T06
+├── relay_lab/app/main.py    # class RelayLab(LabModule) — T05
+├── secrets_lab/app/main.py  # class SecretsLab(LabModule) — T07
+├── shadow_lab/app/main.py   # class ShadowLab(LabModule) — T10
+├── supply_lab/app/main.py   # class SupplyLab(LabModule) — T04/supply
+└── tool_lab/app/main.py     # class ToolLab(LabModule) — T03/tool
 ```
 
 ## LabModule Contract

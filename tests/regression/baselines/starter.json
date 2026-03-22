@@ -3,9 +3,19 @@
   "description": "Initial Camazotz baseline for scanner regression checks.",
   "expected_tools": [
     "auth.issue_token",
-    "tool.mutate_behavior",
+    "auth.access_protected",
+    "auth.access_service_b",
+    "comms.send_message",
+    "comms.list_sent",
     "context.injectable_summary",
-    "egress.fetch_url"
+    "egress.fetch_url",
+    "relay.store_context",
+    "relay.execute_with_context",
+    "secrets.leak_config",
+    "shadow.register_webhook",
+    "shadow.list_webhooks",
+    "supply.install_package",
+    "tool.mutate_behavior"
   ],
   "notes": [
     "Use this as a baseline input for differential scans.",
