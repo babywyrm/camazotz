@@ -1,3 +1,4 @@
+import json
 from unittest.mock import patch, MagicMock
 
 from fastapi.testclient import TestClient
@@ -20,7 +21,8 @@ def _call(client: TestClient, tool: str, arguments: dict) -> dict:
         "/mcp",
         json={"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": tool, "arguments": arguments}},
     )
-    return resp.json()["result"]
+    body = resp.json()
+    return json.loads(body["result"]["content"][0]["text"])
 
 
 def test_show_tokens_off_by_default(monkeypatch) -> None:

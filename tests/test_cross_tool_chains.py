@@ -4,6 +4,7 @@ Covers: auth.access_service_b, relay_lab, comms_lab, and cross-tool
 integration scenarios.
 """
 
+import json
 from unittest.mock import patch, MagicMock
 
 from fastapi.testclient import TestClient
@@ -31,7 +32,8 @@ def _call(client: TestClient, tool: str, arguments: dict) -> dict:
             "params": {"name": tool, "arguments": arguments},
         },
     )
-    return resp.json()["result"]
+    body = resp.json()
+    return json.loads(body["result"]["content"][0]["text"])
 
 
 # ---------------------------------------------------------------------------

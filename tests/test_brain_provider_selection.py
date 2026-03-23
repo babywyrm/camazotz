@@ -132,7 +132,8 @@ def test_reset_difficulty(monkeypatch) -> None:
 
 
 def test_shared_types_importable() -> None:
-    from brain_gateway.app.types import Difficulty, ToolDefinition, ObserverEvent, UsageInfo
+    from brain_gateway.app.types import Difficulty, ObserverEvent, UsageInfo
+    from brain_gateway.app.models import ToolDefinition
     assert Difficulty.EASY == "easy"
     assert Difficulty.MEDIUM == "medium"
     assert Difficulty.HARD == "hard"

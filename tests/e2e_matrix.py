@@ -33,7 +33,11 @@ def mcp_call(tool: str, args: dict) -> dict:
     resp = json.loads(urllib.request.urlopen(req, timeout=30).read())
     if "error" in resp:
         return {"_error": resp["error"]}
-    return resp.get("result", {})
+    result = resp.get("result", {})
+    content = result.get("content", [])
+    if content and content[0].get("type") == "text":
+        return json.loads(content[0]["text"])
+    return result
 
 
 def set_difficulty(level: str):

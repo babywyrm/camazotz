@@ -1,3 +1,5 @@
+import uuid
+
 from fastapi.testclient import TestClient
 
 from brain_gateway.app.brain.factory import reset_provider
@@ -25,4 +27,7 @@ def test_gateway_emits_observer_event_for_tool_invocation() -> None:
 
     event_resp = client.get("/_observer/last-event")
     assert event_resp.status_code == 200
-    assert event_resp.json()["tool_name"] == "context.injectable_summary"
+    event = event_resp.json()
+    assert event["tool_name"] == "context.injectable_summary"
+    uuid.UUID(event["request_id"])
+    assert "T" in event["timestamp"]

@@ -1,4 +1,12 @@
+"""Observer — records tool invocation events for audit trail.
+
+Each event gets a UUID request_id and ISO-8601 timestamp.
+"""
+
+from __future__ import annotations
+
 import threading
+import uuid
 from datetime import UTC, datetime
 
 _lock = threading.Lock()
@@ -7,13 +15,12 @@ _last_event: dict | None = None
 
 def record_event(tool_name: str, module: str) -> None:
     global _last_event
-    now = datetime.now(UTC)
     with _lock:
         _last_event = {
-            "request_id": f"req-{now.timestamp()}",
+            "request_id": str(uuid.uuid4()),
             "tool_name": tool_name,
             "module": module,
-            "timestamp": now.isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
 
 

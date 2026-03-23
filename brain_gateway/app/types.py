@@ -1,3 +1,7 @@
+"""Shared type definitions for Camazotz."""
+
+from __future__ import annotations
+
 from enum import StrEnum
 from typing import Any, TypedDict
 
@@ -6,12 +10,6 @@ class Difficulty(StrEnum):
     EASY = "easy"
     MEDIUM = "medium"
     HARD = "hard"
-
-
-class ToolDefinition(TypedDict):
-    name: str
-    description: str
-    inputSchema: dict[str, Any]
 
 
 class ObserverEvent(TypedDict):

@@ -3,24 +3,34 @@
   "title": "Camazotz Module Contract",
   "type": "object",
   "required": ["module_name", "version", "tools"],
+  "additionalProperties": false,
   "properties": {
     "module_name": {
-      "type": "string"
+      "type": "string",
+      "description": "Unique module identifier (e.g. auth, relay)"
     },
     "version": {
-      "type": "string"
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
     },
     "tools": {
       "type": "array",
+      "minItems": 1,
       "items": {
         "type": "object",
-        "required": ["name", "description"],
+        "required": ["name", "description", "inputSchema"],
+        "additionalProperties": false,
         "properties": {
           "name": {
-            "type": "string"
+            "type": "string",
+            "description": "Fully qualified tool name (module.action)"
           },
           "description": {
             "type": "string"
+          },
+          "inputSchema": {
+            "type": "object",
+            "description": "JSON Schema for the tool's arguments"
           }
         }
       }

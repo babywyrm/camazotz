@@ -3,27 +3,25 @@
   "title": "Camazotz Observer Event",
   "type": "object",
   "required": ["request_id", "module", "tool_name", "timestamp"],
+  "additionalProperties": false,
   "properties": {
     "request_id": {
-      "type": "string"
+      "type": "string",
+      "format": "uuid",
+      "description": "UUID v4 unique to each tool invocation"
     },
     "module": {
-      "type": "string"
+      "type": "string",
+      "description": "Name of the lab module that handled the call"
     },
     "tool_name": {
-      "type": "string"
+      "type": "string",
+      "description": "Fully qualified tool name (e.g. auth.issue_token)"
     },
     "timestamp": {
-      "type": "string"
-    },
-    "severity": {
-      "type": "string"
-    },
-    "tags": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 UTC timestamp"
     }
   }
 }
