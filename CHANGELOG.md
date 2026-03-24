@@ -13,7 +13,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   negotiation — returns `application/json` (default) or `text/event-stream`
   (SSE) based on client preference.
 - **Session management:** `initialize` returns `Mcp-Session-Id` header (UUID v4).
-  `DELETE /mcp` terminates sessions. Per-session state isolation.
+  `DELETE /mcp` terminates sessions. Session create/validate/destroy
+  implemented; per-session difficulty wiring is future work.
 - **Notification handling:** JSON-RPC messages without `id` return `202 Accepted`.
 - **GET `/mcp`:** Returns `405 Method Not Allowed` per spec.
 - **RFC compliance hardening:** `tools/call` responses wrapped in
@@ -42,7 +43,6 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Testing
 
 - 33 new tests covering all three modules and cross-tool chains.
-- Total: 161 tests, 100% coverage maintained.
 
 ### Documentation
 
@@ -72,7 +72,7 @@ deployment, 128 tests at 100% coverage.
   `/api/generate` via httpx) with automatic fallback stubs when
   credentials or services are unavailable.
 - **MCP JSON-RPC compliance:** `initialize`, `tools/list`, `tools/call`,
-  `resources/list`, `prompts/list`, standard error codes.
+  standard error codes.
 
 ### Vulnerability Labs
 
@@ -162,7 +162,7 @@ All modules perform genuine actions inside the container sandbox:
 ### Testing
 
 - 128 tests at 100% coverage across gateway, modules, frontend, and
-  observer.
+  observer (grew to 183 tests in subsequent releases).
 - Cross-platform: macOS (Intel + Apple Silicon) and Linux
   (Debian/Ubuntu/CentOS).
 - Deployed and verified end-to-end on K3s cluster with live Claude.

@@ -110,7 +110,7 @@ adapter registration, no config file.
 
 ## Naming Rules
 
-- Prefix tool names by domain: `auth.`, `context.`, `egress.`, `secrets.`, `supply.`, `shadow.`, `tool.`, `your.`
+- Prefix tool names by domain: `auth.`, `comms.`, `context.`, `egress.`, `relay.`, `secrets.`, `supply.`, `shadow.`, `tool.`, `your.`
 - Keep names stable so scanner regressions stay meaningful.
 - The `name` class attribute determines the domain prefix by convention.
 
@@ -145,6 +145,12 @@ hooks = self._registry.list_webhooks()
 
 If your module needs shared state, add accessors to `LabRegistry` rather
 than using module-level globals.
+
+## Response Serialization
+
+The dict returned by `handle()` is serialized by the gateway into an MCP
+content block: `result.content[0].text` contains the JSON-encoded dict.
+Module authors return plain dicts — the gateway handles the MCP envelope.
 
 ## Telemetry Expectations
 

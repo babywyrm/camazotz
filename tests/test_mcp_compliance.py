@@ -233,3 +233,72 @@ def test_post_with_accept_sse_returns_event_stream() -> None:
         headers={"accept": "text/event-stream, application/json"},
     )
     assert resp.headers["content-type"].startswith("text/event-stream")
+
+
+def test_malformed_accept_header_falls_back_to_json() -> None:
+    """Unrecognised Accept value should yield application/json."""
+    client = TestClient(app)
+    resp = client.post(
+        "/mcp",
+        json={"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}},
+        headers={"accept": "application/xml"},
+    )
+    assert resp.headers["content-type"].startswith("application/json")
+    assert "tools" in resp.json()["result"]
+
+
+def test_sse_response_contains_valid_jsonrpc() -> None:
+    """SSE envelope must carry a parseable JSON-RPC result in the data field."""
+    import json as _json
+
+    client = TestClient(app)
+    resp = client.post(
+        "/mcp",
+        json={"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}},
+        headers={"accept": "text/event-stream"},
+    )
+    assert resp.status_code == 200
+
+    data_line = None
+    for line in resp.text.splitlines():
+        if line.startswith("data:"):
+            data_line = line[len("data:"):].strip()
+            break
+    assert data_line is not None, "No data: line in SSE response"
+
+    payload = _json.loads(data_line)
+    assert payload["jsonrpc"] == "2.0"
+    assert payload["id"] == 1
+    assert "result" in payload
+
+
+def test_full_session_lifecycle() -> None:
+    """initialize → use session → DELETE → session is gone."""
+    from brain_gateway.app.main import sessions
+
+    client = TestClient(app)
+
+    init = client.post(
+        "/mcp",
+        json={"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}},
+    )
+    sid = init.headers["mcp-session-id"]
+    uuid.UUID(sid)
+    assert sessions.validate(sid) is True
+
+    call_resp = client.post(
+        "/mcp",
+        json={
+            "jsonrpc": "2.0", "id": 2,
+            "method": "tools/call",
+            "params": {"name": "secrets.leak_config", "arguments": {}},
+        },
+    )
+    assert call_resp.status_code == 200
+
+    del_resp = client.delete("/mcp", headers={"mcp-session-id": sid})
+    assert del_resp.status_code == 200
+    assert sessions.validate(sid) is False
+
+    del_again = client.delete("/mcp", headers={"mcp-session-id": sid})
+    assert del_again.status_code == 200

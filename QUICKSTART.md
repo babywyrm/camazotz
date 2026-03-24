@@ -29,7 +29,7 @@ Services:
 | Service | URL | Description |
 |---------|-----|-------------|
 | Portal | http://localhost:3000 | Branded web interface |
-| Gateway | http://localhost:8080 | MCP JSON-RPC API |
+| Gateway | http://localhost:8080 | MCP Streamable HTTP API |
 
 ## Option B: Local provider (Ollama)
 
@@ -48,7 +48,7 @@ Services:
 | Service | URL | Description |
 |---------|-----|-------------|
 | Portal | http://localhost:3000 | Branded web interface |
-| Gateway | http://localhost:8080 | MCP JSON-RPC API |
+| Gateway | http://localhost:8080 | MCP Streamable HTTP API |
 | Ollama | http://localhost:11434 | Local LLM inference |
 
 ## Verify it works
@@ -61,9 +61,39 @@ Or hit the gateway directly:
 
 ```bash
 curl -s http://localhost:8080/mcp \
-  -H "content-type: application/json" \
+  -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}'
 ```
+
+The response includes `protocolVersion: "2025-03-26"` and an
+`Mcp-Session-Id` header (UUID) for session tracking.
+
+### Response format
+
+`tools/call` results use MCP content blocks:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "content": [{ "type": "text", "text": "{\"token\": \"cztz-...\"}" }],
+    "isError": false
+  }
+}
+```
+
+The tool payload is JSON-encoded inside `result.content[0].text`.
+
+### Transport features
+
+| Feature | Behavior |
+|---------|----------|
+| `POST /mcp` | JSON-RPC requests → `application/json` or `text/event-stream` |
+| `GET /mcp` | `405 Method Not Allowed` |
+| `DELETE /mcp` | Session termination (include `Mcp-Session-Id` header) |
+| Notifications (no `id`) | `202 Accepted` with empty body |
+| `Accept: text/event-stream` | Response wrapped as SSE `message` event |
 
 Then open http://localhost:3000 in your browser. Use the difficulty
 dropdown in the nav bar to switch between easy/medium/hard in real-time.

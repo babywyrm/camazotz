@@ -71,7 +71,7 @@ sudo k3s kubectl -n camazotz rollout restart deployment/brain-gateway
 | Service | Type | Port | Access |
 |---------|------|------|--------|
 | portal | LoadBalancer | 3000 | External — the branded web UI |
-| brain-gateway | ClusterIP | 8080 | Internal — MCP JSON-RPC API |
+| brain-gateway | ClusterIP | 8080 | Internal — MCP Streamable HTTP API |
 | ollama | ClusterIP | 11434 | Internal — local LLM (optional) |
 
 ## Manifests

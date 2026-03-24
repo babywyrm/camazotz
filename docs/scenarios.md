@@ -6,6 +6,11 @@ Vulnerability scenarios mapped to the
 threat taxonomy. All backed by a live LLM (Claude or Ollama) with deterministic
 vulnerability mechanics underneath.
 
+> **Transport note:** The gateway implements MCP 2025-03-26 Streamable HTTP.
+> `tools/call` responses are wrapped in `result.content[0].text` (JSON string)
+> with `isError: false`. Parse the inner JSON to get tool payloads.
+> `initialize` returns an `Mcp-Session-Id` header for session tracking.
+
 ## Tool Inventory
 
 | Tool | Module | OWASP MCP ID | Vulnerability | Real side effect |
@@ -572,12 +577,14 @@ Every `tools/call` emits a structured event at `GET /_observer/last-event`:
 
 ```json
 {
-  "request_id": "req-1774063124.878447",
+  "request_id": "060063a7-969c-45ed-8085-81d42331b195",
   "tool_name": "context.injectable_summary",
-  "module": "ContextLab",
-  "timestamp": "2026-03-21T03:18:44.878506+00:00"
+  "module": "context",
+  "timestamp": "2026-03-23T03:30:30.269619+00:00"
 }
 ```
+
+`request_id` is a UUID v4, `timestamp` is ISO-8601 UTC.
 
 The observer sidecar polls this endpoint and emits structured JSON logs.
 This is intentionally weak (OWASP MCP08) — no persistent log, no user

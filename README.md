@@ -5,7 +5,7 @@
 
 <p align="center">
 <img src="https://img.shields.io/badge/python-3.12%2B-3776ab?style=flat-square&logo=python&logoColor=white" alt="Python 3.12+">
-<img src="https://img.shields.io/badge/tests-183_passing-10b981?style=flat-square" alt="183 tests">
+<img src="https://img.shields.io/badge/tests-186_passing-10b981?style=flat-square" alt="186 tests">
 <img src="https://img.shields.io/badge/coverage-100%25-10b981?style=flat-square" alt="100% coverage">
 <img src="https://img.shields.io/badge/OWASP_MCP_Top_10-10%2F10-dc2626?style=flat-square" alt="OWASP 10/10">
 <img src="https://img.shields.io/badge/Red_Team_Playbook-10%2F14-f59e0b?style=flat-square" alt="Playbook 10/14">
@@ -62,8 +62,8 @@ For Kubernetes deployment: `make helm-deploy` (see [deploy/README.md](deploy/REA
 ┌─────────────────────────────────────────────────────────────────┐
 │  Brain Gateway :8080                                            │
 │  ┌───────────────────┐  ┌──────────────┐  ┌──────────────────┐  │
-│  │ MCP JSON-RPC      │─▶│ LabRegistry  │  │ Observer         │──┘
-│  │ Handler           │  │ + Middleware │  │ Telemetry        │
+│  │ MCP Streamable    │─▶│ LabRegistry  │  │ Observer         │──┘
+│  │ HTTP Transport    │  │ + Middleware │  │ Telemetry        │
 │  └───────────────────┘  └──────┬───────┘  └──────────────────┘  │
 └────────────────────────────────┼────────────────────────────────┘
                                  │
@@ -240,7 +240,7 @@ camazotz/
 ├── compose/                 # Docker Compose (generated from Helm values)
 ├── deploy/                  # Helm chart (single source of truth) + compose generator
 ├── kube/                    # Legacy raw K8s manifests + deploy.sh
-├── tests/                   # 183 tests, 100% coverage (Streamable HTTP)
+├── tests/                   # 186 tests, 100% coverage (Streamable HTTP)
 └── Makefile                 # Cross-platform dev/deploy targets
 ```
 
@@ -250,7 +250,7 @@ camazotz/
 make up             # start with Claude
 make up-local       # start with Ollama
 make down           # stop all services
-make test           # run 183 tests (100% coverage)
+make test           # run 186 tests (100% coverage)
 make status         # health check all services
 make compose-gen    # regenerate docker-compose.yml from Helm values
 make helm-deploy    # deploy to K8s
