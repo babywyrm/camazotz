@@ -18,6 +18,23 @@ GW = sys.argv[1] if len(sys.argv) > 1 else "http://localhost:8080"
 PASS = 0
 FAIL = 0
 RESULTS = []
+SESSION_ID = ""
+
+
+def init_session() -> str:
+    """Call initialize and capture the Mcp-Session-Id header."""
+    body = json.dumps({"jsonrpc": "2.0", "id": 0, "method": "initialize", "params": {}})
+    req = urllib.request.Request(
+        f"{GW}/mcp", data=body.encode(),
+        headers={"Content-Type": "application/json"},
+    )
+    resp = urllib.request.urlopen(req, timeout=10)
+    sid = resp.headers.get("Mcp-Session-Id", "")
+    data = json.loads(resp.read())
+    ver = data.get("result", {}).get("serverInfo", {}).get("version", "?")
+    proto = data.get("result", {}).get("protocolVersion", "?")
+    print(f"  Session: {sid[:8]}...  server={ver}  protocol={proto}")
+    return sid
 
 
 def mcp_call(tool: str, args: dict) -> dict:
@@ -26,10 +43,10 @@ def mcp_call(tool: str, args: dict) -> dict:
         "method": "tools/call",
         "params": {"name": tool, "arguments": args},
     })
-    req = urllib.request.Request(
-        f"{GW}/mcp", data=body.encode(),
-        headers={"Content-Type": "application/json"},
-    )
+    headers = {"Content-Type": "application/json"}
+    if SESSION_ID:
+        headers["Mcp-Session-Id"] = SESSION_ID
+    req = urllib.request.Request(f"{GW}/mcp", data=body.encode(), headers=headers)
     resp = json.loads(urllib.request.urlopen(req, timeout=30).read())
     if "error" in resp:
         return {"_error": resp["error"]}
@@ -350,11 +367,13 @@ def test_comms_list(diff: str):
 # =====================================================================
 
 def run_difficulty(diff: str):
+    global SESSION_ID
     print(f"\n{'='*70}")
     print(f"  DIFFICULTY: {diff.upper()}")
     print(f"  Gateway:    {GW}")
     print(f"{'='*70}\n")
 
+    SESSION_ID = init_session()
     set_difficulty(diff)
     reset()
     time.sleep(0.5)

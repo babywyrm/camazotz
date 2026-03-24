@@ -1,3 +1,5 @@
+import uuid
+
 from fastapi.testclient import TestClient
 
 from brain_gateway.app.main import app
@@ -143,3 +145,91 @@ def test_gateway_reset_endpoint() -> None:
     assert "shadow_lab" in data
     assert "relay_lab" in data
     assert "comms_lab" in data
+
+
+# ---------------------------------------------------------------------------
+# Streamable HTTP transport compliance
+# ---------------------------------------------------------------------------
+
+
+def test_notification_returns_202() -> None:
+    """JSON-RPC messages without 'id' are notifications — must return 202."""
+    client = TestClient(app)
+    resp = client.post(
+        "/mcp",
+        json={"jsonrpc": "2.0", "method": "notifications/initialized", "params": {}},
+    )
+    assert resp.status_code == 202
+    assert resp.content == b""
+
+
+def test_get_mcp_returns_405() -> None:
+    """GET /mcp should return 405 (no SSE listener stream yet)."""
+    client = TestClient(app)
+    resp = client.get("/mcp")
+    assert resp.status_code == 405
+
+
+def test_initialize_returns_session_header() -> None:
+    """initialize must return Mcp-Session-Id header with a valid UUID."""
+    client = TestClient(app)
+    resp = client.post(
+        "/mcp",
+        json={"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}},
+    )
+    assert resp.status_code == 200
+    sid = resp.headers.get("mcp-session-id")
+    assert sid is not None
+    uuid.UUID(sid)
+
+
+def test_non_initialize_has_no_session_header() -> None:
+    """Only initialize should set the session header."""
+    client = TestClient(app)
+    resp = client.post(
+        "/mcp",
+        json={"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}},
+    )
+    assert resp.headers.get("mcp-session-id") is None
+
+
+def test_delete_mcp_terminates_session() -> None:
+    client = TestClient(app)
+    init = client.post(
+        "/mcp",
+        json={"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}},
+    )
+    sid = init.headers["mcp-session-id"]
+
+    from brain_gateway.app.main import sessions
+    assert sessions.validate(sid) is True
+
+    resp = client.delete("/mcp", headers={"mcp-session-id": sid})
+    assert resp.status_code == 200
+    assert sessions.validate(sid) is False
+
+
+def test_delete_mcp_without_header_is_safe() -> None:
+    client = TestClient(app)
+    resp = client.delete("/mcp")
+    assert resp.status_code == 200
+
+
+def test_post_with_accept_json_returns_json() -> None:
+    client = TestClient(app)
+    resp = client.post(
+        "/mcp",
+        json={"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}},
+        headers={"accept": "application/json"},
+    )
+    assert resp.headers["content-type"].startswith("application/json")
+
+
+def test_post_with_accept_sse_returns_event_stream() -> None:
+    client = TestClient(app)
+    resp = client.post(
+        "/mcp",
+        json={"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}},
+        headers={"accept": "text/event-stream, application/json"},
+    )
+    assert resp.headers["content-type"].startswith("text/event-stream")

@@ -7,6 +7,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### MCP Streamable HTTP Transport (2025-03-26)
+
+- **Streamable HTTP transport:** POST `/mcp` now supports `Accept` header
+  negotiation — returns `application/json` (default) or `text/event-stream`
+  (SSE) based on client preference.
+- **Session management:** `initialize` returns `Mcp-Session-Id` header (UUID v4).
+  `DELETE /mcp` terminates sessions. Per-session state isolation.
+- **Notification handling:** JSON-RPC messages without `id` return `202 Accepted`.
+- **GET `/mcp`:** Returns `405 Method Not Allowed` per spec.
+- **RFC compliance hardening:** `tools/call` responses wrapped in
+  `content:[{type:text}]` blocks with `isError` field. Typed Pydantic models
+  for all JSON-RPC envelopes. Input validation on `name`/`arguments`.
+  UUID v4 observer `request_id` with ISO-8601 timestamps.
+- **Contracts tightened:** `additionalProperties: false` on event and module
+  schemas. MCP profile document rewritten for Streamable HTTP.
+
 ### Cross-Tool Chain Attacks (MCP Red Team Playbook)
 
 - **auth_lab — Token Audience Bypass (MCP-T04):** `auth.access_service_b`
