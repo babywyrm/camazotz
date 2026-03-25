@@ -82,6 +82,45 @@ code,pre{font-family:var(--font-mono)}
 .footer-links a{font-size:.75rem;color:var(--muted);transition:color .2s}
 .footer-links a:hover{color:var(--text2)}
 
+.dbg-trigger{color:var(--muted);font-family:var(--font-mono);font-size:.75rem;
+  cursor:default;user-select:none;margin-left:.6rem;opacity:.65;transition:all .3s;
+  letter-spacing:.05em}
+.dbg-trigger:hover{opacity:1;color:var(--text2)}
+.dbg-trigger.active{opacity:1;color:var(--green)}
+
+#cztzDbg{position:fixed;bottom:0;left:0;right:0;z-index:9999;
+  max-height:260px;transform:translateY(100%);transition:transform .3s ease;
+  background:rgba(8,6,10,.96);border-top:1px solid var(--border);
+  backdrop-filter:blur(12px);font-family:var(--font-mono);font-size:.72rem;
+  display:flex;flex-direction:column}
+#cztzDbg.open{transform:translateY(0)}
+.dbg-bar{display:flex;align-items:center;justify-content:space-between;
+  padding:.35rem .8rem;border-bottom:1px solid var(--border);flex-shrink:0}
+.dbg-bar-left{display:flex;align-items:center;gap:.6rem;color:var(--muted)}
+.dbg-bar-left .dot{width:5px;height:5px;border-radius:50%;background:var(--green)}
+.dbg-bar-left .dot.err{background:var(--red)}
+.dbg-btns button{background:none;border:1px solid var(--border);color:var(--muted);
+  font-family:var(--font-mono);font-size:.65rem;padding:.15rem .5rem;border-radius:4px;
+  cursor:pointer;margin-left:.4rem;transition:all .15s}
+.dbg-btns button:hover{border-color:var(--text2);color:var(--text2)}
+.dbg-log{overflow-y:auto;flex:1;padding:.3rem 0}
+.dbg-entry{padding:.2rem .8rem;border-bottom:1px solid rgba(36,30,44,.4);
+  display:flex;gap:.6rem;align-items:baseline;line-height:1.5}
+.dbg-entry:hover{background:rgba(26,21,32,.6)}
+.dbg-ts{color:var(--muted);flex-shrink:0;min-width:62px}
+.dbg-method{font-weight:700;flex-shrink:0;min-width:36px}
+.dbg-method.get{color:var(--blue)}
+.dbg-method.post{color:var(--orange)}
+.dbg-method.put{color:var(--yellow)}
+.dbg-url{color:var(--text2);flex-shrink:0}
+.dbg-status{font-weight:600;flex-shrink:0;min-width:28px}
+.dbg-status.ok{color:var(--green)}
+.dbg-status.err{color:var(--red)}
+.dbg-status.slow{color:var(--orange)}
+.dbg-timing{color:var(--muted);flex-shrink:0;min-width:48px;text-align:right}
+.dbg-detail{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:400px;cursor:pointer}
+.dbg-detail.expanded{white-space:pre-wrap;max-width:none;word-break:break-all}
+
 .card{background:var(--surface);border:1px solid var(--border);
   border-radius:var(--radius);padding:1.5rem;transition:border-color .2s}
 .card:hover{border-color:var(--border2)}
@@ -151,7 +190,7 @@ code,pre{font-family:var(--font-mono)}
 
 <footer class="footer">
   <div class="footer-inner">
-    <div class="footer-text">&copy; 2026 Camazotz Security Corp. &mdash; MCP Security Platform</div>
+    <div class="footer-text">&copy; 2026 Camazotz Security Corp. &mdash; MCP Security Platform &nbsp;<span class="dbg-trigger" id="dbgTrigger">&gt;_</span></div>
     <div class="footer-links">
       <a href="/scenarios">Scenarios</a>
       <a href="/playground">Playground</a>
@@ -194,5 +233,110 @@ function resetLabs(){
 }
 </script>
 {% block extra_js %}{% endblock %}
+
+<div id="cztzDbg">
+  <div class="dbg-bar">
+    <div class="dbg-bar-left"><span class="dot" id="dbgDot"></span><span>cztz debug</span><span id="dbgCount">0 entries</span></div>
+    <div class="dbg-btns">
+      <button onclick="cztzDbgCopy()">copy</button>
+      <button onclick="cztzDbgClear()">clear</button>
+      <button onclick="cztzDbgClose()">×</button>
+    </div>
+  </div>
+  <div class="dbg-log" id="dbgLog"></div>
+</div>
+
+<script>
+(function(){
+  var _dbg=sessionStorage.getItem('cztz_dbg')==='1';
+  var _clicks=0,_timer=null,_log=[];
+  var panel=document.getElementById('cztzDbg');
+  var trigger=document.getElementById('dbgTrigger');
+  var logEl=document.getElementById('dbgLog');
+  var countEl=document.getElementById('dbgCount');
+  var dotEl=document.getElementById('dbgDot');
+
+  if(_dbg){panel.classList.add('open');trigger.classList.add('active');}
+
+  trigger.addEventListener('click',function(){
+    _clicks++;
+    clearTimeout(_timer);
+    _timer=setTimeout(function(){_clicks=0;},1500);
+    if(_clicks>=3){
+      _clicks=0;
+      _dbg=!_dbg;
+      sessionStorage.setItem('cztz_dbg',_dbg?'1':'0');
+      panel.classList.toggle('open',_dbg);
+      trigger.classList.toggle('active',_dbg);
+    }
+  });
+
+  window.cztzDbgClose=function(){
+    _dbg=false;
+    sessionStorage.setItem('cztz_dbg','0');
+    panel.classList.remove('open');
+    trigger.classList.remove('active');
+  };
+  window.cztzDbgClear=function(){
+    _log=[];logEl.innerHTML='';countEl.textContent='0 entries';
+    dotEl.className='dot';
+  };
+  window.cztzDbgCopy=function(){
+    var txt=_log.map(function(e){
+      return e.ts+' '+e.method+' '+e.url+' '+e.status+' '+e.ms+'ms'+(e.detail?' '+e.detail:'');
+    }).join('\n');
+    navigator.clipboard.writeText(txt).then(function(){
+      countEl.textContent='copied!';
+      setTimeout(function(){countEl.textContent=_log.length+' entries';},1200);
+    });
+  };
+
+  function _addEntry(e){
+    _log.push(e);
+    countEl.textContent=_log.length+' entries';
+    var hasErr=_log.some(function(x){return x.status>=400||x.status===0;});
+    dotEl.className='dot'+(hasErr?' err':'');
+    var row=document.createElement('div');
+    row.className='dbg-entry';
+    var sc=e.status>=400||e.status===0?'err':e.ms>2000?'slow':'ok';
+    row.innerHTML='<span class="dbg-ts">'+e.ts+'</span>'+
+      '<span class="dbg-method '+e.method.toLowerCase()+'">'+e.method+'</span>'+
+      '<span class="dbg-url">'+e.url+'</span>'+
+      '<span class="dbg-status '+sc+'">'+e.status+'</span>'+
+      '<span class="dbg-timing">'+e.ms+'ms</span>'+
+      (e.detail?'<span class="dbg-detail" onclick="this.classList.toggle(\'expanded\')">'+_esc(e.detail)+'</span>':'');
+    logEl.appendChild(row);
+    logEl.scrollTop=logEl.scrollHeight;
+  }
+
+  function _esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+  function _ts(){var d=new Date();return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2)+':'+('0'+d.getSeconds()).slice(-2);}
+
+  var _origFetch=window.fetch;
+  window.fetch=function(url,opts){
+    if(typeof url==='string'&&url.indexOf('/api/')===0){
+      var method=(opts&&opts.method||'GET').toUpperCase();
+      var t0=performance.now();
+      return _origFetch.apply(this,arguments).then(function(resp){
+        var ms=Math.round(performance.now()-t0);
+        var clone=resp.clone();
+        clone.text().then(function(body){
+          var detail='';
+          try{var j=JSON.parse(body);if(j.error)detail='ERROR: '+JSON.stringify(j.error);
+          else{var k=Object.keys(j);detail=k.slice(0,4).join(', ')+(k.length>4?' +'+( k.length-4):'');}}catch(ex){detail=body.substring(0,120);}
+          _addEntry({ts:_ts(),method:method,url:url,status:resp.status,ms:ms,detail:detail});
+        });
+        return resp;
+      }).catch(function(err){
+        var ms=Math.round(performance.now()-t0);
+        _addEntry({ts:_ts(),method:method,url:url,status:0,ms:ms,detail:'NETWORK: '+err.message});
+        throw err;
+      });
+    }
+    return _origFetch.apply(this,arguments);
+  };
+})();
+</script>
 </body>
 </html>
+>
