@@ -44,7 +44,7 @@ class LabRegistry:
             except Exception:
                 logger.warning("Failed to import %s", info.name, exc_info=True)
                 continue
-            for obj in vars(mod).values():
+            for obj in list(vars(mod).values()):
                 if (
                     isinstance(obj, type)
                     and issubclass(obj, LabModule)
