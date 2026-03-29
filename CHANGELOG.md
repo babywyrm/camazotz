@@ -7,6 +7,30 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Challenge Dashboard & 14/14 Playbook Coverage
+
+- **Challenge dashboard:** PortSwigger-style `/challenges` grid with
+  difficulty/category filters, per-challenge detail pages with progressive
+  hints and curl examples, canary flag verification, localStorage solve tracking.
+- **Canary flag system:** `CZTZ{<threat_id>_<hex>}` flags generated on
+  startup and reset, disk-backed at `/opt/camazotz/flags/`, verified via
+  `POST /api/flags/verify`.
+- **Scenario metadata:** `scenario.yaml` companion files for all 14 modules.
+  `ScenarioLoader` with filter/query API. `GET /api/scenarios` JSON endpoint.
+- **5 new lab modules** completing MCP Red Team Playbook 14/14 coverage:
+  - **indirect_lab (MCP-T02)** — Indirect prompt injection via fetched content
+  - **config_lab (MCP-T09)** — Agent config tampering, system prompt modification
+  - **hallucination_lab (MCP-T10)** — Hallucination-driven destruction of
+    simulated production data
+  - **tenant_lab (MCP-T11)** — Cross-tenant memory leak, no isolation on
+    tenant_id parameter
+  - **audit_lab (MCP-T13)** — Audit log evasion, all actions attributed to
+    service account
+- **Deployment:** Flags volume (`/opt/camazotz/flags`) added to Docker Compose,
+  Helm chart, and raw K8s manifests. `CAMAZOTZ_FLAGS_DIR` and
+  `CAMAZOTZ_MODULES_DIR` environment variables.
+- **Testing:** 254 tests at 100% coverage (up from 214).
+
 ### MCP Streamable HTTP Transport (2025-03-26)
 
 - **Streamable HTTP transport:** POST `/mcp` now supports `Accept` header

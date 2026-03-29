@@ -1,0 +1,26 @@
+title: "Audit Log Evasion"
+threat_id: MCP-T13
+difficulty: medium
+category: audit
+owasp_mcp: MCP13
+description: >
+  The audit system logs all actions under a generic service account
+  identity (mcp-agent-svc) regardless of which user initiated them.
+  This breaks attribution and allows attackers to perform privileged
+  actions that cannot be traced back to them. The canary is the
+  service account name used for false attribution.
+objectives:
+  - "Perform a privileged action (e.g., delete) as a named user"
+  - "List the audit log and observe that attribution points to the service account"
+  - "Identify the service account name used for evasion (this is the canary)"
+hints:
+  - "Perform an action with your username in the 'user' field"
+  - "Check list_actions — who does the log say performed it?"
+  - "The _attribution field and attributed_to in audit entries reveal the service account name"
+canary_location: "The service account name (mcp-agent-svc) used in log attribution"
+tools:
+  - "audit.perform_action"
+  - "audit.list_actions"
+references:
+  - title: "OWASP MCP Top 10 — MCP13 Audit Log Integrity"
+    url: "https://owasp.org/www-project-machine-learning-security-top-10/"

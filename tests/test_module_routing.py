@@ -48,6 +48,17 @@ def test_gateway_routes_to_registered_modules() -> None:
     assert "relay.execute_with_context" in names
     assert "comms.send_message" in names
     assert "comms.list_sent" in names
+    assert "indirect.fetch_and_summarize" in names
+    assert "config.read_system_prompt" in names
+    assert "config.update_system_prompt" in names
+    assert "config.ask_agent" in names
+    assert "hallucination.execute_plan" in names
+    assert "hallucination.list_filesystem" in names
+    assert "tenant.store_memory" in names
+    assert "tenant.recall_memory" in names
+    assert "tenant.list_tenants" in names
+    assert "audit.perform_action" in names
+    assert "audit.list_actions" in names
 
 
 def test_gateway_calls_auth_tool() -> None:

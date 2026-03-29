@@ -9,16 +9,21 @@ registration step is required.
 
 ```
 camazotz_modules/
-├── base.py                  # LabModule ABC
-├── auth_lab/app/main.py     # class AuthLab(LabModule) — T03, T04
-├── comms_lab/app/main.py    # class CommsLab(LabModule) — T12
-├── context_lab/app/main.py  # class ContextLab(LabModule) — T01, T02
-├── egress_lab/app/main.py   # class EgressLab(LabModule) — T06
-├── relay_lab/app/main.py    # class RelayLab(LabModule) — T05
-├── secrets_lab/app/main.py  # class SecretsLab(LabModule) — T07
-├── shadow_lab/app/main.py   # class ShadowLab(LabModule) — T10
-├── supply_lab/app/main.py   # class SupplyLab(LabModule) — T04/supply
-└── tool_lab/app/main.py     # class ToolLab(LabModule) — T03/tool
+├── base.py                          # LabModule ABC
+├── audit_lab/app/main.py            # class AuditLab(LabModule) — MCP-T13
+├── auth_lab/app/main.py             # class AuthLab(LabModule) — MCP02/07, MCP-T04
+├── comms_lab/app/main.py            # class CommsLab(LabModule) — MCP-T12
+├── config_lab/app/main.py           # class ConfigLab(LabModule) — MCP-T09
+├── context_lab/app/main.py          # class ContextLab(LabModule) — MCP06/10
+├── egress_lab/app/main.py           # class EgressLab(LabModule) — SSRF
+├── hallucination_lab/app/main.py    # class HallucinationLab(LabModule) — MCP-T10
+├── indirect_lab/app/main.py         # class IndirectLab(LabModule) — MCP-T02
+├── relay_lab/app/main.py            # class RelayLab(LabModule) — MCP-T05
+├── secrets_lab/app/main.py          # class SecretsLab(LabModule) — MCP01
+├── shadow_lab/app/main.py           # class ShadowLab(LabModule) — MCP09
+├── supply_lab/app/main.py           # class SupplyLab(LabModule) — MCP04
+├── tenant_lab/app/main.py           # class TenantLab(LabModule) — MCP-T11
+└── tool_lab/app/main.py             # class ToolLab(LabModule) — MCP03/05
 ```
 
 ## LabModule Contract
@@ -107,6 +112,44 @@ all subpackages at startup. As long as your class:
 
 It will be discovered and registered. No import in `__init__.py`, no
 adapter registration, no config file.
+
+## Scenario Metadata
+
+Every module should include a `scenario.yaml` file alongside `app/main.py`:
+
+```yaml
+title: "Human-readable scenario title"
+threat_id: MCP-T06
+difficulty: easy | medium | hard
+category: injection | auth | ssrf | ...
+owasp_mcp: MCP06
+description: >
+  One paragraph describing the vulnerability.
+objectives:
+  - "First goal"
+  - "Second goal"
+hints:
+  - "Progressive hint 1"
+  - "Progressive hint 2"
+canary_location: "Where/how the flag is exposed"
+tools:
+  - "module.tool_name"
+```
+
+The `ScenarioLoader` reads these at startup and exposes them via
+`GET /api/scenarios` and the challenge dashboard.
+
+## Canary Flag System
+
+Each scenario is assigned a unique canary flag of the form
+`CZTZ{<threat_id>_<hex>}` (e.g., `CZTZ{MCP-T09_a3f8b1}`). Flags are
+generated on startup and `POST /reset`, then written to disk at
+`/opt/camazotz/flags/` (configurable via `CAMAZOTZ_FLAGS_DIR`).
+
+Modules can reference their flag through the `CANARY_PLACEHOLDER` token
+in seed data or prompt templates. The framework replaces placeholders with
+the actual flag value at initialization time. Solvers submit captured flags
+to `POST /api/flags/verify` or through the challenge dashboard UI.
 
 ## Naming Rules
 

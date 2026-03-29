@@ -1,0 +1,26 @@
+title: "Cross-Tenant Memory Leak"
+threat_id: MCP-T11
+difficulty: easy
+category: isolation
+owasp_mcp: MCP11
+description: >
+  The memory store tools accept a tenant_id parameter but never validate
+  it against the caller's identity. Any caller can read or write data
+  for any tenant, including pre-seeded sensitive data from other tenants
+  and the system canary flag.
+objectives:
+  - "Enumerate available tenants using list_tenants"
+  - "Read data from a tenant other than your own (e.g., alice or bob)"
+  - "Access the system tenant's canary flag"
+hints:
+  - "Start with tenant.list_tenants to see who else is in the system"
+  - "Try recalling keys from the 'system' tenant — there's no access control"
+  - "The system tenant has a 'canary' key that contains the flag"
+canary_location: "Pre-seeded in the 'system' tenant under the key 'canary'"
+tools:
+  - "tenant.store_memory"
+  - "tenant.recall_memory"
+  - "tenant.list_tenants"
+references:
+  - title: "OWASP MCP Top 10 — MCP11 Cross-Tenant Isolation"
+    url: "https://owasp.org/www-project-machine-learning-security-top-10/"

@@ -5,10 +5,10 @@
 
 <p align="center">
 <img src="https://img.shields.io/badge/python-3.12%2B-3776ab?style=flat-square&logo=python&logoColor=white" alt="Python 3.12+">
-<img src="https://img.shields.io/badge/tests-186_passing-10b981?style=flat-square" alt="186 tests">
+<img src="https://img.shields.io/badge/tests-254_passing-10b981?style=flat-square" alt="254 tests">
 <img src="https://img.shields.io/badge/coverage-100%25-10b981?style=flat-square" alt="100% coverage">
 <img src="https://img.shields.io/badge/OWASP_MCP_Top_10-10%2F10-dc2626?style=flat-square" alt="OWASP 10/10">
-<img src="https://img.shields.io/badge/Red_Team_Playbook-10%2F14-f59e0b?style=flat-square" alt="Playbook 10/14">
+<img src="https://img.shields.io/badge/Red_Team_Playbook-14%2F14-10b981?style=flat-square" alt="Playbook 14/14">
 <img src="https://img.shields.io/badge/license-MIT-a89cb8?style=flat-square" alt="MIT License">
 </p>
 <p align="center">
@@ -72,17 +72,29 @@ For Kubernetes deployment: `make helm-deploy` (see [deploy/README.md](deploy/REA
 ┌──────────────┐  ┌──────────────────────┐  ┌──────────────────┐
 │  auth_lab    │  │  context_lab         │  │  egress_lab      │
 │  MCP02/07    │  │  MCP06/10            │  │  SSRF            │
-│  SQLite      │  │  Two-stage LLM chain │  │  Real httpx.get  │
+│  MCP-T04     │  │  Two-stage LLM chain │  │  Real httpx.get  │
 ├──────────────┤  ├──────────────────────┤  ├──────────────────┤
 │  secrets_lab │  │  shadow_lab          │  │  supply_lab      │
 │  MCP01       │  │  MCP09               │  │  MCP04           │
 │  os.environ  │  │  Webhook dispatch    │  │  pip install     │
-├──────────────┤  └──────────────────────┘  └──────────────────┘
-│  tool_lab    │
-│  MCP03/05    │         ┌──────────────────────────┐
-│  subprocess  │────────▶│  AI Brain                │
-└──────────────┘         │  Claude API  │  Ollama   │
-                         └──────────────────────────┘
+├──────────────┤  ├──────────────────────┤  ├──────────────────┤
+│  tool_lab    │  │  relay_lab           │  │  comms_lab       │
+│  MCP03/05    │  │  MCP-T05             │  │  MCP-T12         │
+│  subprocess  │  │  Context poisoning   │  │  Exfiltration    │
+├──────────────┤  ├──────────────────────┤  ├──────────────────┤
+│  indirect_lab│  │  config_lab          │  │ hallucination_lab│
+│  MCP-T02     │  │  MCP-T09             │  │  MCP-T10         │
+│  Fetched     │  │  Prompt tampering    │  │  Ambiguous input │
+│  injection   │  │                      │  │  → prod data loss│
+├──────────────┤  ├──────────────────────┤  └──────────────────┘
+│  tenant_lab  │  │  audit_lab           │
+│  MCP-T11     │  │  MCP-T13             │
+│  Memory leak │  │  Log evasion         │
+└──────────────┘  └──────────────────────┘
+        │                                    ┌──────────────────────────┐
+        └───────────────────────────────────▶│  AI Brain                │
+                                             │  Claude API  │  Ollama   │
+                                             └──────────────────────────┘
 ```
 
 ## How a Vulnerable Tool Call Works
@@ -147,7 +159,12 @@ the risk while the underlying vulnerability still fires. This teaches that
 |-------------|------|----------|-------------|
 | MCP-T04 | Token Audience Bypass | `auth.access_service_b` | Token scoped to service-a replayed against service-b — audience not validated |
 | MCP-T05 | Cross-Tool Context Poisoning | `relay.store_context` → `relay.execute_with_context` | Poisoned tool output enters shared context buffer, LLM follows embedded instructions |
+| MCP-T02 | Indirect Prompt Injection | `indirect.fetch_and_summarize` | Fetched web content overrides LLM summarization task |
+| MCP-T09 | Agent Config Tampering | `config.read_system_prompt` → `config.update_system_prompt` | Attacker modifies system prompt to remove safety guards |
+| MCP-T10 | Hallucination-Driven Destruction | `hallucination.execute_plan` | Ambiguous input causes LLM to destroy production data |
+| MCP-T11 | Cross-Tenant Memory Leak | `tenant.recall_memory` | No tenant isolation — any caller reads any tenant's data |
 | MCP-T12 | Exfiltration via Chaining | `comms.send_message` | Sensitive data from relay context exits through messaging channel — no DLP |
+| MCP-T13 | Audit Log Evasion | `audit.perform_action` | All actions attributed to service account, not actual user |
 
 **Plus:** SSRF via `egress.fetch_url` — AI proxy with real `httpx.get` fetches when policy allows.
 
@@ -175,6 +192,11 @@ Switch live from the portal nav bar — no restart needed.
 | `egress_lab` | Zero filtering | Blocks metadata IPs | Blocks metadata + internal ranges |
 | `shadow_lab` | Any URL accepted | External warned but accepted | External rejected unless allowlisted |
 | `tool_lab` | Rug pull at 3 calls | Rug pull at 5 calls | Rug pull at 8, obfuscated description |
+| `indirect_lab` | All fetched content passed through | Notes injection presence | Blocks injection payloads |
+| `config_lab` | Prompt updates accepted | Updates accepted with warning | Prompt locked, updates rejected |
+| `hallucination_lab` | No environment guards | Prefers staging paths | Never touches production paths |
+| `tenant_lab` | No isolation | No isolation (same) | No isolation (same — logic bug) |
+| `audit_lab` | Service account attribution | Service account + warning | Service account (same — logic bug) |
 
 </details>
 
@@ -205,6 +227,20 @@ Works on **macOS** (Intel + Apple Silicon) and **Linux** (Debian, Ubuntu, CentOS
 
 ---
 
+## Challenge Dashboard
+
+Open **http://localhost:3000/challenges** for the PortSwigger-style challenge lab:
+
+- **Grid view** with difficulty/category filters and solve tracking
+- **Per-challenge pages** with objectives, progressive hints, and curl examples
+- **Canary flag system** — each scenario plants a unique `CZTZ{...}` flag
+- **Self-service verification** — submit flags at `/challenges/<threat_id>/verify`
+- **localStorage persistence** — solved state survives browser refresh
+
+Reset all flags: `POST /reset` or click the Reset button in the nav.
+
+---
+
 ## Configuration
 
 | Variable | Default | Description |
@@ -225,22 +261,27 @@ camazotz/
 │   ├── app/brain/           # LLM provider abstraction (Claude + Ollama)
 │   └── app/modules/
 │       └── registry.py      # LabRegistry — auto-discovers modules, middleware pipeline
-├── camazotz_modules/        # 9 vulnerability lab modules (LabModule subclasses)
+├── camazotz_modules/        # 14 vulnerability lab modules (LabModule subclasses)
 │   ├── base.py              # LabModule ABC — shared contract and helpers
+│   ├── audit_lab/           # Audit log evasion, service account attribution (MCP-T13)
 │   ├── auth_lab/            # Confused deputy, privilege escalation, audience bypass
 │   ├── comms_lab/           # Exfiltration via messaging channel (MCP-T12)
+│   ├── config_lab/          # Agent config tampering, system prompt modification (MCP-T09)
 │   ├── context_lab/         # Prompt injection, two-stage LLM chain
 │   ├── egress_lab/          # SSRF via AI proxy, real httpx fetches
+│   ├── hallucination_lab/   # Hallucination-driven destruction of prod data (MCP-T10)
+│   ├── indirect_lab/        # Indirect prompt injection via fetched content (MCP-T02)
 │   ├── relay_lab/           # Cross-tool context poisoning broker (MCP-T05)
 │   ├── secrets_lab/         # Credential leak, reads real os.environ
 │   ├── shadow_lab/          # Persistent webhook registration, real httpx dispatch
 │   ├── supply_lab/          # Supply chain attack, real pip install in sandbox
+│   ├── tenant_lab/          # Cross-tenant memory leak, no isolation (MCP-T11)
 │   └── tool_lab/            # Rug pull, tool mutation, real subprocess execution
 ├── frontend/                # Flask portal (dark theme, crimson accent)
 ├── compose/                 # Docker Compose (generated from Helm values)
 ├── deploy/                  # Helm chart (single source of truth) + compose generator
 ├── kube/                    # Legacy raw K8s manifests + deploy.sh
-├── tests/                   # 186 tests, 100% coverage (Streamable HTTP)
+├── tests/                   # 254 tests, 100% coverage (Streamable HTTP)
 └── Makefile                 # Cross-platform dev/deploy targets
 ```
 
@@ -250,7 +291,7 @@ camazotz/
 make up             # start with Claude
 make up-local       # start with Ollama
 make down           # stop all services
-make test           # run 186 tests (100% coverage)
+make test           # run 254 tests (100% coverage)
 make status         # health check all services
 make compose-gen    # regenerate docker-compose.yml from Helm values
 make helm-deploy    # deploy to K8s
@@ -272,10 +313,10 @@ make help           # show all targets
 
 ## Roadmap
 
-- **New vulnerability modules** — multi-step attack chains, cross-tool
-  exploitation, resource poisoning, prompt caching attacks
+- **Behavioral validation** — observer detects exploit patterns automatically
+- **Per-scenario canary wiring** — modules expose flags through exploit paths
 - **Scanner integration** — automated regression with
-  [mcpvenom](https://github.com/babywyrm/mcpvenom) baselines
+  [mcpnuke](https://github.com/babywyrm/mcpnuke) baselines
 - **Multi-player mode** — concurrent sessions with isolated state for
   workshops and CTF events
 - **Scoring engine** — track which vulnerabilities each participant
