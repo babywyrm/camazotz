@@ -7,7 +7,10 @@ scoring subsystems.
 
 from __future__ import annotations
 
+import hashlib
 import logging
+import os
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -101,3 +104,42 @@ class ScenarioLoader:
 
     def all(self) -> list[Scenario]:
         return list(self._scenarios)
+
+
+FLAGS_DIR = os.environ.get("CAMAZOTZ_FLAGS_DIR", "/opt/camazotz/flags")
+
+
+def generate_flags(
+    scenarios: list[Scenario], flags_dir: str | None = None,
+) -> dict[str, str]:
+    """Generate unique canary flags for each scenario, write to disk.
+
+    Returns mapping of threat_id -> flag string.
+    Format: CZTZ{<threat_id>_<8-char-hex>}
+    """
+    if flags_dir is None:
+        flags_dir = FLAGS_DIR
+    os.makedirs(flags_dir, exist_ok=True)
+    flags = {}
+    for s in scenarios:
+        token = hashlib.sha256(
+            f"{s.threat_id}:{time.time_ns()}:{os.urandom(8).hex()}".encode()
+        ).hexdigest()[:8]
+        flag = f"CZTZ{{{s.threat_id}_{token}}}"
+        flags[s.threat_id] = flag
+        flag_path = os.path.join(flags_dir, f"{s.threat_id}.flag")
+        with open(flag_path, "w") as f:
+            f.write(flag)
+    return flags
+
+
+def verify_flag(threat_id: str, submitted: str, flags_dir: str | None = None) -> bool:
+    """Check submitted flag against the stored flag on disk."""
+    if flags_dir is None:
+        flags_dir = FLAGS_DIR
+    flag_path = os.path.join(flags_dir, f"{threat_id}.flag")
+    if not os.path.exists(flag_path):
+        return False
+    with open(flag_path) as f:
+        expected = f.read().strip()
+    return submitted.strip() == expected

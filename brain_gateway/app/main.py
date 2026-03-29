@@ -11,6 +11,7 @@ Supports:
 from __future__ import annotations
 
 import json
+import os
 from collections.abc import AsyncIterator
 
 from fastapi import FastAPI, Request
@@ -22,10 +23,22 @@ from brain_gateway.app.mcp_handlers import handle_rpc
 from brain_gateway.app.models import JsonRpcRequest
 from brain_gateway.app.modules.registry import get_registry
 from brain_gateway.app.observer import get_last_event
+from brain_gateway.app.scenarios import ScenarioLoader, generate_flags, verify_flag
 from brain_gateway.app.session import SessionManager
 
 app = FastAPI(title="Camazotz Brain Gateway")
 sessions = SessionManager()
+
+_scenario_loader: ScenarioLoader | None = None
+
+
+def _get_loader() -> ScenarioLoader:
+    global _scenario_loader
+    if _scenario_loader is None:
+        modules_dir = os.environ.get("CAMAZOTZ_MODULES_DIR", "camazotz_modules")
+        _scenario_loader = ScenarioLoader(modules_dir)
+        _scenario_loader.load_all()
+    return _scenario_loader
 
 
 @app.post("/mcp")
@@ -100,3 +113,31 @@ def reset_labs() -> dict:
         "relay_lab": "context buffer cleared",
         "comms_lab": "outbox cleared",
     }
+
+
+@app.get("/api/scenarios")
+def list_scenarios() -> list[dict]:
+    loader = _get_loader()
+    return [
+        {
+            "threat_id": s.threat_id,
+            "title": s.title,
+            "difficulty": s.difficulty,
+            "category": s.category,
+            "description": s.description,
+            "objectives": s.objectives,
+            "hints": s.hints,
+            "tools": s.tools,
+            "owasp_mcp": s.owasp_mcp,
+            "module_name": s.module_name,
+        }
+        for s in loader.all()
+    ]
+
+
+@app.post("/api/flags/verify")
+def verify_submitted_flag(payload: dict) -> dict:
+    threat_id = payload.get("threat_id", "")
+    submitted = payload.get("flag", "")
+    correct = verify_flag(threat_id, submitted)
+    return {"threat_id": threat_id, "correct": correct}

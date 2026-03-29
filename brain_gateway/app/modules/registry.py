@@ -78,6 +78,20 @@ class LabRegistry:
             m.reset()
         with self._lock:
             self._webhooks.clear()
+        self._regenerate_flags()
+
+    def _regenerate_flags(self) -> None:
+        try:
+            from brain_gateway.app.scenarios import ScenarioLoader, generate_flags
+            import os
+            modules_dir = os.environ.get("CAMAZOTZ_MODULES_DIR", "camazotz_modules")
+            loader = ScenarioLoader(modules_dir)
+            scenarios = loader.load_all()
+            if scenarios:
+                generate_flags(scenarios)
+                logger.info("Regenerated canary flags for %d scenarios", len(scenarios))
+        except Exception:
+            logger.warning("Failed to regenerate canary flags", exc_info=True)
 
     # -- webhook management (shared state for shadow_lab) ---------------------
 
