@@ -16,6 +16,9 @@ spec:
       labels:
         app: brain-gateway
     spec:
+      volumes:
+        - name: flags
+          emptyDir: {}
       containers:
         - name: brain-gateway
           image: camazotz/brain-gateway:latest
@@ -27,6 +30,14 @@ spec:
                 name: camazotz-config
             - secretRef:
                 name: camazotz-secrets
+          env:
+            - name: CAMAZOTZ_FLAGS_DIR
+              value: "/opt/camazotz/flags"
+            - name: CAMAZOTZ_MODULES_DIR
+              value: "/workspace/camazotz_modules"
+          volumeMounts:
+            - name: flags
+              mountPath: /opt/camazotz/flags
           readinessProbe:
             httpGet:
               path: /health

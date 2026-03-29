@@ -16,6 +16,9 @@ spec:
       labels:
         {{- include "camazotz.selectorLabels" "brain-gateway" | nindent 8 }}
     spec:
+      volumes:
+        - name: flags
+          emptyDir: {}
       containers:
         - name: brain-gateway
           image: "{{ .Values.gateway.image }}:{{ .Values.gateway.tag }}"
@@ -27,6 +30,14 @@ spec:
                 name: camazotz-config
             - secretRef:
                 name: camazotz-secrets
+          env:
+            - name: CAMAZOTZ_FLAGS_DIR
+              value: {{ .Values.gateway.flagsDir | quote }}
+            - name: CAMAZOTZ_MODULES_DIR
+              value: {{ .Values.gateway.modulesDir | default "/workspace/camazotz_modules" | quote }}
+          volumeMounts:
+            - name: flags
+              mountPath: {{ .Values.gateway.flagsDir | quote }}
           readinessProbe:
             httpGet:
               path: {{ .Values.gateway.healthPath }}

@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% block title %}Challenge Lab — Camazotz{% endblock %}
+
+{% block extra_css %}
+<style>
+.challenge-hero{text-align:center;padding:3rem 0 1.5rem}
+.challenge-hero h1{font-size:2rem;font-weight:700;letter-spacing:-.03em;margin-bottom:.4rem}
+.challenge-hero h1 span{color:var(--accent2)}
+.challenge-hero p{color:var(--text2);font-size:.95rem;max-width:540px;margin:0 auto}
+
+.filter-bar{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;padding:.8rem 0 1.5rem}
+.filter-btn{background:var(--surface);color:var(--text2);border:1px solid var(--border);
+  border-radius:8px;padding:.4rem 1rem;font-size:.8rem;font-weight:600;cursor:pointer;
+  font-family:inherit;transition:all .2s}
+.filter-btn:hover{border-color:var(--border2);color:var(--text)}
+.filter-btn.active{background:var(--accent-glow);color:var(--accent2);border-color:rgba(220,38,38,.3)}
+.filter-select{background:var(--surface);color:var(--text);border:1px solid var(--border);
+  border-radius:8px;padding:.4rem .7rem;font-size:.8rem;font-family:inherit;cursor:pointer;
+  margin-left:auto}
+.filter-select:focus{outline:none;border-color:var(--accent)}
+.filter-select option{background:var(--bg);color:var(--text)}
+
+.challenge-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));
+  gap:1.2rem;padding-bottom:3rem}
+
+.challenge-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:1.3rem 1.4rem;display:flex;flex-direction:column;gap:.7rem;
+  transition:border-color .2s,transform .15s;cursor:pointer;text-decoration:none;color:inherit;
+  position:relative}
+.challenge-card:hover{border-color:var(--border2);transform:translateY(-2px);color:inherit}
+.challenge-card-header{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
+.challenge-card-title{font-weight:600;font-size:.95rem;flex:1;min-width:0}
+.challenge-card-desc{color:var(--text2);font-size:.82rem;line-height:1.5;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.challenge-card-footer{display:flex;align-items:center;gap:.5rem;margin-top:auto}
+.challenge-card .solved-check{position:absolute;top:.8rem;right:.8rem;
+  color:var(--green);font-size:1.1rem;line-height:1}
+
+.cat-tag{display:inline-flex;align-items:center;padding:.15rem .5rem;border-radius:5px;
+  font-size:.65rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;
+  background:rgba(59,130,246,.08);color:var(--blue);border:1px solid rgba(59,130,246,.12)}
+
+.empty-state{text-align:center;padding:4rem 1rem;color:var(--muted)}
+.empty-state p{font-size:1rem;margin-bottom:.5rem}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="challenge-hero">
+    <h1>Challenge <span>Lab</span></h1>
+    <p>Hands-on attack scenarios from the MCP Red Team Playbook. Exploit vulnerabilities, capture canary flags, and sharpen your offensive skills.</p>
+  </div>
+
+  <div class="filter-bar">
+    <button class="filter-btn active" data-diff="all" onclick="filterDiff('all',this)">All</button>
+    <button class="filter-btn" data-diff="easy" onclick="filterDiff('easy',this)">Easy</button>
+    <button class="filter-btn" data-diff="medium" onclick="filterDiff('medium',this)">Medium</button>
+    <button class="filter-btn" data-diff="hard" onclick="filterDiff('hard',this)">Hard</button>
+    <select class="filter-select" id="catFilter" onchange="filterCat(this.value)">
+      <option value="all">All Categories</option>
+    </select>
+  </div>
+
+  <div class="challenge-grid" id="challengeGrid">
+    {% for s in scenarios %}
+    <a href="/challenges/{{ s.threat_id }}"
+       class="challenge-card"
+       data-diff="{{ s.difficulty }}"
+       data-cat="{{ s.category }}"
+       data-tid="{{ s.threat_id }}">
+      <div class="challenge-card-header">
+        <span class="badge badge-accent">{{ s.threat_id }}</span>
+        <span class="challenge-card-title">{{ s.title }}</span>
+        {% if s.difficulty == 'easy' %}
+        <span class="badge badge-info">Easy</span>
+        {% elif s.difficulty == 'medium' %}
+        <span class="badge badge-high">Medium</span>
+        {% else %}
+        <span class="badge badge-critical">Hard</span>
+        {% endif %}
+      </div>
+      <div class="challenge-card-desc">{{ s.description }}</div>
+      <div class="challenge-card-footer">
+        <span class="cat-tag">{{ s.category }}</span>
+      </div>
+      <span class="solved-check" style="display:none">&#10003;</span>
+    </a>
+    {% endfor %}
+  </div>
+
+  {% if not scenarios %}
+  <div class="empty-state">
+    <p>No scenarios loaded.</p>
+    <span>Check that the brain-gateway is running.</span>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function(){
+  var cards=document.querySelectorAll('.challenge-card');
+  var cats=new Set();
+  cards.forEach(function(c){
+    cats.add(c.dataset.cat);
+    if(localStorage.getItem('cztz_solved_'+c.dataset.tid)==='true'){
+      c.querySelector('.solved-check').style.display='';
+    }
+  });
+  var sel=document.getElementById('catFilter');
+  Array.from(cats).sort().forEach(function(cat){
+    var o=document.createElement('option');
+    o.value=cat;o.textContent=cat.charAt(0).toUpperCase()+cat.slice(1);
+    sel.appendChild(o);
+  });
+})();
+
+var _curDiff='all',_curCat='all';
+function _applyFilters(){
+  document.querySelectorAll('.challenge-card').forEach(function(c){
+    var dMatch=(_curDiff==='all'||c.dataset.diff===_curDiff);
+    var cMatch=(_curCat==='all'||c.dataset.cat===_curCat);
+    c.style.display=(dMatch&&cMatch)?'':'none';
+  });
+}
+function filterDiff(d,btn){
+  _curDiff=d;
+  document.querySelectorAll('.filter-btn').forEach(function(b){b.classList.remove('active')});
+  btn.classList.add('active');
+  _applyFilters();
+}
+function filterCat(c){_curCat=c;_applyFilters();}
+</script>
+{% endblock %}

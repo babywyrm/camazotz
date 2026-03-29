@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+{% block title %}{{ scenario.threat_id }} — {{ scenario.title }} — Camazotz{% endblock %}
+
+{% block extra_css %}
+<style>
+.detail-back{display:inline-flex;align-items:center;gap:.4rem;color:var(--text2);
+  font-size:.85rem;font-weight:500;margin-bottom:1.5rem;transition:color .2s}
+.detail-back:hover{color:var(--text)}
+.detail-back svg{width:16px;height:16px}
+
+.detail-header{margin-bottom:2rem}
+.detail-header h1{font-size:1.6rem;font-weight:700;letter-spacing:-.02em;margin:.4rem 0 .6rem}
+.detail-meta{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
+
+.detail-section{margin-bottom:2rem}
+.detail-section h2{font-size:1.05rem;font-weight:600;margin-bottom:.8rem;color:var(--text);
+  padding-bottom:.4rem;border-bottom:1px solid var(--border)}
+
+.detail-desc{color:var(--text2);font-size:.92rem;line-height:1.7}
+
+.obj-list{list-style:none;counter-reset:obj}
+.obj-list li{counter-increment:obj;padding:.5rem 0 .5rem 2rem;position:relative;
+  color:var(--text2);font-size:.88rem;line-height:1.6;border-bottom:1px solid var(--border)}
+.obj-list li::before{content:counter(obj);position:absolute;left:0;top:.5rem;
+  width:1.5rem;height:1.5rem;border-radius:50%;background:var(--surface2);
+  color:var(--accent2);display:flex;align-items:center;justify-content:center;
+  font-size:.7rem;font-weight:700;border:1px solid var(--border)}
+
+.hint-accordion{display:flex;flex-direction:column;gap:.5rem}
+.hint-item{border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.hint-toggle{width:100%;background:var(--surface);color:var(--text2);border:none;
+  padding:.65rem 1rem;text-align:left;cursor:pointer;font-family:inherit;font-size:.85rem;
+  font-weight:600;display:flex;align-items:center;justify-content:space-between;transition:all .2s}
+.hint-toggle:hover{color:var(--text);background:var(--surface2)}
+.hint-toggle .arrow{transition:transform .2s;font-size:.7rem}
+.hint-toggle.open .arrow{transform:rotate(90deg)}
+.hint-body{display:none;padding:.7rem 1rem;color:var(--text2);font-size:.85rem;
+  line-height:1.6;background:var(--bg2);border-top:1px solid var(--border)}
+.hint-body.show{display:block}
+
+.mcp-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:1.2rem 1.4rem}
+.mcp-box h3{font-size:.85rem;font-weight:600;color:var(--text);margin-bottom:.6rem;
+  display:flex;align-items:center;gap:.5rem}
+.mcp-box h3 .badge{font-size:.6rem}
+.mcp-box pre{background:var(--bg);border:1px solid var(--border);border-radius:8px;
+  padding:1rem;font-size:.78rem;line-height:1.6;overflow-x:auto;color:var(--text2)}
+
+.flag-form{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:1.4rem}
+.flag-form h2{font-size:1.05rem;font-weight:600;margin-bottom:.8rem;color:var(--text)}
+.flag-row{display:flex;gap:.6rem}
+.flag-input{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:8px;
+  padding:.6rem 1rem;color:var(--text);font-family:var(--font-mono);font-size:.85rem;
+  transition:border-color .2s}
+.flag-input:focus{outline:none;border-color:var(--accent)}
+.flag-input::placeholder{color:var(--muted)}
+.flag-submit{background:var(--accent);color:#fff;border:none;border-radius:8px;
+  padding:.6rem 1.4rem;font-weight:600;font-size:.85rem;cursor:pointer;
+  font-family:inherit;transition:all .2s;white-space:nowrap}
+.flag-submit:hover{background:var(--accent2);transform:translateY(-1px)}
+.flag-submit:disabled{opacity:.5;cursor:wait;transform:none}
+
+.flag-result{margin-top:.8rem;padding:.7rem 1rem;border-radius:8px;font-size:.85rem;
+  font-weight:600;display:none}
+.flag-result.correct{display:block;background:rgba(16,185,129,.1);color:var(--green);
+  border:1px solid rgba(16,185,129,.2)}
+.flag-result.incorrect{display:block;background:rgba(239,68,68,.08);color:var(--red);
+  border:1px solid rgba(239,68,68,.15)}
+
+.solved-banner{background:rgba(16,185,129,.1);color:var(--green);border:1px solid rgba(16,185,129,.2);
+  border-radius:8px;padding:.7rem 1rem;font-size:.9rem;font-weight:600;margin-bottom:1.5rem;
+  display:flex;align-items:center;gap:.5rem}
+.solved-banner .check{font-size:1.2rem}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container section">
+  <a href="/challenges" class="detail-back">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg>
+    Back to Challenges
+  </a>
+
+  <div id="solvedBanner" class="solved-banner" style="display:none">
+    <span class="check">&#10003;</span> Challenge Solved
+  </div>
+
+  <div class="detail-header">
+    <div class="detail-meta">
+      <span class="badge badge-accent">{{ scenario.threat_id }}</span>
+      {% if scenario.difficulty == 'easy' %}
+      <span class="badge badge-info">Easy</span>
+      {% elif scenario.difficulty == 'medium' %}
+      <span class="badge badge-high">Medium</span>
+      {% else %}
+      <span class="badge badge-critical">Hard</span>
+      {% endif %}
+      <span class="cat-tag" style="display:inline-flex;align-items:center;padding:.15rem .5rem;border-radius:5px;font-size:.65rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;background:rgba(59,130,246,.08);color:var(--blue);border:1px solid rgba(59,130,246,.12)">{{ scenario.category }}</span>
+    </div>
+    <h1>{{ scenario.title }}</h1>
+  </div>
+
+  <div class="detail-section">
+    <h2>Description</h2>
+    <div class="detail-desc">{{ scenario.description }}</div>
+  </div>
+
+  <div class="detail-section">
+    <h2>Objectives</h2>
+    <ol class="obj-list">
+      {% for obj in scenario.objectives %}
+      <li>{{ obj }}</li>
+      {% endfor %}
+    </ol>
+  </div>
+
+  <div class="detail-section">
+    <h2>Hints</h2>
+    <div class="hint-accordion">
+      {% for hint in scenario.hints %}
+      <div class="hint-item">
+        <button class="hint-toggle" onclick="toggleHint(this)">
+          <span>Hint {{ loop.index }}</span>
+          <span class="arrow">&#9654;</span>
+        </button>
+        <div class="hint-body">{{ hint }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="detail-section">
+    <h2>MCP Endpoint</h2>
+    <div class="mcp-box">
+      <h3><span class="badge badge-high">POST</span> /mcp</h3>
+      <pre>curl -X POST http://localhost:8080/mcp \
+  -H "Content-Type: application/json" \
+  -d '{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "{{ scenario.tools[0] if scenario.tools else 'tool_name' }}",
+    "arguments": {}
+  }
+}'</pre>
+    </div>
+  </div>
+
+  <div class="glow-line"></div>
+
+  <div class="flag-form" id="flagForm">
+    <h2>Submit Canary Flag</h2>
+    <div class="flag-row">
+      <input type="text" class="flag-input" id="canaryInput" placeholder="CZTZ{...}" autocomplete="off">
+      <button class="flag-submit" id="flagBtn" onclick="submitFlag()">Submit Flag</button>
+    </div>
+    <div class="flag-result" id="flagResult"></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+var _tid='{{ scenario.threat_id }}';
+
+(function(){
+  if(localStorage.getItem('cztz_solved_'+_tid)==='true'){
+    document.getElementById('solvedBanner').style.display='';
+  }
+})();
+
+function toggleHint(btn){
+  btn.classList.toggle('open');
+  var body=btn.nextElementSibling;
+  body.classList.toggle('show');
+}
+
+function submitFlag(){
+  var input=document.getElementById('canaryInput');
+  var btn=document.getElementById('flagBtn');
+  var result=document.getElementById('flagResult');
+  var canary=input.value.trim();
+  if(!canary)return;
+
+  btn.disabled=true;btn.textContent='Checking...';
+  result.className='flag-result';result.style.display='none';
+
+  fetch('/challenges/'+_tid+'/verify',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({canary:canary})
+  })
+  .then(function(r){return r.json()})
+  .then(function(d){
+    if(d.correct){
+      result.textContent='\u2713 Correct! Challenge solved.';
+      result.className='flag-result correct';
+      localStorage.setItem('cztz_solved_'+_tid,'true');
+      document.getElementById('solvedBanner').style.display='';
+    }else{
+      result.textContent='\u2717 Incorrect flag. Try again.';
+      result.className='flag-result incorrect';
+    }
+  })
+  .catch(function(){
+    result.textContent='Error contacting gateway.';
+    result.className='flag-result incorrect';
+  })
+  .finally(function(){
+    btn.disabled=false;btn.textContent='Submit Flag';
+  });
+}
+</script>
+{% endblock %}

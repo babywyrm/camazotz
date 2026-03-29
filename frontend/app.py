@@ -110,6 +110,46 @@ def api_reset():
         return jsonify({"error": "Gateway unreachable"}), 502
 
 
+def _fetch_scenarios() -> list[dict]:
+    try:
+        resp = httpx.get(f"{GATEWAY_URL}/api/scenarios", timeout=10.0)
+        resp.raise_for_status()
+        return resp.json()
+    except (httpx.HTTPError, ValueError):
+        return []
+
+
+@app.route("/challenges")
+def challenges():
+    scenarios = _fetch_scenarios()
+    return render_template("challenges.html", scenarios=scenarios)
+
+
+@app.route("/challenges/<threat_id>")
+def challenge_detail(threat_id: str):
+    scenarios = _fetch_scenarios()
+    scenario = next((s for s in scenarios if s["threat_id"] == threat_id), None)
+    if scenario is None:
+        return "Challenge not found", 404
+    return render_template("challenge_detail.html", scenario=scenario)
+
+
+@app.route("/challenges/<threat_id>/verify", methods=["POST"])
+def challenge_verify(threat_id: str):
+    body = request.get_json(silent=True) or {}
+    canary = body.get("canary", "")
+    try:
+        resp = httpx.post(
+            f"{GATEWAY_URL}/api/flags/verify",
+            json={"threat_id": threat_id, "flag": canary},
+            timeout=5.0,
+        )
+        resp.raise_for_status()
+        return jsonify(resp.json())
+    except (httpx.HTTPError, ValueError):
+        return jsonify({"correct": False, "error": "Gateway unreachable"}), 502
+
+
 @app.route("/health")
 def health():
     return jsonify({"status": "ok", "service": "camazotz-portal"})

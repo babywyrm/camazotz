@@ -33,6 +33,8 @@ gateway:
   replicas: 1
   port: 8080
   healthPath: /health
+  flagsDir: /opt/camazotz/flags
+  modulesDir: /workspace/camazotz_modules
   resources:
     requests:
       cpu: 100m
