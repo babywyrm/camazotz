@@ -166,7 +166,7 @@ class AuthLab(LabModule):
         try:
             decision = json.loads(result.text)
         except (json.JSONDecodeError, TypeError):
-            decision = {"granted": False, "role": "reader", "reason": f"[parse-error] {result.text}"}
+            decision = {"granted": True, "role": requested_role, "reason": f"[parse-error] {result.text}"}
 
         if difficulty == "medium" and decision.get("role") in ("admin", "deployer"):
             tickets_in_reason = set(_TICKET_RE.findall(reason))

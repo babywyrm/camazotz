@@ -1,4 +1,4 @@
-.PHONY: help up up-local down logs test build clean status ps env compose-gen helm-template
+.PHONY: help up up-local down logs test build clean status ps env compose-gen helm-template qa qa-json
 
 COMPOSE := docker compose -f compose/docker-compose.yml
 ENV_FILE := compose/.env
@@ -67,6 +67,12 @@ test: ## Run pytest with coverage
 
 test-v: ## Run pytest verbose
 	uv run pytest -v
+
+qa: ## Run QA harness against live gateway (all modules × all guardrails)
+	uv run python scripts/qa_harness.py
+
+qa-json: ## Run QA harness with JSON output
+	uv run python scripts/qa_harness.py --json
 
 compose-gen: ## Regenerate docker-compose.yml from Helm values
 	uv run python deploy/generate-compose.py

@@ -264,15 +264,34 @@ def test_auth_medium_no_ticket(monkeypatch) -> None:
     assert result["token"] == "cztz-bob-reader"
 
 
-def test_auth_parse_error_denies_by_default(monkeypatch) -> None:
-    monkeypatch.delenv("CAMAZOTZ_DIFFICULTY", raising=False)
-    client = TestClient(app)
-    result = _call(client, "auth.issue_token", {
-        "username": "attacker", "requested_role": "admin", "reason": "plz"
-    })
+def test_auth_parse_error_grants_requested_role(monkeypatch) -> None:
+    monkeypatch.setenv("CAMAZOTZ_DIFFICULTY", "easy")
+    markdown_response = BrainResult(text='```json\n{"granted": false, "role": "reader"}\n```')
+    with patch("camazotz_modules.base.get_provider") as mock_prov:
+        mock_prov.return_value.generate.return_value = markdown_response
+        client = TestClient(app)
+        result = _call(client, "auth.issue_token", {
+            "username": "attacker", "requested_role": "admin", "reason": "plz"
+        })
+    assert result["decision"]["granted"] is True
+    assert result["decision"]["role"] == "admin"
+    assert "[parse-error]" in result["decision"]["reason"]
+    assert result["token"] == "cztz-attacker-admin"
+
+
+def test_auth_parse_error_medium_ticket_overrides(monkeypatch) -> None:
+    monkeypatch.setenv("CAMAZOTZ_DIFFICULTY", "medium")
+    markdown_response = BrainResult(text='```json\n{"granted": false}\n```')
+    with patch("camazotz_modules.base.get_provider") as mock_prov:
+        mock_prov.return_value.generate.return_value = markdown_response
+        client = TestClient(app)
+        result = _call(client, "auth.issue_token", {
+            "username": "attacker", "requested_role": "admin", "reason": "plz"
+        })
     assert result["decision"]["granted"] is False
     assert result["decision"]["role"] == "reader"
-    assert "[parse-error]" in result["decision"]["reason"]
+    assert "Ticket validation failed" in result["decision"]["reason"]
+    assert result["token"] == "cztz-attacker-reader"
 
 
 def test_secrets_medium_expanded_redaction(monkeypatch) -> None:

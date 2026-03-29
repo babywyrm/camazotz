@@ -5,7 +5,7 @@
 
 <p align="center">
 <img src="https://img.shields.io/badge/python-3.12%2B-3776ab?style=flat-square&logo=python&logoColor=white" alt="Python 3.12+">
-<img src="https://img.shields.io/badge/tests-254_passing-10b981?style=flat-square" alt="254 tests">
+<img src="https://img.shields.io/badge/tests-255_passing-10b981?style=flat-square" alt="255 tests">
 <img src="https://img.shields.io/badge/coverage-100%25-10b981?style=flat-square" alt="100% coverage">
 <img src="https://img.shields.io/badge/OWASP_MCP_Top_10-10%2F10-dc2626?style=flat-square" alt="OWASP 10/10">
 <img src="https://img.shields.io/badge/Red_Team_Playbook-14%2F14-10b981?style=flat-square" alt="Playbook 14/14">
@@ -289,7 +289,9 @@ camazotz/
 ├── compose/                 # Docker Compose (generated from Helm values)
 ├── deploy/                  # Helm chart (single source of truth) + compose generator
 ├── kube/                    # Legacy raw K8s manifests + deploy.sh
-├── tests/                   # 254 tests, 100% coverage (Streamable HTTP)
+├── scripts/
+│   └── qa_harness.py        # E2E QA — all modules × all guardrail levels
+├── tests/                   # 255 tests, 100% coverage (Streamable HTTP)
 └── Makefile                 # Cross-platform dev/deploy targets
 ```
 
@@ -299,7 +301,9 @@ camazotz/
 make up             # start with Claude
 make up-local       # start with Ollama
 make down           # stop all services
-make test           # run 254 tests (100% coverage)
+make test           # run 255 tests (100% coverage)
+make qa             # E2E QA harness against live gateway
+make qa-json        # QA harness with machine-readable JSON output
 make status         # health check all services
 make compose-gen    # regenerate docker-compose.yml from Helm values
 make helm-deploy    # deploy to K8s
