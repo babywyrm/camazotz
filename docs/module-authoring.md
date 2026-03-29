@@ -223,6 +223,17 @@ Tool calls are recorded by the gateway observer using:
 - Use `reset_registry()` in `setup_function` to get a clean registry per test.
 - Run tests with `uv run pytest` or `make test`.
 
+## QA Harness Integration
+
+When you add a new module, also add a test function in
+`scripts/qa_runner/checks.py` and register it in `MODULE_TESTS`. This
+ensures the module is covered by both:
+
+- **CLI:** `make qa` or `python scripts/qa_harness.py --module your_lab`
+- **Operator Console:** hidden at `/operator` in the portal UI
+
+The QA harness validates response shapes across all guardrail levels.
+
 ## Deploying Your Changes
 
 After code + tests pass:

@@ -4,8 +4,8 @@
 services:
   portal:
     build:
-      context: ../frontend
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: frontend/Dockerfile
     environment:
     - GATEWAY_URL=http://brain-gateway:8080
     - FLASK_SECRET=${FLASK_SECRET:-cztz-k8s-secret}

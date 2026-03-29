@@ -7,6 +7,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Operator Console & QA Harness Refactor
+
+- **Operator console:** Hidden `/operator` page (no nav link) provides a
+  browser-based QA orchestrator. Runs all module checks across EZ / MOD / MAX
+  guardrails, renders a pass/fail grid with expandable check details,
+  summary stats, and JSON export.
+- **qa_runner package:** Extracted reusable QA engine from `scripts/qa_harness.py`
+  into `scripts/qa_runner/` (types, client, checks, runner). Shared by both
+  the CLI harness and the Flask operator panel — single source of truth.
+- **auth_lab fix:** Restored confused deputy parse-error fallback to
+  `granted: True` (was incorrectly hardened to deny-by-default).
+- **Testing:** 264 tests at 100% coverage (up from 254).
+
 ### UX: Guardrail Label Rename & Nav Cleanup
 
 - **Guardrail switcher:** Renamed global difficulty labels from

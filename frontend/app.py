@@ -1,7 +1,21 @@
 import os
+import sys
+import time
 
 import httpx
 from flask import Flask, render_template, request, jsonify
+
+_scripts_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), os.pardir, "scripts")
+if os.path.isdir(_scripts_dir) and _scripts_dir not in sys.path:
+    sys.path.insert(0, _scripts_dir)
+
+from qa_runner import (  # noqa: E402
+    GUARDRAIL_LEVELS,
+    GatewayClient,
+    MODULE_TESTS,
+    results_to_dict,
+    run_qa,
+)
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.getenv("FLASK_SECRET", "cztz-dev-key")
@@ -148,6 +162,36 @@ def challenge_verify(threat_id: str):
         return jsonify(resp.json())
     except (httpx.HTTPError, ValueError):
         return jsonify({"correct": False, "error": "Gateway unreachable"}), 502
+
+
+@app.route("/operator")
+def operator():
+    return render_template("operator.html", modules=list(MODULE_TESTS.keys()), levels=list(GUARDRAIL_LEVELS))
+
+
+@app.route("/api/operator/run", methods=["POST"])
+def api_operator_run():
+    body = request.get_json(silent=True) or {}
+    req_modules = body.get("modules")
+    req_levels = body.get("levels")
+
+    gw = GatewayClient(base_url=GATEWAY_URL, timeout=30)
+
+    modules = MODULE_TESTS
+    if req_modules:
+        modules = {k: v for k, v in MODULE_TESTS.items() if k in req_modules}
+    levels = tuple(req_levels) if req_levels else GUARDRAIL_LEVELS
+
+    t0 = time.monotonic()
+    try:
+        results = run_qa(gw, levels=levels, modules=modules)
+    except Exception as exc:
+        return jsonify({"error": f"QA run failed: {exc}"}), 502
+    elapsed = round(time.monotonic() - t0, 1)
+
+    report = results_to_dict(results)
+    report["elapsed_seconds"] = elapsed
+    return jsonify(report)
 
 
 @app.route("/health")
