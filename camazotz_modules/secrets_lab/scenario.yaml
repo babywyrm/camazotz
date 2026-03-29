@@ -1,0 +1,29 @@
+threat_id: "MCP-T07"
+title: "Secrets in Tool Output"
+difficulty: easy
+category: secrets
+description: >
+  A debug assistant exposes service configuration including database
+  URLs, AWS keys, and internal API tokens.  On easy all values are
+  returned verbatim; on medium some are partially redacted; on hard a
+  full redaction pass is applied.
+
+objectives:
+  - Retrieve unredacted AWS credentials from the configuration dump
+  - Extract the internal API token (cztz-iat-*) on easy or medium
+  - Compare easy vs hard output to identify which secrets survive redaction
+
+hints:
+  - Call secrets.leak_config with no filter to get the full variable set
+  - The CZTZ_SECRET_ env-var prefix is used in production; locally FAKE_ENV is returned
+  - On medium, DATABASE_URL and OLLAMA_HOST pass through unredacted
+
+tools:
+  - secrets.leak_config
+
+canary_location: "config dict contains INTERNAL_API_TOKEN (cztz-iat-*) and AWS keys"
+owasp_mcp: "MCP07"
+
+references:
+  - title: "OWASP MCP Top 10 — Secrets in Tool Output"
+    url: "https://owasp.org/www-project-top-10-for-large-language-model-applications/"

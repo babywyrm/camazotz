@@ -28,6 +28,10 @@ class LabModule(ABC):
     threat_id: str
     system_prompts: dict[str, str] = {}
 
+    title: str = ""
+    category: str = ""
+    canary_prefix: str = "CZTZ"
+
     # Back-reference set by the registry after instantiation.
     _registry: Any = None
 

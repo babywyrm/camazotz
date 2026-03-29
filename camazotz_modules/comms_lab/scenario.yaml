@@ -1,0 +1,31 @@
+threat_id: "MCP-T12"
+title: "Exfiltration via Chaining"
+difficulty: hard
+category: exfiltration
+description: >
+  A messaging integration composes and sends messages that can include
+  content pulled from the relay context buffer.  On easy and medium
+  no DLP filtering is applied — secrets, credentials, and PII flow
+  through to the channel.  On hard a regex-based DLP scanner blocks
+  messages containing detected secrets.
+
+objectives:
+  - Chain relay.store_context + comms.send_message to exfiltrate secrets from the context buffer
+  - Send a message containing AWS keys or database credentials to an external channel
+  - Bypass the hard-mode DLP scanner by obfuscating secret patterns
+
+hints:
+  - First store secrets via relay.store_context, then reference those keys in comms.send_message
+  - The _dlp_scan object in the response shows which patterns were detected
+  - On easy, _raw_context is included directly in the response — no scanning at all
+
+tools:
+  - comms.send_message
+  - comms.list_sent
+
+canary_location: "composed_message and _raw_context contain exfiltrated secrets"
+owasp_mcp: "MCP12"
+
+references:
+  - title: "OWASP MCP Top 10 — Exfiltration via Chaining"
+    url: "https://owasp.org/www-project-top-10-for-large-language-model-applications/"

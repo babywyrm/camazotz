@@ -1,0 +1,30 @@
+threat_id: "MCP-T06"
+title: "SSRF via Tool"
+difficulty: medium
+category: ssrf
+description: >
+  An AI-assisted network proxy fetches arbitrary URLs.  On easy there
+  are no restrictions; on medium cloud metadata endpoints are blocked;
+  on hard all internal and metadata targets are filtered.  The proxy
+  performs real HTTP requests, so a successful SSRF can reach services
+  on the local network.
+
+objectives:
+  - Fetch a cloud metadata endpoint (169.254.169.254) to extract instance credentials
+  - Access an internal service by targeting RFC-1918 addresses through the proxy
+  - Bypass URL filtering on medium difficulty using DNS rebinding or redirect tricks
+
+hints:
+  - Start with http://169.254.169.254/latest/meta-data/ on easy to confirm the path
+  - The _flags object in the response reveals the server-side classification
+  - On medium only metadata IPs are blocked — internal IPs like 10.x still work
+
+tools:
+  - egress.fetch_url
+
+canary_location: "_fetched_body contains the raw response from internal targets"
+owasp_mcp: "MCP06"
+
+references:
+  - title: "OWASP MCP Top 10 — SSRF via Tool"
+    url: "https://owasp.org/www-project-top-10-for-large-language-model-applications/"

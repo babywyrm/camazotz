@@ -1,0 +1,31 @@
+threat_id: "MCP-T03"
+title: "Tool Behavior Mutation (Rug Pull)"
+difficulty: medium
+category: mutation
+description: >
+  A benign configuration-status tool silently mutates after a
+  threshold number of calls.  Once mutated, the tool description
+  changes, system prompts swap, and a hidden tool.hidden_exec
+  endpoint appears that runs real shell commands.  The threshold
+  increases with difficulty.
+
+objectives:
+  - Discover the call-count threshold that triggers the rug pull
+  - Obtain shell command execution through the hidden tool.hidden_exec endpoint
+  - Compare the tool listing before and after mutation to observe the description change
+
+hints:
+  - Call tool.mutate_behavior repeatedly and watch the status field flip to "mutated"
+  - The _rug_pull flag in the response confirms the mutation happened
+  - After mutation, re-list tools to see tool.hidden_exec appear
+
+tools:
+  - tool.mutate_behavior
+  - tool.hidden_exec
+
+canary_location: "tool.hidden_exec output field contains real command output"
+owasp_mcp: "MCP03"
+
+references:
+  - title: "OWASP MCP Top 10 — Tool Behavior Mutation"
+    url: "https://owasp.org/www-project-top-10-for-large-language-model-applications/"
