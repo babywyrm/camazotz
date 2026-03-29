@@ -772,12 +772,18 @@ content edit → injection → credential theft → exfiltration.
 
 ---
 
-## Difficulty Levels
+## Guardrail Levels
 
-Default is **medium**. Switch from the portal nav bar or via
-`PUT /config {"difficulty":"..."}`. Reset all lab state with `POST /reset`.
+Default is **MOD** (`medium`). Switch from the portal's **Guardrails**
+dropdown (EZ / MOD / MAX) or via `PUT /config {"difficulty":"..."}`.
+Reset all lab state with `POST /reset`.
 
-| Module | easy | medium | hard |
+> **Guardrails vs. challenge complexity:** The guardrail level controls LLM
+> defense strictness. Challenge cards show a separate complexity rating
+> (Easy / Medium / Hard) reflecting the inherent difficulty of the scenario.
+> Some challenges are pure logic bugs unaffected by guardrails.
+
+| Module | EZ | MOD | MAX |
 |--------|------|--------|------|
 | `context_lab` | No filtering, echoes everything | Notes injections but doesn't follow them | Blocks injection, refuses summary |
 | `auth_lab` | Grants if reason is convincing | Requires valid ticket from INC-1001..1005 | Always denies elevated roles |
@@ -792,14 +798,14 @@ Default is **medium**. Switch from the portal nav bar or via
 | `indirect_lab` | All fetched content passed through | Notes injection presence | Blocks injection payloads |
 | `config_lab` | Prompt updates accepted | Updates accepted with warning | Prompt locked, updates rejected |
 | `hallucination_lab` | No environment guards | Prefers staging paths | Never touches production paths |
-| `tenant_lab` | No isolation | No isolation (same) | No isolation (same — logic bug) |
-| `audit_lab` | Service account attribution | Service account + warning | Service account (same — logic bug) |
+| `tenant_lab` | No isolation (logic bug) | No isolation (logic bug) | No isolation (logic bug) |
+| `audit_lab` | Service account (logic bug) | Service account (logic bug) | Service account (logic bug) |
 
-All difficulty levels remain exploitable through different techniques:
+All guardrail levels remain exploitable through different techniques:
 
-- **Easy**: understand the vulnerability class.
-- **Medium**: understand partial controls and their gaps.
-- **Hard**: understand that naive guardrails (prompts, string matching, partial
+- **EZ**: understand the vulnerability class.
+- **MOD**: understand partial controls and their gaps.
+- **MAX**: understand that naive guardrails (prompts, string matching, partial
   redaction) have bypass paths. Real defense requires deterministic controls.
 
 ---

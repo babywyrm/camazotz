@@ -7,10 +7,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### UX: Guardrail Label Rename & Nav Cleanup
+
+- **Guardrail switcher:** Renamed global difficulty labels from
+  "Easy / Medium / Hard" to **EZ / MOD / MAX** with a "Guardrails" label
+  in the nav bar. Internal API values (`easy`/`medium`/`hard`) unchanged.
+  Eliminates confusion between per-challenge complexity ratings and the
+  global defense level.
+- **Challenge detail pages:** Added guardrail-sensitivity indicator —
+  "Logic vulnerability" (unaffected by guardrails) vs.
+  "Guardrail-sensitive" (behavior changes with EZ/MOD/MAX).
+- **Nav cleanup:** Removed redundant "Launch Tools" CTA button (Playground
+  link already in the nav).
+
 ### Challenge Dashboard & 14/14 Playbook Coverage
 
 - **Challenge dashboard:** PortSwigger-style `/challenges` grid with
-  difficulty/category filters, per-challenge detail pages with progressive
+  complexity/category filters, per-challenge detail pages with progressive
   hints and curl examples, canary flag verification, localStorage solve tracking.
 - **Canary flag system:** `CZTZ{<threat_id>_<hex>}` flags generated on
   startup and reset, disk-backed at `/opt/camazotz/flags/`, verified via
@@ -128,8 +141,8 @@ All modules perform genuine actions inside the container sandbox:
   accent. Landing page (OWASP stats), playground (interactive MCP tool
   explorer), scenarios (red/blue walkthrough matrix), observer
   (telemetry auto-refresh).
-- **Live difficulty switcher** in nav bar with colored indicator.
-  `PUT /config` changes difficulty at runtime — no restart needed.
+- **Live guardrail switcher** in nav bar with colored indicator.
+  `PUT /config` changes guardrail level at runtime — no restart needed.
 - **Scenario reset** via `POST /reset` button in nav bar.
 - **Playground UX:** difficulty badge on responses, client-side request
   history with sessionStorage, auto-refresh tools/list after rug pull.
@@ -148,12 +161,13 @@ All modules perform genuine actions inside the container sandbox:
   `make up-local`, `make down`, `make test`, `make status`,
   `make helm-deploy`, `make compose-gen`.
 
-### Difficulty & Guardrails
+### Guardrail Levels
 
-- Three levels (`easy` / `medium` / `hard`) controlling LLM system
-  prompts, thresholds, allowlists, and redaction rules per module.
-- Default changed to **medium**.
-- All difficulty levels remain exploitable through different techniques.
+- Three guardrail levels (EZ / MOD / MAX, internally `easy` / `medium` /
+  `hard`) controlling LLM system prompts, thresholds, allowlists, and
+  redaction rules per module.
+- Default changed to **MOD** (`medium`).
+- All guardrail levels remain exploitable through different techniques.
 
 ### Observability
 

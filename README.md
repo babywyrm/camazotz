@@ -132,7 +132,7 @@ Every tool response includes two things:
 - **`ai_analysis`** — what the LLM *thinks* should happen
 - **The actual result** — what the deterministic logic *actually did*
 
-On easy mode, they align. On medium and hard, they diverge: the AI flags
+On EZ guardrails, they align. On MOD and MAX, they diverge: the AI flags
 the risk while the underlying vulnerability still fires. This teaches that
 **prompt-based guardrails cannot replace proper security engineering**.
 
@@ -170,20 +170,27 @@ the risk while the underlying vulnerability still fires. This teaches that
 
 ---
 
-## Difficulty Levels
+## Guardrail Levels
 
-Switch live from the portal nav bar — no restart needed.
+The nav bar's **Guardrails** switcher controls how aggressively the LLM
+defends each scenario. This is separate from the per-challenge complexity
+rating (Easy / Medium / Hard) shown on challenge cards.
 
-| Level | What It Teaches |
-|-------|----------------|
-| **Easy** | The vulnerability class. Everything works, zero guardrails. |
-| **Medium** *(default)* | Partial controls. The LLM flags issues but gaps remain exploitable. |
-| **Hard** | Naive guardrails. Strict prompts, allowlists, full redaction — creative bypasses still work. |
+| Guardrail | Label | What It Teaches |
+|-----------|-------|----------------|
+| **EZ** (green) | Minimal defenses | The vulnerability class. Everything works, zero guardrails. |
+| **MOD** *(default)* | Partial controls | The LLM flags issues but gaps remain exploitable. |
+| **MAX** (red) | Strict guardrails | Strict prompts, allowlists, full redaction — creative bypasses still work. |
+
+> **Note:** Some challenges are pure logic bugs (e.g., `tenant_lab`,
+> `audit_lab`) and behave identically at all guardrail levels. The
+> challenge detail page indicates whether a scenario is
+> **guardrail-sensitive** or a **logic vulnerability**.
 
 <details>
-<summary><strong>Per-module difficulty matrix</strong></summary>
+<summary><strong>Per-module guardrail matrix</strong></summary>
 
-| Module | Easy | Medium | Hard |
+| Module | EZ | MOD | MAX |
 |--------|------|--------|------|
 | `context_lab` | No filtering | Notes injections, doesn't follow | Blocks injection, refuses summary |
 | `auth_lab` | Grants if reason is convincing | Requires valid ticket INC-1001..1005 | Always denies elevated roles |
@@ -195,8 +202,8 @@ Switch live from the portal nav bar — no restart needed.
 | `indirect_lab` | All fetched content passed through | Notes injection presence | Blocks injection payloads |
 | `config_lab` | Prompt updates accepted | Updates accepted with warning | Prompt locked, updates rejected |
 | `hallucination_lab` | No environment guards | Prefers staging paths | Never touches production paths |
-| `tenant_lab` | No isolation | No isolation (same) | No isolation (same — logic bug) |
-| `audit_lab` | Service account attribution | Service account + warning | Service account (same — logic bug) |
+| `tenant_lab` | No isolation (logic bug) | No isolation (logic bug) | No isolation (logic bug) |
+| `audit_lab` | Service account (logic bug) | Service account (logic bug) | Service account (logic bug) |
 
 </details>
 
@@ -231,8 +238,9 @@ Works on **macOS** (Intel + Apple Silicon) and **Linux** (Debian, Ubuntu, CentOS
 
 Open **http://localhost:3000/challenges** for the PortSwigger-style challenge lab:
 
-- **Grid view** with difficulty/category filters and solve tracking
-- **Per-challenge pages** with objectives, progressive hints, and curl examples
+- **Grid view** with complexity/category filters and solve tracking
+- **Per-challenge pages** with objectives, progressive hints, curl examples,
+  and a guardrail-sensitivity indicator (logic bug vs. guardrail-sensitive)
 - **Canary flag system** — each scenario plants a unique `CZTZ{...}` flag
 - **Self-service verification** — submit flags at `/challenges/<threat_id>/verify`
 - **localStorage persistence** — solved state survives browser refresh
@@ -247,7 +255,7 @@ Reset all flags: `POST /reset` or click the Reset button in the nav.
 |----------|---------|-------------|
 | `BRAIN_PROVIDER` | `cloud` | `cloud` (Claude) or `local` (Ollama) |
 | `ANTHROPIC_API_KEY` | — | Required for Claude |
-| `CAMAZOTZ_DIFFICULTY` | `medium` | Guardrail strength (switchable from portal) |
+| `CAMAZOTZ_DIFFICULTY` | `medium` | Guardrail level: EZ / MOD / MAX (switchable from portal) |
 | `CAMAZOTZ_SHOW_TOKENS` | `false` | Show LLM token usage and cost per call |
 | `CAMAZOTZ_OLLAMA_MODEL` | `llama3.2:3b` | Ollama model name |
 

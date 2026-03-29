@@ -101,6 +101,16 @@
     <h1>{{ scenario.title }}</h1>
   </div>
 
+  {% set logic_only = scenario.category in ('isolation', 'audit') %}
+  <div class="guardrail-note" style="margin-bottom:1.5rem;padding:.6rem 1rem;border-radius:8px;font-size:.8rem;
+    {% if logic_only %}background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.12);color:var(--blue){% else %}background:rgba(234,179,8,.06);border:1px solid rgba(234,179,8,.12);color:var(--yellow){% endif %}">
+    {% if logic_only %}
+      <strong>Logic vulnerability</strong> — this challenge is not affected by the guardrail level. The bug exists regardless of LLM defenses.
+    {% else %}
+      <strong>Guardrail-sensitive</strong> — the guardrail level (EZ / MOD / MAX) changes how the LLM defends this scenario. Adjust it from the nav bar.
+    {% endif %}
+  </div>
+
   <div class="detail-section">
     <h2>Description</h2>
     <div class="detail-desc">{{ scenario.description }}</div>

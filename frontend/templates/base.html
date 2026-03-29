@@ -49,10 +49,6 @@ code,pre{font-family:var(--font-mono)}
 .nav-links{display:flex;gap:2rem;align-items:center}
 .nav-links a{color:var(--text2);font-size:.875rem;font-weight:500;transition:color .2s}
 .nav-links a:hover,.nav-links a.active{color:var(--text)}
-.nav-cta{background:var(--accent);color:#fff;padding:.45rem 1.1rem;border-radius:8px;
-  font-size:.8rem;font-weight:600;transition:all .2s}
-.nav-cta:hover{background:var(--accent2);color:#fff;transform:translateY(-1px)}
-
 .diff-switcher{display:flex;align-items:center;gap:.4rem;margin-left:.5rem}
 .diff-switcher label{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;font-weight:600}
 .diff-switcher select{background:var(--surface);color:var(--text);border:1px solid var(--border);
@@ -174,15 +170,15 @@ code,pre{font-family:var(--font-mono)}
       <a href="/challenges" class="{% if request.path.startswith('/challenges') %}active{% endif %}">Challenges</a>
       <a href="/observer" class="{% if request.path == '/observer' %}active{% endif %}">Observer</a>
       <div class="diff-switcher">
+        <label>Guardrails</label>
         <span class="diff-dot medium" id="diffDot"></span>
         <select id="diffSelect" onchange="switchDifficulty(this.value)">
-          <option value="easy">Easy</option>
-          <option value="medium" selected>Medium</option>
-          <option value="hard">Hard</option>
+          <option value="easy">EZ</option>
+          <option value="medium" selected>MOD</option>
+          <option value="hard">MAX</option>
         </select>
       </div>
       <button class="nav-reset" id="resetBtn" onclick="resetLabs()" title="Reset tool_lab and shadow_lab state">Reset</button>
-      <a href="/playground" class="nav-cta">Launch Tools</a>
     </div>
   </div>
 </nav>

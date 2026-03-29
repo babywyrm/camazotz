@@ -90,7 +90,7 @@ or config module directly:
 
 | Helper | What it does |
 |--------|-------------|
-| `self.difficulty` | Current difficulty string (`easy`/`medium`/`hard`) |
+| `self.difficulty` | Current guardrail level string (`easy`/`medium`/`hard` — displayed as EZ/MOD/MAX) |
 | `self.provider` | Current `BrainProvider` instance |
 | `self.ask_llm(prompt)` | Call the LLM with the system prompt for the current difficulty |
 | `self.make_response(result, **data)` | Build a response dict with `_difficulty` and optional `_usage` |
@@ -120,7 +120,7 @@ Every module should include a `scenario.yaml` file alongside `app/main.py`:
 ```yaml
 title: "Human-readable scenario title"
 threat_id: MCP-T06
-difficulty: easy | medium | hard
+difficulty: easy | medium | hard      # challenge complexity rating
 category: injection | auth | ssrf | ...
 owasp_mcp: MCP06
 description: >
@@ -138,6 +138,14 @@ tools:
 
 The `ScenarioLoader` reads these at startup and exposes them via
 `GET /api/scenarios` and the challenge dashboard.
+
+> **Complexity vs. guardrails:** The `difficulty` field in `scenario.yaml`
+> is the challenge's inherent complexity (shown as Easy / Medium / Hard on
+> challenge cards). This is distinct from the **guardrail level**
+> (EZ / MOD / MAX) that controls LLM defense strictness at runtime. Pure
+> logic bugs (e.g., missing tenant isolation) behave identically across
+> all guardrail levels — the challenge detail page marks these as
+> "Logic vulnerability."
 
 ## Canary Flag System
 
@@ -208,7 +216,7 @@ Tool calls are recorded by the gateway observer using:
 
 - Add `pytest` coverage for every code path in your module.
 - Keep global coverage at 100%.
-- Test all difficulty levels (`easy`, `medium`, `hard`).
+- Test all guardrail levels (`easy`, `medium`, `hard`).
 - Test `show_tokens` on and off.
 - Test the `reason` parameter if your tool accepts one.
 - Mock all external I/O (`httpx`, `subprocess`, `os.environ`, etc.).
