@@ -32,10 +32,24 @@ def _mock_mcp_response(result: dict) -> MagicMock:
 
 def test_index_page(frontend_client) -> None:
     client, _ = frontend_client
-    resp = client.get("/")
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = [
+        {
+            "threat_id": "MCP-T01", "title": "Direct Prompt Injection",
+            "difficulty": "easy", "category": "injection",
+            "description": "Inject via tool output.", "module_name": "context_lab",
+            "objectives": [], "hints": [],
+            "tools": ["context.injectable_summary"], "owasp_mcp": "MCP01",
+        },
+    ]
+    mock_resp.raise_for_status = MagicMock()
+    with patch.object(httpx, "get", return_value=mock_resp):
+        resp = client.get("/")
     assert resp.status_code == 200
     assert b"Camazotz" in resp.data
-    assert b"OWASP MCP Top 10" in resp.data
+    assert b"MCP-T01" in resp.data
+    assert b"context_lab" in resp.data
 
 
 def test_playground_page(frontend_client) -> None:
@@ -52,10 +66,24 @@ def test_playground_page(frontend_client) -> None:
 
 def test_scenarios_page(frontend_client) -> None:
     client, _ = frontend_client
-    resp = client.get("/scenarios")
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = [
+        {
+            "threat_id": "MCP-T01", "title": "Direct Prompt Injection",
+            "difficulty": "easy", "category": "injection",
+            "description": "Inject via tool output.", "module_name": "context_lab",
+            "objectives": ["Exfiltrate the canary"], "hints": ["Try embedding instructions"],
+            "tools": ["context.injectable_summary"], "owasp_mcp": "MCP01",
+        },
+    ]
+    mock_resp.raise_for_status = MagicMock()
+    with patch.object(httpx, "get", return_value=mock_resp):
+        resp = client.get("/scenarios")
     assert resp.status_code == 200
     assert b"Attack Scenarios" in resp.data
     assert b"MCP01" in resp.data
+    assert b"context_lab" in resp.data
 
 
 def test_observer_page_no_events(frontend_client) -> None:

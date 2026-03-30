@@ -50,7 +50,19 @@ def _observer_last() -> dict:
 
 @app.route("/")
 def index() -> str:
-    return render_template("index.html")
+    all_scenarios = _fetch_scenarios()
+    tools = set()
+    modules = set()
+    for s in all_scenarios:
+        modules.add(s.get("module_name", ""))
+        for t in s.get("tools", []):
+            tools.add(t)
+    return render_template(
+        "index.html",
+        scenarios=all_scenarios,
+        tool_count=len(tools),
+        module_count=len(modules),
+    )
 
 
 @app.route("/playground")
@@ -62,7 +74,9 @@ def playground() -> str:
 
 @app.route("/scenarios")
 def scenarios() -> str:
-    return render_template("scenarios.html")
+    all_scenarios = _fetch_scenarios()
+    all_scenarios.sort(key=lambda s: s.get("threat_id", ""))
+    return render_template("scenarios.html", scenarios=all_scenarios)
 
 
 @app.route("/observer")

@@ -7,18 +7,27 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-### Operator Console & QA Harness Refactor
+### Dynamic Frontend & Operator Console
 
+- **Dynamic homepage:** Stats (scenario count, tool count, module count) and
+  the threat coverage grid are now computed from live gateway data.
+  No more hardcoded "10/10 OWASP" or "9 tools" — always in sync.
+- **Dynamic scenarios page:** `/scenarios` now fetches all scenario metadata
+  from the gateway. Full inventory table with category badges, anchor links
+  to per-scenario detail cards, collapsible hints, and graceful fallback.
+  Replaces the old static page that only covered 7 of 14 modules.
 - **Operator console:** Hidden `/operator` page (no nav link) provides a
-  browser-based QA orchestrator. Runs all module checks across EZ / MOD / MAX
-  guardrails, renders a pass/fail grid with expandable check details,
-  summary stats, and JSON export.
+  browser-based QA orchestrator. Progressive module-by-module execution —
+  grid scaffolds immediately, each row lights up as checks run, with live
+  progress bar and status dots. Summary stats and JSON export on completion.
 - **qa_runner package:** Extracted reusable QA engine from `scripts/qa_harness.py`
   into `scripts/qa_runner/` (types, client, checks, runner). Shared by both
   the CLI harness and the Flask operator panel — single source of truth.
-- **auth_lab fix:** Restored confused deputy parse-error fallback to
-  `granted: True` (was incorrectly hardened to deny-by-default).
-- **Testing:** 264 tests at 100% coverage (up from 254).
+- **shadow_lab fix:** Tightened `register.max_rejects_external` QA check
+  predicate — was using an OR fallback that masked failures.
+- **Dockerfile refactor:** Portal build context changed to repo root so
+  `qa_runner` package is included in the container without duplication.
+- **Testing:** 264 tests at 100% coverage.
 
 ### UX: Guardrail Label Rename & Nav Cleanup
 

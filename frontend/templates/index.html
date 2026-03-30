@@ -64,7 +64,7 @@
   <div class="container">
     <div class="hero-badge">
       <span class="dot"></span>
-      All Modules Active
+      {{ scenarios | length }} Scenarios Active
     </div>
     <h1>Exploit the <span class="gradient">MCP attack surface</span><br>before attackers do</h1>
     <p>Camazotz is a security playground with intentionally vulnerable MCP tool labs
@@ -82,20 +82,20 @@
 <section class="container">
   <div class="stats">
     <div class="stat">
-      <div class="stat-value">10/10</div>
-      <div class="stat-label">OWASP MCP Top 10</div>
+      <div class="stat-value">{{ scenarios | length }}/14</div>
+      <div class="stat-label">MCP Red Team Playbook</div>
     </div>
     <div class="stat">
-      <div class="stat-value">9</div>
+      <div class="stat-value">{{ tool_count }}</div>
       <div class="stat-label">Exploitable Tools</div>
     </div>
     <div class="stat">
-      <div class="stat-value">7</div>
+      <div class="stat-value">{{ module_count }}</div>
       <div class="stat-label">Vulnerability Labs</div>
     </div>
     <div class="stat">
       <div class="stat-value">3</div>
-      <div class="stat-label">Difficulty Levels</div>
+      <div class="stat-label">Guardrail Levels</div>
     </div>
   </div>
 
@@ -104,8 +104,8 @@
       <div class="feature-icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
       </div>
-      <h3>Full OWASP Coverage</h3>
-      <p>Every OWASP MCP Top 10 category has at least one exploitable scenario. From token mismanagement to shadow MCP servers.</p>
+      <h3>Full Playbook Coverage</h3>
+      <p>14 threat categories from the MCP Red Team Playbook. Prompt injection, confused deputies, rug pulls, shadow MCPs, supply chain attacks, and more.</p>
     </div>
     <div class="feature-card">
       <div class="feature-icon">
@@ -118,8 +118,8 @@
       <div class="feature-icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
       </div>
-      <h3>Configurable Difficulty</h3>
-      <p>Easy mode teaches the vulnerability class. Hard mode teaches that naive guardrails have bypass paths. All levels remain exploitable.</p>
+      <h3>Configurable Guardrails</h3>
+      <p>EZ mode teaches the vulnerability class. MAX mode teaches that naive guardrails have bypass paths. All levels remain exploitable.</p>
     </div>
   </div>
 </section>
@@ -128,81 +128,25 @@
 
 <section class="container section">
   <div class="section-header">
-    <h2>OWASP MCP Top 10 Coverage</h2>
-    <p>Complete coverage of the 2025 threat taxonomy</p>
+    <h2>Threat Coverage</h2>
+    <p>{{ scenarios | length }} scenarios across the full MCP Red Team Playbook taxonomy</p>
   </div>
 
   <div class="owasp-grid">
+    {% for s in scenarios | sort(attribute='threat_id') %}
     <div class="owasp-item">
-      <div class="owasp-id">MCP01</div>
+      <div class="owasp-id">{{ s.threat_id }}</div>
       <div class="owasp-info">
-        <h4>Token Mismanagement &amp; Secret Exposure</h4>
-        <p>secrets.leak_config &mdash; unredacted credentials in debug output</p>
+        <h4>{{ s.title }}</h4>
+        <p>{{ s.tools | join(', ') }} &mdash; {{ s.module_name }}</p>
       </div>
     </div>
-    <div class="owasp-item">
-      <div class="owasp-id">MCP02</div>
-      <div class="owasp-info">
-        <h4>Privilege Escalation via Scope Creep</h4>
-        <p>auth.issue_token &mdash; confused deputy grants admin on parse failure</p>
-      </div>
+    {% endfor %}
+    {% if not scenarios %}
+    <div class="owasp-item" style="grid-column:1/-1;text-align:center">
+      <div class="owasp-info"><p>No scenarios loaded — is the brain gateway running?</p></div>
     </div>
-    <div class="owasp-item">
-      <div class="owasp-id">MCP03</div>
-      <div class="owasp-info">
-        <h4>Tool Poisoning</h4>
-        <p>tool.mutate_behavior &mdash; rug pull after trust threshold</p>
-      </div>
-    </div>
-    <div class="owasp-item">
-      <div class="owasp-id">MCP04</div>
-      <div class="owasp-info">
-        <h4>Software Supply Chain Attacks</h4>
-        <p>supply.install_package &mdash; custom registry URL accepted without validation</p>
-      </div>
-    </div>
-    <div class="owasp-item">
-      <div class="owasp-id">MCP05</div>
-      <div class="owasp-info">
-        <h4>Command Injection &amp; Execution</h4>
-        <p>tool.hidden_exec &mdash; shell access injected post-rug-pull</p>
-      </div>
-    </div>
-    <div class="owasp-item">
-      <div class="owasp-id">MCP06</div>
-      <div class="owasp-info">
-        <h4>Intent Flow Subversion</h4>
-        <p>context.injectable_summary &mdash; indirect prompt injection via document</p>
-      </div>
-    </div>
-    <div class="owasp-item">
-      <div class="owasp-id">MCP07</div>
-      <div class="owasp-info">
-        <h4>Insufficient Auth &amp; Authorization</h4>
-        <p>auth.issue_token &mdash; social engineering bypasses access controls</p>
-      </div>
-    </div>
-    <div class="owasp-item">
-      <div class="owasp-id">MCP08</div>
-      <div class="owasp-info">
-        <h4>Lack of Audit and Telemetry</h4>
-        <p>/_observer/last-event &mdash; intentionally weak audit trail</p>
-      </div>
-    </div>
-    <div class="owasp-item">
-      <div class="owasp-id">MCP09</div>
-      <div class="owasp-info">
-        <h4>Shadow MCP Servers</h4>
-        <p>shadow.register_webhook &mdash; persistent callbacks with zero validation</p>
-      </div>
-    </div>
-    <div class="owasp-item">
-      <div class="owasp-id">MCP10</div>
-      <div class="owasp-info">
-        <h4>Context Injection &amp; Over-Sharing</h4>
-        <p>context.injectable_summary &mdash; unsanitized LLM output shared downstream</p>
-      </div>
-    </div>
+    {% endif %}
   </div>
 </section>
 {% endblock %}

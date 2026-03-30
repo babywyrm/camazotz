@@ -7,7 +7,7 @@
 <img src="https://img.shields.io/badge/python-3.12%2B-3776ab?style=flat-square&logo=python&logoColor=white" alt="Python 3.12+">
 <img src="https://img.shields.io/badge/tests-264_passing-10b981?style=flat-square" alt="264 tests">
 <img src="https://img.shields.io/badge/coverage-100%25-10b981?style=flat-square" alt="100% coverage">
-<img src="https://img.shields.io/badge/OWASP_MCP_Top_10-10%2F10-dc2626?style=flat-square" alt="OWASP 10/10">
+<img src="https://img.shields.io/badge/MCP_Red_Team_Playbook-14%2F14-dc2626?style=flat-square" alt="14/14 coverage">
 <img src="https://img.shields.io/badge/Red_Team_Playbook-14%2F14-10b981?style=flat-square" alt="Playbook 14/14">
 <img src="https://img.shields.io/badge/license-MIT-a89cb8?style=flat-square" alt="MIT License">
 </p>
