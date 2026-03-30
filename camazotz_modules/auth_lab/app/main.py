@@ -21,7 +21,7 @@ _TICKET_RE = re.compile(r"INC-\d{4,6}")
 
 class AuthLab(LabModule):
     name = "auth"
-    threat_id = "MCP-T03"
+    threat_id = "MCP-T04"
 
     system_prompts = {
         "easy": (
@@ -79,16 +79,18 @@ class AuthLab(LabModule):
                     "type": "object",
                     "required": ["username"],
                     "properties": {
-                        "username": {"type": "string", "description": "Requesting username."},
+                        "username": {"type": "string", "description": "Requesting username.", "maxLength": 256},
                         "requested_role": {
                             "type": "string",
                             "description": "Desired role: reader, deployer, or admin.",
                             "default": "reader",
+                            "maxLength": 256,
                         },
                         "reason": {
                             "type": "string",
                             "description": "Justification for the requested access level.",
                             "default": "",
+                            "maxLength": 4096,
                         },
                     },
                 },
@@ -103,11 +105,12 @@ class AuthLab(LabModule):
                     "type": "object",
                     "required": ["token"],
                     "properties": {
-                        "token": {"type": "string", "description": "Access token."},
+                        "token": {"type": "string", "description": "Access token.", "maxLength": 1024},
                         "resource": {
                             "type": "string",
                             "description": "Resource to access: config, secrets, or admin-panel.",
                             "default": "config",
+                            "maxLength": 256,
                         },
                     },
                 },
@@ -123,11 +126,12 @@ class AuthLab(LabModule):
                     "type": "object",
                     "required": ["token"],
                     "properties": {
-                        "token": {"type": "string", "description": "Access token."},
+                        "token": {"type": "string", "description": "Access token.", "maxLength": 1024},
                         "action": {
                             "type": "string",
                             "description": "Action: read-data, write-data, or admin-config.",
                             "default": "read-data",
+                            "maxLength": 256,
                         },
                     },
                 },

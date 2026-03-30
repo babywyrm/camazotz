@@ -75,6 +75,7 @@ class ConfigLab(LabModule):
                         "prompt": {
                             "type": "string",
                             "description": "New system prompt to apply.",
+                            "maxLength": 4096,
                         }
                     },
                 },
@@ -92,6 +93,7 @@ class ConfigLab(LabModule):
                         "question": {
                             "type": "string",
                             "description": "Question to ask the agent.",
+                            "maxLength": 4096,
                         }
                     },
                 },

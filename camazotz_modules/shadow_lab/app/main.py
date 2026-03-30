@@ -48,16 +48,18 @@ class ShadowLab(LabModule):
                     "type": "object",
                     "required": ["url"],
                     "properties": {
-                        "url": {"type": "string", "description": "Callback URL to register."},
+                        "url": {"type": "string", "description": "Callback URL to register.", "maxLength": 2048},
                         "label": {
                             "type": "string",
                             "description": "Human-readable label for this webhook.",
                             "default": "unnamed",
+                            "maxLength": 256,
                         },
                         "reason": {
                             "type": "string",
                             "description": "Why this webhook is needed.",
                             "default": "",
+                            "maxLength": 4096,
                         },
                     },
                 },

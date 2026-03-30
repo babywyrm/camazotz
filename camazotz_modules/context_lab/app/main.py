@@ -58,7 +58,7 @@ class ContextLab(LabModule):
                     "type": "object",
                     "required": ["text"],
                     "properties": {
-                        "text": {"type": "string", "description": "Text to summarize."}
+                        "text": {"type": "string", "description": "Text to summarize.", "maxLength": 4096}
                     },
                 },
             }

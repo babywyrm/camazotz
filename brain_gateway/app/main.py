@@ -20,6 +20,7 @@ from sse_starlette.sse import EventSourceResponse
 
 from brain_gateway.app.config import get_difficulty, set_difficulty, show_tokens
 from brain_gateway.app.mcp_handlers import handle_rpc
+from brain_gateway.app.rate_limit import TokenBucketLimiter
 from brain_gateway.app.models import JsonRpcRequest
 from brain_gateway.app.modules.registry import get_registry
 from brain_gateway.app.observer import get_last_event
@@ -28,6 +29,7 @@ from brain_gateway.app.session import SessionManager
 
 app = FastAPI(title="Camazotz Brain Gateway")
 sessions = SessionManager()
+_rate_limiter = TokenBucketLimiter()
 
 _scenario_loader: ScenarioLoader | None = None
 
@@ -45,6 +47,13 @@ def _get_loader() -> ScenarioLoader:
 async def mcp_endpoint(request: Request, payload: JsonRpcRequest) -> Response:
     if payload.id is None:
         return Response(status_code=202)
+
+    client_id = request.headers.get("x-forwarded-for", request.client.host if request.client else "unknown")
+    if not _rate_limiter.allow(client_id, difficulty=get_difficulty()):
+        return JSONResponse(
+            status_code=429,
+            content={"jsonrpc": "2.0", "id": payload.id, "error": {"code": -32000, "message": "Rate limit exceeded"}},
+        )
 
     result = handle_rpc(payload)
 
@@ -106,6 +115,7 @@ def update_config(payload: dict) -> dict:
 @app.post("/reset")
 def reset_labs() -> dict:
     get_registry().reset_all()
+    _rate_limiter.reset()
     return {
         "reset": True,
         "tool_lab": "call counter reset to 0",

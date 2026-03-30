@@ -87,11 +87,13 @@ class SecretsLab(LabModule):
                             "type": "string",
                             "description": "Optional filter prefix for env var names.",
                             "default": "",
+                            "maxLength": 256,
                         },
                         "reason": {
                             "type": "string",
                             "description": "Why you need to see the configuration.",
                             "default": "",
+                            "maxLength": 4096,
                         },
                     },
                 },

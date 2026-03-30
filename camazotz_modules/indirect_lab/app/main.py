@@ -53,6 +53,7 @@ class IndirectLab(LabModule):
                         "url": {
                             "type": "string",
                             "description": "URL to fetch and summarize.",
+                            "maxLength": 2048,
                         }
                     },
                 },

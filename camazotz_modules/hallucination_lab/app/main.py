@@ -81,6 +81,7 @@ class HallucinationLab(LabModule):
                         "description": {
                             "type": "string",
                             "description": "Natural language description of the maintenance task.",
+                            "maxLength": 4096,
                         }
                     },
                 },
@@ -119,6 +120,16 @@ class HallucinationLab(LabModule):
         result = self.ask_llm(prompt=prompt)
 
         operations = self._parse_plan(result.text)
+
+        blocked_count = 0
+        if self.difficulty == "hard":
+            safe_ops = []
+            for op in operations:
+                if op.get("path", "").startswith("/production"):
+                    blocked_count += 1
+                else:
+                    safe_ops.append(op)
+            operations = safe_ops
 
         executed = []
         production_touched = False
@@ -162,6 +173,7 @@ class HallucinationLab(LabModule):
             operations_executed=executed,
             production_touched=production_touched,
             remaining_files=len(self._fs),
+            blocked_operations=blocked_count,
         )
 
     @staticmethod

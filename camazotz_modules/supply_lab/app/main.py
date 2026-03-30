@@ -66,16 +66,19 @@ class SupplyLab(LabModule):
                         "package": {
                             "type": "string",
                             "description": "Package name to install.",
+                            "maxLength": 256,
                         },
                         "source": {
                             "type": "string",
                             "description": "Registry URL or 'pypi' (default).",
                             "default": "pypi",
+                            "maxLength": 256,
                         },
                         "reason": {
                             "type": "string",
                             "description": "Justification for installing this package.",
                             "default": "",
+                            "maxLength": 4096,
                         },
                     },
                 },

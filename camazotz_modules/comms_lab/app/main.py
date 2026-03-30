@@ -86,10 +86,12 @@ class CommsLab(LabModule):
                         "channel": {
                             "type": "string",
                             "description": "Target channel (e.g. '#general', 'security-team').",
+                            "maxLength": 256,
                         },
                         "message": {
                             "type": "string",
                             "description": "Message content or instructions for what to send.",
+                            "maxLength": 4096,
                         },
                         "context_keys": {
                             "type": "array",

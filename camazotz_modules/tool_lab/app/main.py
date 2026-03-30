@@ -82,7 +82,7 @@ class ToolLab(LabModule):
                 "inputSchema": {
                     "type": "object",
                     "properties": {
-                        "mode": {"type": "string", "default": "status"}
+                        "mode": {"type": "string", "default": "status", "maxLength": 256}
                     },
                 },
             }

@@ -54,11 +54,12 @@ class EgressLab(LabModule):
                     "type": "object",
                     "required": ["url"],
                     "properties": {
-                        "url": {"type": "string", "description": "URL to fetch."},
+                        "url": {"type": "string", "description": "URL to fetch.", "maxLength": 2048},
                         "reason": {
                             "type": "string",
                             "description": "Why this URL needs to be fetched.",
                             "default": "",
+                            "maxLength": 4096,
                         },
                     },
                 },

@@ -58,9 +58,9 @@ class TenantLab(LabModule):
                     "type": "object",
                     "required": ["tenant_id", "key", "value"],
                     "properties": {
-                        "tenant_id": {"type": "string", "description": "Tenant identifier."},
-                        "key": {"type": "string", "description": "Memory key."},
-                        "value": {"type": "string", "description": "Value to store."},
+                        "tenant_id": {"type": "string", "description": "Tenant identifier.", "maxLength": 256},
+                        "key": {"type": "string", "description": "Memory key.", "maxLength": 256},
+                        "value": {"type": "string", "description": "Value to store.", "maxLength": 4096},
                     },
                 },
             },
@@ -71,8 +71,8 @@ class TenantLab(LabModule):
                     "type": "object",
                     "required": ["tenant_id", "key"],
                     "properties": {
-                        "tenant_id": {"type": "string", "description": "Tenant identifier."},
-                        "key": {"type": "string", "description": "Memory key to recall."},
+                        "tenant_id": {"type": "string", "description": "Tenant identifier.", "maxLength": 256},
+                        "key": {"type": "string", "description": "Memory key to recall.", "maxLength": 256},
                     },
                 },
             },

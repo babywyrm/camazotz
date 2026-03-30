@@ -5,6 +5,24 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## Proofing Round (2026-03-30)
+
+- **Fixed auth_lab threat_id:** Corrected MCP-T03 → MCP-T04 to match
+  `scenario.yaml`. Added consistency test that validates all 14 modules.
+- **Hallucination lab MAX hardening:** Added code-level plan validation at MAX
+  difficulty — production-path operations are now stripped before execution,
+  not relying solely on LLM prompt discipline.
+- **Token-bucket rate limiting:** New per-client rate limiter on `/mcp`
+  endpoint. EZ = unlimited, MOD = 30 req/min, MAX = 10 req/min. Resets with
+  `POST /reset`.
+- **Schema maxLength constraints:** All 38 string parameters across 14 modules
+  now have `maxLength` (256 for identifiers, 1024 for tokens, 2048 for URLs,
+  4096 for content fields).
+- **New regression tests:** threat_id consistency, schema maxLength enforcement,
+  rate limiter unit tests, hallucination plan validation.
+
+---
+
 ## [Unreleased]
 
 ### Dynamic Frontend & Operator Console

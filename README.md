@@ -5,7 +5,7 @@
 
 <p align="center">
 <img src="https://img.shields.io/badge/python-3.12%2B-3776ab?style=flat-square&logo=python&logoColor=white" alt="Python 3.12+">
-<img src="https://img.shields.io/badge/tests-264_passing-10b981?style=flat-square" alt="264 tests">
+<img src="https://img.shields.io/badge/tests-292_passing-10b981?style=flat-square" alt="292 tests">
 <img src="https://img.shields.io/badge/coverage-100%25-10b981?style=flat-square" alt="100% coverage">
 <img src="https://img.shields.io/badge/MCP_Red_Team_Playbook-14%2F14-dc2626?style=flat-square" alt="14/14 coverage">
 <img src="https://img.shields.io/badge/Red_Team_Playbook-14%2F14-10b981?style=flat-square" alt="Playbook 14/14">
@@ -187,6 +187,15 @@ rating (Easy / Medium / Hard) shown on challenge cards.
 > challenge detail page indicates whether a scenario is
 > **guardrail-sensitive** or a **logic vulnerability**.
 
+> **Gateway limits:** Per-client token-bucket rate limiting applies to
+> `POST /mcp`: **EZ** has no cap, **MOD** allows 30 requests/minute, **MAX**
+> allows 10/minute. Counters reset when you call **`POST /reset`** (same as
+> scenario state reset).
+
+> **Input bounds:** Every MCP tool string argument declares JSON Schema
+> **`maxLength`** (256 for identifiers, 1024 for tokens, 2048 for URLs, 4096
+> for free-text content). Oversized arguments are rejected at validation time.
+
 <details>
 <summary><strong>Per-module guardrail matrix</strong></summary>
 
@@ -300,7 +309,7 @@ camazotz/
 ├── scripts/
 │   ├── qa_harness.py        # CLI entry point for E2E QA
 │   └── qa_runner/            # Reusable QA engine (shared by CLI + operator panel)
-├── tests/                   # 264 tests, 100% coverage (Streamable HTTP)
+├── tests/                   # 292 tests, 100% coverage (Streamable HTTP)
 └── Makefile                 # Cross-platform dev/deploy targets
 ```
 
@@ -310,7 +319,7 @@ camazotz/
 make up             # start with Claude
 make up-local       # start with Ollama
 make down           # stop all services
-make test           # run 264 tests (100% coverage)
+make test           # run 292 tests (100% coverage)
 make qa             # E2E QA harness against live gateway
 make qa-json        # QA harness with machine-readable JSON output
 make status         # health check all services

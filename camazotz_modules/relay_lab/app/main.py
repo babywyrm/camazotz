@@ -61,15 +61,18 @@ class RelayLab(LabModule):
                         "key": {
                             "type": "string",
                             "description": "Name for this context entry (e.g. 'research_notes').",
+                            "maxLength": 256,
                         },
                         "content": {
                             "type": "string",
                             "description": "The content to store.",
+                            "maxLength": 4096,
                         },
                         "source": {
                             "type": "string",
                             "description": "Where this content came from (e.g. 'egress.fetch_url').",
                             "default": "user",
+                            "maxLength": 256,
                         },
                     },
                 },
@@ -88,6 +91,7 @@ class RelayLab(LabModule):
                         "task": {
                             "type": "string",
                             "description": "Task to execute using the loaded context.",
+                            "maxLength": 4096,
                         },
                         "context_keys": {
                             "type": "array",

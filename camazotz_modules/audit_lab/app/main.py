@@ -58,15 +58,18 @@ class AuditLab(LabModule):
                         "action": {
                             "type": "string",
                             "description": "Action to perform (e.g., read, write, delete, escalate).",
+                            "maxLength": 256,
                         },
                         "target": {
                             "type": "string",
                             "description": "Target resource path or identifier.",
+                            "maxLength": 256,
                         },
                         "user": {
                             "type": "string",
                             "description": "User requesting the action.",
                             "default": "anonymous",
+                            "maxLength": 256,
                         },
                     },
                 },
@@ -81,6 +84,7 @@ class AuditLab(LabModule):
                             "type": "string",
                             "description": "Optional action type to filter by.",
                             "default": "",
+                            "maxLength": 256,
                         }
                     },
                 },
