@@ -52,6 +52,10 @@ def handle_rpc(req: JsonRpcRequest) -> dict[str, Any]:
         return _handle_tools_list(req)
     if req.method == "tools/call":
         return _handle_tools_call(req)
+    if req.method == "resources/list":
+        return _handle_resources_list(req)
+    if req.method == "resources/read":
+        return _handle_resources_read(req)
 
     logger.warning("Unknown method: %s", req.method)
     return _err(req.id, -32601, f"Method not found: {req.method}")
@@ -67,6 +71,7 @@ def _handle_initialize(req: JsonRpcRequest) -> dict[str, Any]:
         serverInfo=ServerInfo(name=_SERVER_NAME, version=_SERVER_VERSION),
         capabilities={
             "tools": {"listChanged": False},
+            "resources": {"listChanged": False},
         },
     )
     return _ok(req.id, result.model_dump())
@@ -116,3 +121,35 @@ def _handle_tools_call(req: JsonRpcRequest) -> dict[str, Any]:
         isError=False,
     )
     return _ok(req.id, tool_result.model_dump())
+
+
+# ---------------------------------------------------------------------------
+# resources/list
+# ---------------------------------------------------------------------------
+
+def _handle_resources_list(req: JsonRpcRequest) -> dict[str, Any]:
+    registry = get_registry()
+    resources = registry.list_all_resources()
+    logger.debug("resources/list returning %d resources", len(resources))
+    return _ok(req.id, {"resources": resources})
+
+
+# ---------------------------------------------------------------------------
+# resources/read
+# ---------------------------------------------------------------------------
+
+def _handle_resources_read(req: JsonRpcRequest) -> dict[str, Any]:
+    uri = req.params.get("uri")
+    if not uri or not isinstance(uri, str):
+        return _err(
+            req.id, -32602,
+            "Invalid params: 'uri' is required and must be a string.",
+        )
+
+    registry = get_registry()
+    content = registry.read_resource(uri)
+
+    if content is None:
+        return _err(req.id, -32002, f"Resource not found: {uri}")
+
+    return _ok(req.id, {"contents": [content]})

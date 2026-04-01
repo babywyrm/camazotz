@@ -46,6 +46,24 @@ class ConfigLab(LabModule):
         with self._lock:
             self._custom_prompt = None
 
+    def resources(self) -> list[dict]:
+        return [
+            {
+                "uri": "config://system_prompt",
+                "name": "System Prompt",
+                "mimeType": "text/plain",
+            }
+        ]
+
+    def read_resource(self, uri: str) -> dict | None:
+        if uri != "config://system_prompt":
+            return None
+        return {
+            "uri": uri,
+            "mimeType": "text/plain",
+            "text": self._active_prompt(),
+        }
+
     def _active_prompt(self) -> str:
         with self._lock:
             if self._custom_prompt is not None:

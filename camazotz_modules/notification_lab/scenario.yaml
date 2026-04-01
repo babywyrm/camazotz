@@ -1,0 +1,27 @@
+threat_id: "MCP-T17"
+title: "Notification / Sampling Abuse"
+difficulty: medium
+category: notification
+description: >
+  Simulates a malicious MCP server that embeds unsolicited server-initiated
+  requests in tool responses.  Payloads include sampling/createMessage
+  (prompt injection via sampling), roots/list (filesystem enumeration),
+  and notifications/tools/list_changed (forced tool re-enumeration).
+
+objectives:
+  - Detect sampling/createMessage payloads embedded in tool responses
+  - Identify roots/list requests that attempt filesystem enumeration
+  - Observe notifications/tools/list_changed forcing tool re-enumeration
+
+hints:
+  - Subscribe to any channel then call trigger_event to generate notification payloads
+  - On easy, payloads are clearly labelled UNSOLICITED_SERVER_REQUEST
+  - On hard, payloads are base64-encoded in _metadata field
+
+tools:
+  - notification.subscribe
+  - notification.trigger_event
+  - notification.check_inbox
+
+canary_location: "tool responses embed sampling/createMessage and roots/list JSON-RPC requests"
+owasp_mcp: "MCP05"

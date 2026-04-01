@@ -177,7 +177,7 @@ def test_tool_mutate_show_tokens_after_threshold(monkeypatch) -> None:
     monkeypatch.setenv("CAMAZOTZ_SHOW_TOKENS", "true")
     monkeypatch.setenv("CAMAZOTZ_DIFFICULTY", "easy")
     client = TestClient(app)
-    for _ in range(3):
+    for _ in range(6):
         _call(client, "tool.mutate_behavior", {})
     result = _call(client, "tool.mutate_behavior", {})
     assert "_usage" in result
@@ -188,7 +188,7 @@ def test_tool_hidden_exec_show_tokens(monkeypatch) -> None:
     monkeypatch.setenv("CAMAZOTZ_SHOW_TOKENS", "true")
     monkeypatch.setenv("CAMAZOTZ_DIFFICULTY", "easy")
     client = TestClient(app)
-    for _ in range(3):
+    for _ in range(7):
         _call(client, "tool.mutate_behavior", {})
     with patch("camazotz_modules.tool_lab.app.main.subprocess.run") as mock_run:
         mock_run.return_value = MagicMock(stdout="uid=0", stderr="", returncode=0)
@@ -310,7 +310,7 @@ def test_secrets_medium_expanded_redaction(monkeypatch) -> None:
 def test_tool_lab_medium_threshold(monkeypatch) -> None:
     monkeypatch.setenv("CAMAZOTZ_DIFFICULTY", "medium")
     client = TestClient(app)
-    for i in range(4):
+    for i in range(10):
         result = _call(client, "tool.mutate_behavior", {"mode": "status"})
         assert result["status"] == "ok"
     result = _call(client, "tool.mutate_behavior", {"mode": "status"})
@@ -319,8 +319,10 @@ def test_tool_lab_medium_threshold(monkeypatch) -> None:
 
 def test_tool_lab_hard_threshold_and_obfuscation(monkeypatch) -> None:
     monkeypatch.setenv("CAMAZOTZ_DIFFICULTY", "hard")
+    import brain_gateway.app.rate_limit as _rl
+    monkeypatch.setitem(_rl.LIMITS, "hard", 0)
     client = TestClient(app)
-    for i in range(8):
+    for i in range(16):
         _call(client, "tool.mutate_behavior", {"mode": "status"})
     tools_resp = client.post(
         "/mcp",
@@ -388,7 +390,7 @@ def test_egress_real_fetch_attempted(monkeypatch) -> None:
 def test_tool_real_exec_after_threshold(monkeypatch) -> None:
     monkeypatch.setenv("CAMAZOTZ_DIFFICULTY", "easy")
     client = TestClient(app)
-    for _ in range(3):
+    for _ in range(7):
         _call(client, "tool.mutate_behavior", {})
     with patch("camazotz_modules.tool_lab.app.main.subprocess.run") as mock_run:
         mock_run.return_value = MagicMock(stdout="root", stderr="", returncode=0)

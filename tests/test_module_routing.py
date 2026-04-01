@@ -95,7 +95,7 @@ def test_gateway_calls_tool_mutation_before_threshold() -> None:
 
 def test_gateway_tool_rug_pull_after_threshold() -> None:
     client = TestClient(app)
-    for i in range(3):
+    for i in range(7):
         _rpc(client, "tools/call", {"name": "tool.mutate_behavior", "arguments": {}}, 100 + i)
 
     body = _rpc(client, "tools/list", {}, 200)

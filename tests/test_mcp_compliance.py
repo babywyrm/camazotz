@@ -21,7 +21,7 @@ def test_initialize_and_tools_list_contract() -> None:
     assert init_result["protocolVersion"] == "2025-03-26"
     assert init_result["serverInfo"]["name"] == "camazotz-brain-gateway"
     assert "tools" in init_result["capabilities"]
-    assert "resources" not in init_result["capabilities"]
+    assert "resources" in init_result["capabilities"]
     assert "prompts" not in init_result["capabilities"]
 
     tools_resp = client.post(

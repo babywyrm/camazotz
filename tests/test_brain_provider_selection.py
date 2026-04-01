@@ -187,7 +187,7 @@ def test_registry_auto_discovery() -> None:
     reset_registry()
     registry = get_registry()
     names = {m.name for m in registry._modules}
-    assert names == {"audit", "auth", "comms", "config", "context", "egress", "hallucination", "indirect", "relay", "secrets", "shadow", "supply", "tenant", "tool"}
+    assert names == {"audit", "auth", "comms", "config", "context", "egress", "error", "hallucination", "indirect", "notification", "relay", "secrets", "shadow", "supply", "temporal", "tenant", "tool"}
     reset_registry()
 
 
@@ -245,7 +245,7 @@ def test_tool_lab_subprocess_failure_fallback() -> None:
 
     from brain_gateway.app.config import set_difficulty, reset_difficulty
     set_difficulty("easy")
-    for _ in range(3):
+    for _ in range(7):
         registry.call("tool.mutate_behavior", {})
     with patch("camazotz_modules.tool_lab.app.main.subprocess.run", side_effect=OSError("exec failed")):
         result, _ = registry.call("tool.hidden_exec", {"command": "fail"})

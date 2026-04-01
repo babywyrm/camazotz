@@ -48,6 +48,22 @@ class LabModule(ABC):
     def reset(self) -> None:
         """Clear mutable instance state.  Override in stateful labs."""
 
+    def resources(self) -> list[dict]:
+        """Return MCP resource definitions exposed by this module.
+
+        Override in labs that want to publish internal state as readable
+        MCP resources.  Each entry must contain at least ``uri``, ``name``,
+        and ``mimeType``.
+        """
+        return []
+
+    def read_resource(self, uri: str) -> dict | None:
+        """Return the content for *uri*, or ``None`` if not owned by this lab.
+
+        The returned dict must contain ``uri``, ``mimeType``, and ``text``.
+        """
+        return None
+
     # --- convenience helpers -------------------------------------------------
 
     @property

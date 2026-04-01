@@ -7,6 +7,7 @@ The canary is the service account name used for attribution.
 
 from __future__ import annotations
 
+import json
 import threading
 import time
 
@@ -42,6 +43,26 @@ class AuditLab(LabModule):
     def reset(self) -> None:
         with self._lock:
             self._audit_log.clear()
+
+    def resources(self) -> list[dict]:
+        return [
+            {
+                "uri": "audit://log",
+                "name": "Audit Log",
+                "mimeType": "application/json",
+            }
+        ]
+
+    def read_resource(self, uri: str) -> dict | None:
+        if uri != "audit://log":
+            return None
+        with self._lock:
+            entries = list(self._audit_log)
+        return {
+            "uri": uri,
+            "mimeType": "application/json",
+            "text": json.dumps(entries, default=str),
+        }
 
     def tools(self) -> list[dict]:
         return [

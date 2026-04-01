@@ -7,6 +7,7 @@ allowing cross-tenant data access.
 
 from __future__ import annotations
 
+import json
 import threading
 
 from camazotz_modules.base import LabModule
@@ -48,6 +49,33 @@ class TenantLab(LabModule):
     def reset(self) -> None:
         with self._lock:
             self._reset_store()
+
+    def resources(self) -> list[dict]:
+        with self._lock:
+            tenant_ids = sorted(self._store.keys())
+        return [
+            {
+                "uri": f"tenant://memories/{tid}",
+                "name": f"Tenant Memories: {tid}",
+                "mimeType": "application/json",
+            }
+            for tid in tenant_ids
+        ]
+
+    def read_resource(self, uri: str) -> dict | None:
+        prefix = "tenant://memories/"
+        if not uri.startswith(prefix):
+            return None
+        tenant_id = uri[len(prefix):]
+        with self._lock:
+            data = self._store.get(tenant_id)
+        if data is None:
+            return None
+        return {
+            "uri": uri,
+            "mimeType": "application/json",
+            "text": json.dumps(data, default=str),
+        }
 
     def tools(self) -> list[dict]:
         return [

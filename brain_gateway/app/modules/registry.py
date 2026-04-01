@@ -62,6 +62,23 @@ class LabRegistry:
             tools.extend(module.tools())
         return tools
 
+    # -- resource interface ---------------------------------------------------
+
+    def list_all_resources(self) -> list[dict]:
+        resources: list[dict] = []
+        for module in self._modules:
+            resources.extend(module.resources())
+        return resources
+
+    def read_resource(self, uri: str) -> dict | None:
+        for module in self._modules:
+            result = module.read_resource(uri)
+            if result is not None:
+                return result
+        return None
+
+    # -- tool call dispatch ---------------------------------------------------
+
     def call(self, name: str, arguments: dict) -> tuple[dict | None, str | None]:
         for module in self._modules:
             result = module.handle(name=name, arguments=arguments)

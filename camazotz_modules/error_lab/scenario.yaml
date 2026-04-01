@@ -1,0 +1,28 @@
+threat_id: "MCP-T15"
+title: "Error Information Disclosure"
+difficulty: easy
+category: information_disclosure
+description: >
+  A debug helper that deliberately leaks internal error details, tracebacks,
+  environment variables, and exception metadata.  On easy, full stack traces
+  including database connection strings and secret keys are exposed; on
+  medium, partial redaction is applied; on hard, output is sanitized to
+  minimal request-ID-only errors.
+
+objectives:
+  - Extract database credentials from a full traceback on easy difficulty
+  - Obtain installed package versions and internal IPs via debug_info
+  - Trigger a validation error that leaks exception internals
+
+hints:
+  - Call error.trigger_crash with any module_name to get a traceback
+  - Call error.debug_info on easy to see the full FAKE_ENV and internal IPs
+  - Passing invalid JSON to error.validate_input leaks JSONDecodeError details
+
+tools:
+  - error.trigger_crash
+  - error.debug_info
+  - error.validate_input
+
+canary_location: "traceback and debug output contain DATABASE_URL, SECRET_KEY, and internal IPs"
+owasp_mcp: "MCP07"

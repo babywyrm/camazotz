@@ -9,6 +9,7 @@ pages with embedded instructions) can influence subsequent LLM reasoning.
 
 from __future__ import annotations
 
+import json
 import threading
 from typing import Any
 
@@ -114,6 +115,33 @@ class RelayLab(LabModule):
     def reset(self) -> None:
         with self._lock:
             self._context.clear()
+
+    def resources(self) -> list[dict]:
+        with self._lock:
+            keys = list(self._context.keys())
+        return [
+            {
+                "uri": f"relay://context/{key}",
+                "name": f"Relay Context: {key}",
+                "mimeType": "application/json",
+            }
+            for key in keys
+        ]
+
+    def read_resource(self, uri: str) -> dict | None:
+        prefix = "relay://context/"
+        if not uri.startswith(prefix):
+            return None
+        key = uri[len(prefix):]
+        with self._lock:
+            entry = self._context.get(key)
+        if entry is None:
+            return None
+        return {
+            "uri": uri,
+            "mimeType": "application/json",
+            "text": json.dumps(entry, default=str),
+        }
 
     def get_context(self, keys: list[str] | None = None) -> dict[str, dict[str, Any]]:
         """Public accessor for comms_lab to read context entries."""
