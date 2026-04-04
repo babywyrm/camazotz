@@ -1,0 +1,27 @@
+title: "Authentication Pattern Downgrade"
+threat_id: MCP-T24
+difficulty: easy
+category: authentication
+owasp_mcp: MCP24
+description: >
+  The pattern selection logic chooses between user-delegation
+  (Pattern A) and service-account fallback (Pattern B).  On easy the
+  pattern is client-controlled.  On medium the server chooses but
+  accepts a crafted capability override.  On hard the selection is
+  strictly server-side.
+objectives:
+  - "Force an OAuth-capable service to use Pattern B"
+  - "Observe the loss of per-user traceability when downgraded"
+  - "On medium, inject a capability_override to trick the selector"
+hints:
+  - "On easy, pass force_pattern='B' for any OAuth service"
+  - "On medium, set capability_override.oauth_supported to false"
+  - "Check the pattern_log resource to see downgrade events"
+canary_location: "Downgrade events are recorded in the pattern selection log"
+tools:
+  - "downgrade.check_pattern"
+  - "downgrade.authenticate"
+  - "downgrade.list_capabilities"
+references:
+  - title: "OWASP MCP Top 10 — Authentication Downgrade"
+    url: "https://owasp.org/www-project-machine-learning-security-top-10/"

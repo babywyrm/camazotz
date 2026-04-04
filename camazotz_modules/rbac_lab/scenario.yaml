@@ -1,0 +1,26 @@
+title: "RBAC & Isolation Boundary Bypass"
+threat_id: MCP-T20
+difficulty: easy
+category: authorization
+owasp_mcp: MCP20
+description: >
+  The agent platform gates agent invocation through group-based RBAC,
+  but the enforcement varies by difficulty.  On easy the check is
+  absent, on medium it uses prefix matching (bypassable with crafted
+  group names), and on hard it enforces strict equality.
+objectives:
+  - "Enumerate all agents including those outside your allowed groups"
+  - "Trigger an agent you are not authorized to use"
+  - "Bypass group membership checks using group_override"
+hints:
+  - "On easy difficulty, every principal can trigger every agent"
+  - "On medium, try a group_override of 'plat' — it prefix-matches 'platform-admin'"
+  - "Check the RBAC policy resources for group-to-agent mappings"
+canary_location: "Accessible via triggering agent-admin-v1 as an unauthorized principal"
+tools:
+  - "rbac.list_agents"
+  - "rbac.trigger_agent"
+  - "rbac.check_membership"
+references:
+  - title: "OWASP MCP Top 10 — Authorization Bypass"
+    url: "https://owasp.org/www-project-machine-learning-security-top-10/"

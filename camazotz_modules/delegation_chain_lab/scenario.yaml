@@ -1,0 +1,25 @@
+title: "Agent Delegation Chain Abuse"
+threat_id: MCP-T25
+difficulty: easy
+category: authorization
+owasp_mcp: MCP25
+description: >
+  Agents can invoke other agents creating transitive trust chains
+  that are difficult to audit.  On easy, unlimited depth is allowed.
+  On medium, a depth cap exists but the principal context can be
+  spoofed.  On hard, agent-to-agent delegation is blocked.
+objectives:
+  - "Create a deep delegation chain (depth > 3)"
+  - "Spoof the principal in a delegated invocation"
+  - "Observe the audit trail become untraceable"
+hints:
+  - "On easy, call delegation.invoke_agent repeatedly with increasing depth"
+  - "On medium, try depth values below the cap but forge the principal"
+  - "On hard, delegation is blocked — the platform requires direct orchestration"
+canary_location: "Deep chains visible in the delegation chain log"
+tools:
+  - "delegation.invoke_agent"
+  - "delegation.read_chain"
+references:
+  - title: "OWASP MCP Top 10 — Delegation Chains"
+    url: "https://owasp.org/www-project-machine-learning-security-top-10/"

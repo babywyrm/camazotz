@@ -1,0 +1,27 @@
+title: "OAuth Token Theft & Replay"
+threat_id: MCP-T21
+difficulty: easy
+category: credential_theft
+owasp_mcp: MCP21
+description: >
+  OAuth user-delegation tokens are injected into agent pods and can
+  be extracted and replayed.  On easy, tokens leak in tool responses.
+  On medium, the token store resource is readable (base64-encoded)
+  and refresh tokens can be replayed.  On hard, tokens are scoped
+  and the store only confirms existence.
+objectives:
+  - "Extract an OAuth access token from the token store or tool response"
+  - "Replay a stolen refresh token to mint a new access token"
+  - "Use a stolen token to call a downstream service as another principal"
+hints:
+  - "On easy, oauth.list_connections returns raw tokens"
+  - "On medium, read oauth://token_store/github and base64-decode the tokens"
+  - "Try oauth.exchange_token with a stolen refresh token"
+canary_location: "Tokens in the store for alice@example.com and bob@example.com"
+tools:
+  - "oauth.list_connections"
+  - "oauth.exchange_token"
+  - "oauth.call_downstream"
+references:
+  - title: "OWASP MCP Top 10 — Token Theft"
+    url: "https://owasp.org/www-project-machine-learning-security-top-10/"

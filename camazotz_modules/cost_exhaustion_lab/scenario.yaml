@@ -1,0 +1,27 @@
+title: "LLM Cost Exhaustion & Misattribution"
+threat_id: MCP-T27
+difficulty: easy
+category: availability
+owasp_mcp: MCP27
+description: >
+  LLM inference costs are tracked per team but the attribution and
+  quota enforcement varies by difficulty.  On easy, no quotas are
+  enforced and any team name is accepted.  On medium, quotas exist
+  but the team is caller-controlled.  On hard, quotas are strict
+  and cost multipliers are blocked.
+objectives:
+  - "Exhaust another team's LLM quota"
+  - "Use a cost multiplier to amplify billing"
+  - "Misattribute costs to team-admin"
+hints:
+  - "On easy, set team to 'team-admin' and multiplier to 100"
+  - "On medium, quotas apply but you can bill any team"
+  - "On hard, multipliers > 1 are blocked"
+canary_location: "Misattributed charges visible on the usage dashboard"
+tools:
+  - "cost.invoke_llm"
+  - "cost.check_usage"
+  - "cost.reset_usage"
+references:
+  - title: "OWASP MCP Top 10 — Cost Exhaustion"
+    url: "https://owasp.org/www-project-machine-learning-security-top-10/"

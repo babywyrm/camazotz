@@ -1,0 +1,27 @@
+title: "Credential Isolation & Sidecar Tampering"
+threat_id: MCP-T23
+difficulty: easy
+category: isolation
+owasp_mcp: MCP23
+description: >
+  The credential broker manages per-team vaults and injects secrets
+  into agent pods via sidecar configuration.  On easy the vault listing
+  returns all teams' credentials with no scoping.  On medium the
+  listing is scoped but the sidecar config resource leaks cross-team
+  vault paths.  On hard, strict isolation is enforced.
+objectives:
+  - "Read credentials belonging to another team's vault"
+  - "Discover cross-team vault paths via the sidecar configuration resource"
+  - "Tamper with sidecar config to inject a cross-team credential path"
+hints:
+  - "On easy, list_vaults returns every team's credentials"
+  - "On medium, read the cred_broker://sidecar_config resource for vault paths"
+  - "Try configure_sidecar with a vault_path belonging to another team"
+canary_location: "team-admin vault contains a platform API key accessible on easy"
+tools:
+  - "cred_broker.list_vaults"
+  - "cred_broker.read_credential"
+  - "cred_broker.configure_sidecar"
+references:
+  - title: "OWASP MCP Top 10 — Credential Isolation"
+    url: "https://owasp.org/www-project-machine-learning-security-top-10/"

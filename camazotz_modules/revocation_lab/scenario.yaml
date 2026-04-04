@@ -1,0 +1,26 @@
+title: "Token Lifecycle & Revocation Gaps"
+threat_id: MCP-T26
+difficulty: easy
+category: lifecycle
+owasp_mcp: MCP26
+description: >
+  Token revocation flows have gaps that allow continued use of
+  revoked credentials.  On easy, revocation sets a flag but cached
+  tokens remain valid.  On medium, refresh is revoked but access
+  tokens persist.  On hard, revocation is immediate.
+objectives:
+  - "Issue a token, revoke the principal, then use the token"
+  - "Observe the gap between revocation and enforcement"
+  - "Exploit the cached access token on medium difficulty"
+hints:
+  - "On easy, revoked tokens remain valid (cached)"
+  - "On medium, only refresh is revoked — the access token works"
+  - "On hard, all tokens are invalidated immediately"
+canary_location: "Revoked tokens still usable on easy and medium"
+tools:
+  - "revocation.issue_token"
+  - "revocation.revoke_principal"
+  - "revocation.use_token"
+references:
+  - title: "OWASP MCP Top 10 — Token Lifecycle"
+    url: "https://owasp.org/www-project-machine-learning-security-top-10/"

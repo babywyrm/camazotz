@@ -1,0 +1,27 @@
+title: "Execution Context Forgery"
+threat_id: MCP-T22
+difficulty: easy
+category: attribution
+owasp_mcp: MCP22
+description: >
+  Attribution metadata (execution_id, principal, owning_team, pattern)
+  is embedded in actions for non-OAuth services.  On easy, fields are
+  accepted without validation.  On medium, format is checked but
+  authenticity is not.  On hard, HMAC signatures are required but use
+  a predictable key derivation (timestamp-based).
+objectives:
+  - "Submit an action with a forged principal identity"
+  - "Forge an execution_id that appears legitimate"
+  - "On hard, predict the HMAC signing key from the audit log timestamps"
+hints:
+  - "On easy, any values are accepted — try claiming to be admin@example.com"
+  - "On medium, execution_id must be at least 8 characters and pattern must be A, B, or 0"
+  - "On hard, the signing key is derived from the timestamp — read the audit log"
+canary_location: "Actions recorded under forged principal in the audit log"
+tools:
+  - "attribution.submit_action"
+  - "attribution.verify_context"
+  - "attribution.read_audit"
+references:
+  - title: "OWASP MCP Top 10 — Attribution Integrity"
+    url: "https://owasp.org/www-project-machine-learning-security-top-10/"

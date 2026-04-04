@@ -1,0 +1,281 @@
+"""Tests for the Token Lifecycle & Revocation Gaps lab (MCP-T26)."""
+
+import json
+
+from fastapi.testclient import TestClient
+
+from brain_gateway.app.brain.factory import reset_provider
+from brain_gateway.app.config import reset_difficulty, set_difficulty
+from brain_gateway.app.main import app
+from brain_gateway.app.modules.registry import reset_registry
+
+
+def setup_function() -> None:
+    reset_registry()
+    reset_provider()
+    reset_difficulty()
+    set_difficulty("easy")
+
+
+def _rpc(client: TestClient, method: str, params: dict, req_id: int = 1) -> dict:
+    resp = client.post(
+        "/mcp",
+        json={"jsonrpc": "2.0", "id": req_id, "method": method, "params": params},
+    )
+    assert resp.status_code == 200
+    return resp.json()
+
+
+def _call(client: TestClient, tool: str, arguments: dict, req_id: int = 1) -> dict:
+    body = _rpc(client, "tools/call", {"name": tool, "arguments": arguments}, req_id)
+    return json.loads(body["result"]["content"][0]["text"])
+
+
+def _issue(client: TestClient, principal: str = "alice@example.com") -> dict:
+    return _call(
+        client,
+        "revocation.issue_token",
+        {"principal": principal, "service": "github"},
+    )
+
+
+def test_revocation_tools_registered() -> None:
+    client = TestClient(app)
+    body = _rpc(client, "tools/list", {}, 10)
+    names = {t["name"] for t in body["result"]["tools"]}
+    assert "revocation.issue_token" in names
+    assert "revocation.revoke_principal" in names
+    assert "revocation.use_token" in names
+
+
+# -- issue_token --------------------------------------------------------------
+
+
+def test_issue_token() -> None:
+    client = TestClient(app)
+    result = _issue(client)
+    assert result["issued"] is True
+    assert result["token_id"].startswith("tok-")
+    assert result["access_token"].startswith("cztz-access-")
+    assert result["principal"] == "alice@example.com"
+
+
+# -- easy: revoked tokens still valid -----------------------------------------
+
+
+def test_easy_revoked_token_still_valid() -> None:
+    client = TestClient(app)
+    issued = _issue(client)
+    tid = issued["token_id"]
+
+    _call(
+        client,
+        "revocation.revoke_principal",
+        {"principal": "alice@example.com"},
+    )
+
+    result = _call(client, "revocation.use_token", {"token_id": tid})
+    assert result["valid"] is True
+    assert "_warning" in result
+    assert "cached" in result["_warning"].lower()
+
+
+def test_easy_non_revoked_token_valid() -> None:
+    client = TestClient(app)
+    issued = _issue(client)
+    result = _call(
+        client, "revocation.use_token", {"token_id": issued["token_id"]}
+    )
+    assert result["valid"] is True
+    assert "_warning" not in result
+
+
+# -- medium: refresh revoked, access still valid ------------------------------
+
+
+def test_medium_revoked_refresh_access_still_valid() -> None:
+    set_difficulty("medium")
+    client = TestClient(app)
+    issued = _issue(client)
+    tid = issued["token_id"]
+
+    _call(
+        client,
+        "revocation.revoke_principal",
+        {"principal": "alice@example.com"},
+    )
+
+    result = _call(client, "revocation.use_token", {"token_id": tid})
+    assert result["valid"] is True
+    assert "_warning" in result
+    assert "access token" in result["_warning"].lower()
+
+
+def test_medium_non_revoked_valid() -> None:
+    set_difficulty("medium")
+    client = TestClient(app)
+    issued = _issue(client)
+    result = _call(
+        client, "revocation.use_token", {"token_id": issued["token_id"]}
+    )
+    assert result["valid"] is True
+    assert "_warning" not in result
+
+
+def test_medium_full_revoke_denied() -> None:
+    """If both revoked flags are set, medium denies."""
+    set_difficulty("medium")
+    client = TestClient(app)
+    issued = _issue(client)
+    tid = issued["token_id"]
+
+    set_difficulty("hard")
+    _call(
+        client,
+        "revocation.revoke_principal",
+        {"principal": "alice@example.com"},
+    )
+
+    set_difficulty("medium")
+    result = _call(client, "revocation.use_token", {"token_id": tid})
+    assert result["valid"] is False
+    assert "revoked" in result["reason"].lower()
+
+
+# -- hard: immediate revocation -----------------------------------------------
+
+
+def test_hard_revoked_immediately_invalid() -> None:
+    set_difficulty("hard")
+    client = TestClient(app)
+    issued = _issue(client)
+    tid = issued["token_id"]
+
+    _call(
+        client,
+        "revocation.revoke_principal",
+        {"principal": "alice@example.com"},
+    )
+
+    result = _call(client, "revocation.use_token", {"token_id": tid})
+    assert result["valid"] is False
+    assert "immediate" in result["reason"].lower()
+
+
+def test_hard_non_revoked_valid() -> None:
+    set_difficulty("hard")
+    client = TestClient(app)
+    issued = _issue(client)
+    result = _call(
+        client, "revocation.use_token", {"token_id": issued["token_id"]}
+    )
+    assert result["valid"] is True
+
+
+# -- use_token: unknown -------------------------------------------------------
+
+
+def test_use_token_unknown() -> None:
+    client = TestClient(app)
+    result = _call(
+        client, "revocation.use_token", {"token_id": "tok-nonexistent"}
+    )
+    assert result["valid"] is False
+    assert "not found" in result["reason"]
+
+
+# -- revoke_principal: no tokens ----------------------------------------------
+
+
+def test_revoke_principal_no_tokens() -> None:
+    client = TestClient(app)
+    result = _call(
+        client,
+        "revocation.revoke_principal",
+        {"principal": "nobody@example.com"},
+    )
+    assert result["revoked_count"] == 0
+
+
+def test_revoke_principal_skips_other_principals() -> None:
+    client = TestClient(app)
+    alice = _issue(client, "alice@example.com")
+    bob = _issue(client, "bob@example.com")
+
+    _call(
+        client,
+        "revocation.revoke_principal",
+        {"principal": "alice@example.com"},
+    )
+
+    bob_result = _call(
+        client, "revocation.use_token", {"token_id": bob["token_id"]}
+    )
+    assert bob_result["valid"] is True
+    assert "_warning" not in bob_result
+
+
+# -- resources ----------------------------------------------------------------
+
+
+def test_revocation_resources_dynamic() -> None:
+    client = TestClient(app)
+    issued = _issue(client)
+
+    body = _rpc(client, "resources/list", {}, 50)
+    uris = {r["uri"] for r in body["result"]["resources"]}
+    assert f"revocation://token_status/{issued['token_id']}" in uris
+
+
+def test_revocation_read_resource() -> None:
+    client = TestClient(app)
+    issued = _issue(client)
+
+    body = _rpc(
+        client,
+        "resources/read",
+        {"uri": f"revocation://token_status/{issued['token_id']}"},
+        51,
+    )
+    content = json.loads(body["result"]["contents"][0]["text"])
+    assert content["principal"] == "alice@example.com"
+
+
+def test_revocation_read_resource_unknown_token() -> None:
+    client = TestClient(app)
+    body = _rpc(
+        client,
+        "resources/read",
+        {"uri": "revocation://token_status/tok-nonexistent"},
+        52,
+    )
+    assert "error" in body
+
+
+def test_revocation_read_resource_wrong_prefix() -> None:
+    client = TestClient(app)
+    body = _rpc(
+        client,
+        "resources/read",
+        {"uri": "other://something"},
+        53,
+    )
+    assert "error" in body
+
+
+# -- reset --------------------------------------------------------------------
+
+
+def test_revocation_reset_clears_all() -> None:
+    client = TestClient(app)
+    _issue(client)
+    reset_registry()
+    set_difficulty("easy")
+    client = TestClient(app)
+    body = _rpc(client, "resources/list", {}, 60)
+    rev_uris = [
+        r["uri"]
+        for r in body["result"]["resources"]
+        if r["uri"].startswith("revocation://")
+    ]
+    assert rev_uris == []
