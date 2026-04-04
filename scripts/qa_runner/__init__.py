@@ -51,24 +51,39 @@ def run_qa(
         modules: Subset of MODULE_TESTS to run (default: all).
         verbose: Print progress to stdout (CLI mode).
     """
+    import sys
+
     modules = modules or MODULE_TESTS
     all_results: list[ModuleResult] = []
+    total = len(modules)
 
-    for mod_name, test_fn in modules.items():
+    for idx, (mod_name, test_fn) in enumerate(modules.items(), 1):
         mr = ModuleResult(module=mod_name)
 
         if verbose:
-            print(f"\n{'=' * 60}")
-            print(f"  {mod_name}")
-            print(f"{'=' * 60}")
+            print(f"\n{'=' * 60}", flush=True)
+            print(f"  [{idx}/{total}] {mod_name}", flush=True)
+            print(f"{'=' * 60}", flush=True)
 
         for level in levels:
-            gw.reset()
-            time.sleep(0.3)
-            gw.set_guardrail(level)
-            time.sleep(0.2)
+            t0 = time.monotonic()
+            try:
+                gw.reset()
+                time.sleep(0.3)
+                gw.set_guardrail(level)
+                time.sleep(0.2)
 
-            checks = test_fn(gw, level)
+                checks = test_fn(gw, level)
+            except Exception as exc:
+                checks = [CheckResult(
+                    name="module_execution",
+                    passed=False,
+                    detail=f"uncaught exception: {type(exc).__name__}: {exc}",
+                )]
+                if verbose:
+                    print(f"  ERROR running {mod_name} at {level}: {exc}", file=sys.stderr, flush=True)
+
+            elapsed = round(time.monotonic() - t0, 1)
             lr = LevelResult(level=level, checks=checks)
             mr.levels.append(lr)
 
@@ -79,7 +94,7 @@ def run_qa(
                 suffix = ""
                 if failed:
                     suffix = f" — {'; '.join(f'FAIL: {c.name}' for c in failed)}"
-                print(f"  [{label:3s}] {status}{suffix}")
+                print(f"  [{label:3s}] {status} ({elapsed}s){suffix}", flush=True)
 
         all_results.append(mr)
 

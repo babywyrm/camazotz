@@ -107,10 +107,11 @@ def test_shadow_lab(gw: GatewayClient, level: str) -> list[CheckResult]:
         "url": "https://qa-hook.example.com/callback", "label": "qa", "reason": "QA validation",
     })
     results.append(check("register.has_registered", lambda: has_key(r1, "registered")))
-    results.append(check("register.has_webhook_obj", lambda: has_key(r1, "webhook")))
     if level == "hard":
         results.append(check("register.max_rejects_external",
                              lambda: r1.get("registered") is False))
+    else:
+        results.append(check("register.has_webhook_obj", lambda: has_key(r1, "webhook")))
 
     r2 = gw.call_tool("shadow.list_webhooks", {})
     results.append(check("list.has_webhooks", lambda: has_key(r2, "webhooks")))
@@ -227,21 +228,231 @@ def test_audit_lab(gw: GatewayClient, level: str) -> list[CheckResult]:
     return results
 
 
+def test_error_lab(gw: GatewayClient, level: str) -> list[CheckResult]:
+    results: list[CheckResult] = []
+
+    r1 = gw.call_tool("error.trigger_crash", {"module_name": "qa_module"})
+    results.append(check("crash.has_traceback", lambda: any(k in r1 for k in ("traceback", "error"))))
+    results.append(check("crash.is_dict", lambda: isinstance(r1, dict)))
+
+    r2 = gw.call_tool("error.debug_info", {"component": "database"})
+    results.append(check("debug.has_debug", lambda: has_key(r2, "debug")))
+    results.append(check("debug.is_dict", lambda: isinstance(r2, dict)))
+
+    dbg = r2.get("debug") if isinstance(r2.get("debug"), dict) else {}
+    results.append(check("ez_leaks_env",
+                         lambda: level != "easy" or "environment" in dbg))
+    results.append(check("max_generic_errors",
+                         lambda: level != "hard" or "environment" not in dbg))
+
+    r3 = gw.call_tool("error.validate_input", {"data": {"key": "value"}, "schema": "default"})
+    results.append(check("validate.is_dict", lambda: isinstance(r3, dict)))
+
+    return results
+
+
+def test_temporal_lab(gw: GatewayClient, level: str) -> list[CheckResult]:
+    results: list[CheckResult] = []
+
+    r1 = gw.call_tool("temporal.get_config", {"key": "session_timeout"})
+    results.append(check("config.has_value", lambda: has_key(r1, "value")))
+
+    r2 = gw.call_tool("temporal.check_permission", {"user": "qa_user", "action": "read"})
+    results.append(check("permission.has_result", lambda: any(k in r2 for k in ("allowed", "denied", "result"))))
+
+    r3 = gw.call_tool("temporal.get_status", {})
+    results.append(check("status.is_dict", lambda: isinstance(r3, dict)))
+    results.append(check("status.has_info", lambda: any(k in r3 for k in ("status", "uptime", "state"))))
+
+    return results
+
+
+def test_notification_lab(gw: GatewayClient, level: str) -> list[CheckResult]:
+    results: list[CheckResult] = []
+
+    r1 = gw.call_tool("notification.subscribe", {"channel": "alerts", "callback_url": "https://qa.example.com/hook"})
+    results.append(check("subscribe.has_confirmation", lambda: any(k in r1 for k in ("subscribed", "subscription", "id"))))
+
+    r2 = gw.call_tool("notification.trigger_event", {"event_type": "test_event"})
+    results.append(check("trigger.is_dict", lambda: isinstance(r2, dict)))
+    results.append(check("trigger.has_event_data", lambda: any(k in r2 for k in ("event", "triggered", "event_id"))))
+
+    r3 = gw.call_tool("notification.check_inbox", {})
+    results.append(check("inbox.has_pending_or_data", lambda: any(k in r3 for k in ("pending_count", "data"))))
+
+    return results
+
+
+def test_rbac_lab(gw: GatewayClient, level: str) -> list[CheckResult]:
+    results: list[CheckResult] = []
+
+    r1 = gw.call_tool("rbac.check_membership", {"principal": "qa_user"})
+    results.append(check("membership.has_groups", lambda: has_key(r1, "groups")))
+
+    r2 = gw.call_tool("rbac.list_agents", {"principal": "qa_user"})
+    results.append(check("agents.has_list", lambda: any(k in r2 for k in ("agents", "agent_list"))))
+
+    r3 = gw.call_tool("rbac.trigger_agent", {
+        "principal": "qa_user", "agent_id": "restricted_agent", "group_override": "admin",
+    })
+    results.append(check("trigger.has_triggered", lambda: has_key(r3, "triggered")))
+    results.append(check("trigger.has_reason", lambda: has_key(r3, "reason")))
+    results.append(check("trigger.max_denies_unauthorized",
+                         lambda: level != "hard" or r3.get("triggered") is not True))
+
+    return results
+
+
+def test_oauth_delegation_lab(gw: GatewayClient, level: str) -> list[CheckResult]:
+    results: list[CheckResult] = []
+
+    r1 = gw.call_tool("oauth.list_connections", {"principal": "qa_user"})
+    results.append(check("connections.has_list", lambda: has_key(r1, "connections")))
+
+    r2 = gw.call_tool("oauth.exchange_token", {
+        "principal": "qa_user", "service": "github", "refresh_token": "rt_qa_test",
+    })
+    results.append(check("exchange.has_exchanged_and_token", lambda: any(k in r2 for k in ("exchanged", "access_token", "scope"))))
+    results.append(check("exchange.is_dict", lambda: isinstance(r2, dict)))
+
+    r3 = gw.call_tool("oauth.call_downstream", {
+        "service": "github", "access_token": r2.get("access_token", "tok_test"), "action": "list_repos",
+    })
+    results.append(check("downstream.is_dict", lambda: isinstance(r3, dict)))
+
+    return results
+
+
+def test_attribution_lab(gw: GatewayClient, level: str) -> list[CheckResult]:
+    results: list[CheckResult] = []
+
+    r1 = gw.call_tool("attribution.submit_action", {
+        "action": "deploy", "principal": "qa_user",
+        "owning_team": "platform", "execution_id": "exec_qa_001",
+    })
+    results.append(check("submit.has_recorded", lambda: has_key(r1, "recorded")))
+
+    r2 = gw.call_tool("attribution.read_audit", {"execution_id": "exec_qa_001"})
+    results.append(check("audit.has_entries", lambda: any(k in r2 for k in ("entries", "audit", "log"))))
+
+    return results
+
+
+def test_credential_broker_lab(gw: GatewayClient, level: str) -> list[CheckResult]:
+    results: list[CheckResult] = []
+
+    r1 = gw.call_tool("cred_broker.list_vaults", {"caller_team": "qa_team"})
+    results.append(check("vaults.has_list", lambda: has_key(r1, "vaults")))
+
+    r2 = gw.call_tool("cred_broker.read_credential", {
+        "caller_team": "qa_team", "target_team": "platform", "service": "database",
+    })
+    results.append(check("credential.is_dict", lambda: isinstance(r2, dict)))
+    results.append(check("credential.has_found_or_reason", lambda: any(k in r2 for k in ("found", "reason"))))
+
+    r3 = gw.call_tool("cred_broker.configure_sidecar", {
+        "caller_team": "qa_team", "vault_path": "/secrets/db",
+        "mount_path": "/mnt/secrets", "env_var": "DB_PASSWORD",
+    })
+    results.append(check("sidecar.has_result", lambda: any(k in r3 for k in ("configured", "result", "status"))))
+
+    return results
+
+
+def test_pattern_downgrade_lab(gw: GatewayClient, level: str) -> list[CheckResult]:
+    results: list[CheckResult] = []
+
+    r1 = gw.call_tool("downgrade.list_capabilities", {"service": "auth_service"})
+    results.append(check("capabilities.has_services", lambda: any(k in r1 for k in ("services", "count", "_difficulty"))))
+
+    r2 = gw.call_tool("downgrade.check_pattern", {"service": "auth_service"})
+    results.append(check("pattern.has_flexible_keys", lambda: any(k in r2 for k in (
+        "found", "service", "pattern", "oauth_supported", "services", "capabilities", "count", "mode",
+    ))))
+
+    r3 = gw.call_tool("downgrade.authenticate", {
+        "service": "auth_service", "principal": "qa_user",
+        "force_pattern": "legacy", "capability_override": "none",
+    })
+    results.append(check("auth.has_flexible_keys", lambda: any(k in r3 for k in ("pattern", "authenticated", "result"))))
+
+    return results
+
+
+def test_delegation_chain_lab(gw: GatewayClient, level: str) -> list[CheckResult]:
+    results: list[CheckResult] = []
+
+    r1 = gw.call_tool("delegation.invoke_agent", {
+        "caller_agent": "agent_a", "target_agent": "agent_b",
+        "principal": "qa_user", "depth": 1,
+    })
+    results.append(check("invoke.has_chain", lambda: any(k in r1 for k in ("chain_id", "chain", "invocation"))))
+
+    chain_id = r1.get("chain_id", "chain_qa_001")
+    r2 = gw.call_tool("delegation.read_chain", {"chain_id": chain_id})
+    results.append(check("chain.has_log", lambda: any(k in r2 for k in ("log", "chain", "entries"))))
+
+    return results
+
+
+def test_revocation_lab(gw: GatewayClient, level: str) -> list[CheckResult]:
+    results: list[CheckResult] = []
+
+    r1 = gw.call_tool("revocation.issue_token", {"principal": "qa_user", "service": "api_gateway"})
+    results.append(check("issue.has_token_id", lambda: has_key(r1, "token_id")))
+
+    token_id = r1.get("token_id", "tok_qa_001")
+
+    r2 = gw.call_tool("revocation.revoke_principal", {"principal": "qa_user"})
+    results.append(check("revoke.has_revocation_fields", lambda: any(k in r2 for k in ("revoked_count", "revoked_ids", "principal"))))
+
+    r3 = gw.call_tool("revocation.use_token", {"token_id": token_id})
+    results.append(check("use.has_validity", lambda: any(k in r3 for k in ("valid", "active", "status"))))
+
+    return results
+
+
+def test_cost_exhaustion_lab(gw: GatewayClient, level: str) -> list[CheckResult]:
+    results: list[CheckResult] = []
+
+    r1 = gw.call_tool("cost.invoke_llm", {"team": "qa_team", "prompt": "Hello", "multiplier": 1})
+    results.append(check("invoke.has_billed_or_cost", lambda: any(k in r1 for k in ("billed", "cost"))))
+
+    r2 = gw.call_tool("cost.check_usage", {"team": "qa_team"})
+    results.append(check("usage.has_usage_fields", lambda: any(k in r2 for k in ("total_used", "remaining", "usage", "used", "quota"))))
+
+    r3 = gw.call_tool("cost.reset_usage", {"team": "qa_team"})
+    results.append(check("reset.has_confirmation", lambda: any(k in r3 for k in ("reset", "confirmed", "status"))))
+
+    return results
+
+
 # ── Module registry ──────────────────────────────────────────────────────────
 
 MODULE_TESTS: dict[str, Callable[[GatewayClient, str], list[CheckResult]]] = {
-    "auth_lab":          test_auth_lab,
-    "context_lab":       test_context_lab,
-    "secrets_lab":       test_secrets_lab,
-    "egress_lab":        test_egress_lab,
-    "tool_lab":          test_tool_lab,
-    "shadow_lab":        test_shadow_lab,
-    "supply_lab":        test_supply_lab,
-    "relay_lab":         test_relay_lab,
-    "comms_lab":         test_comms_lab,
-    "indirect_lab":      test_indirect_lab,
-    "config_lab":        test_config_lab,
-    "hallucination_lab": test_hallucination_lab,
-    "tenant_lab":        test_tenant_lab,
-    "audit_lab":         test_audit_lab,
+    "auth_lab":             test_auth_lab,
+    "context_lab":          test_context_lab,
+    "secrets_lab":          test_secrets_lab,
+    "egress_lab":           test_egress_lab,
+    "tool_lab":             test_tool_lab,
+    "shadow_lab":           test_shadow_lab,
+    "supply_lab":           test_supply_lab,
+    "relay_lab":            test_relay_lab,
+    "comms_lab":            test_comms_lab,
+    "indirect_lab":         test_indirect_lab,
+    "config_lab":           test_config_lab,
+    "hallucination_lab":    test_hallucination_lab,
+    "tenant_lab":           test_tenant_lab,
+    "audit_lab":            test_audit_lab,
+    "error_lab":            test_error_lab,
+    "temporal_lab":         test_temporal_lab,
+    "notification_lab":     test_notification_lab,
+    "rbac_lab":             test_rbac_lab,
+    "oauth_delegation_lab": test_oauth_delegation_lab,
+    "attribution_lab":      test_attribution_lab,
+    "credential_broker_lab":    test_credential_broker_lab,
+    "pattern_downgrade_lab":    test_pattern_downgrade_lab,
+    "delegation_chain_lab":     test_delegation_chain_lab,
+    "revocation_lab":           test_revocation_lab,
+    "cost_exhaustion_lab":      test_cost_exhaustion_lab,
 }
