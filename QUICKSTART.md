@@ -133,6 +133,20 @@ The tool payload is JSON-encoded inside `result.content[0].text`.
 Then open http://localhost:3000 in your browser. Use the difficulty
 dropdown in the nav bar to switch between easy/medium/hard in real-time.
 
+## Smoke Tests
+
+After deploying, verify the stack is healthy:
+
+```bash
+make smoke-local          # Docker Compose: health + MCP init + tools/list
+make smoke-local-llm      # same + LLM-backed tool call (needs ANTHROPIC_API_KEY)
+
+make smoke-k8s            # K8s cluster (default K8S_HOST=192.168.1.114)
+make smoke-k8s-llm        # same + LLM probe
+```
+
+Override the host: `make smoke-k8s K8S_HOST=10.0.0.5`
+
 ## Common Operations
 
 ```bash

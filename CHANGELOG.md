@@ -5,6 +5,48 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## Operator Console Walkthrough & Smoke Tests (2026-04-04)
+
+### Operator Console Redesign
+
+- **Guided Walkthrough mode:** tabbed `/operator` page with a lab picker
+  (25 cards) and a step-by-step exploit player. Each step shows a narrative
+  explanation, expandable raw MCP JSON-RPC request/response, and a security
+  insight callout. Auto-play with pause/step/reset controls.
+- **Walkthrough definitions** for all 25 labs (MCP-T01 through MCP-T27) at
+  medium guardrails — 69 total exploit steps with `{{prev.*}}` chaining
+  between steps.
+- **New API endpoints:** `GET /api/operator/walkthrough/labs` (lab picker
+  metadata) and `POST /api/operator/walkthrough/step` (step-at-a-time
+  execution against live gateway).
+- **QA Dashboard** preserved as second tab with UX fixes (proper select
+  dropdowns replacing broken multi-select).
+
+### Smoke Tests
+
+- **`scripts/smoke_test.py`** — lightweight deployment verifier with two
+  profiles: `--target local` (Docker Compose) and `--target k8s`
+  (cluster, default host `192.168.1.114`).
+- Checks: gateway `/health`, portal `/health`, MCP `initialize`,
+  `tools/list`, optional `--require-llm` probe via `config.ask_agent`.
+- **Makefile targets:** `make smoke-local`, `make smoke-k8s`,
+  `make smoke-local-llm`, `make smoke-k8s-llm`.
+
+### Security & Housekeeping
+
+- **`.github/SECURITY.md`** — security policy with private reporting
+  instructions.
+- **Git history cleanup:** contributor identities consolidated; stale
+  branches and remote-tracking refs removed.
+
+### Infrastructure
+
+- **K8s probe hardening:** brain-gateway liveness/readiness timeout
+  increased to prevent restarts under QA load.
+- **550 tests** at **100% coverage** (up from 533).
+
+---
+
 ## Agentic Security Labs & Amazon Bedrock (2026-04-03)
 
 ### Amazon Bedrock (optional brain)

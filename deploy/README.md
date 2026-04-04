@@ -142,6 +142,10 @@ sudo helm upgrade --install camazotz /opt/camazotz/deploy/helm/camazotz \
 | `make up-local` | Start Docker Compose with Ollama |
 | `make down` | Stop all services |
 | `make test` | Run pytest with 100% coverage |
+| `make smoke-local` | Smoke test local Docker Compose deployment |
+| `make smoke-k8s` | Smoke test K8s cluster (`K8S_HOST=192.168.1.114`) |
+| `make smoke-local-llm` | Smoke test local + LLM-backed probe |
+| `make smoke-k8s-llm` | Smoke test K8s + LLM-backed probe |
 
 ## Key Principle
 

@@ -3,7 +3,7 @@
 
 <p align="center">
 <img src="https://img.shields.io/badge/python-3.12%2B-3776ab?style=flat-square&logo=python&logoColor=white" alt="Python 3.12+">
-<img src="https://img.shields.io/badge/tests-533_passing-10b981?style=flat-square" alt="533 tests">
+<img src="https://img.shields.io/badge/tests-550_passing-10b981?style=flat-square" alt="550 tests">
 <img src="https://img.shields.io/badge/coverage-100%25-10b981?style=flat-square" alt="100% coverage">
 <img src="https://img.shields.io/badge/modules-25_labs-dc2626?style=flat-square" alt="25 labs">
 <img src="https://img.shields.io/badge/Red_Team_Playbook-14%2F14-10b981?style=flat-square" alt="Playbook 14/14">
@@ -298,11 +298,14 @@ Reset all flags: `POST /reset` or click the Reset button in the nav.
 
 ### Operator Console
 
-Navigate to **http://localhost:3000/operator** (hidden — no nav link) for the
-QA orchestrator. Runs every scenario check across all guardrail levels and
-renders a pass/fail grid. Useful for validating platform health, reviewing
-module behavior across defense levels, or studying how attacks differ at
-EZ / MOD / MAX.
+Navigate to **http://localhost:3000/operator** (hidden — no nav link) for:
+
+- **Guided Walkthrough** — pick any of the 25 labs and watch the exploit
+  demonstrated step-by-step at medium guardrails. Each step shows a narrative
+  explanation, the raw MCP JSON-RPC request/response (expandable), and a
+  security insight callout. Auto-play with pause/step controls.
+- **QA Dashboard** — batch pass/fail grid across all modules and guardrail
+  levels. Useful for validating platform health after deployment.
 
 ---
 
@@ -412,7 +415,7 @@ camazotz/
 ├── scripts/
 │   ├── qa_harness.py        # CLI entry point for E2E QA
 │   └── qa_runner/            # Reusable QA engine (shared by CLI + operator panel)
-├── tests/                   # 533 tests, 100% coverage (Streamable HTTP)
+├── tests/                   # 550 tests, 100% coverage
 └── Makefile                 # Cross-platform dev/deploy targets
 ```
 
@@ -422,9 +425,13 @@ camazotz/
 make up             # start with Claude
 make up-local       # start with Ollama
 make down           # stop all services
-make test           # run 533 tests (100% coverage)
+make test           # run 550 tests (100% coverage)
 make qa             # E2E QA harness against live gateway
 make qa-json        # QA harness with machine-readable JSON output
+make smoke-local    # smoke test local Docker Compose target
+make smoke-k8s      # smoke test k8s target (K8S_HOST=192.168.1.114)
+make smoke-local-llm  # smoke test local + LLM probe
+make smoke-k8s-llm    # smoke test k8s + LLM probe
 make status         # health check all services
 make compose-gen    # regenerate docker-compose.yml from Helm values
 make helm-deploy    # deploy to K8s
@@ -446,12 +453,29 @@ make help           # show all targets
 
 ## Roadmap
 
+### Near-term
+
+- **CI/CD pipeline** — GitHub Actions running `pytest` + `make smoke-local`
+  on every PR; nightly `smoke-local-llm` with Claude key as secret
+- **QA checks for all 25 labs** — 14 of 25 labs have QA check functions
+  in the operator dashboard; remaining 11 need coverage
+- **EZ/MAX walkthrough guardrails** — extend guided walkthroughs beyond
+  medium to show how the same exploit changes across all three levels
+- **Operator Console public release** — unhide from nav, add to landing page
+
+### Medium-term
+
+- **mcpnuke integration** — automated
+  [mcpnuke](https://github.com/babywyrm/mcpnuke) scan → walkthrough
+  correlation; regression baselines per release
+- **Workshop mode** — timed walkthroughs with completion tracking for
+  instructor-led sessions and CTF events
 - **Behavioral validation** — observer detects exploit patterns automatically
-- **Per-scenario canary wiring** — modules expose flags through exploit paths
-- **Scanner integration** — automated regression with
-  [mcpnuke](https://github.com/babywyrm/mcpnuke) baselines
-- **Multi-player mode** — concurrent sessions with isolated state for
-  workshops and CTF events
+- **Additional lab modules** — pending ongoing MCP security research
+
+### Longer-term
+
+- **Multi-player mode** — concurrent sessions with isolated state
 - **Scoring engine** — track which vulnerabilities each participant
   discovers, time-to-exploit metrics
 - **Additional LLM providers** — OpenAI, Gemini, local GGUF models
