@@ -546,9 +546,9 @@ Expected: 126/126 PASS.
 **Step 3: Sync to NUC, redeploy K3s**
 
 ```bash
-rsync -avz --delete --exclude '.git' ... babywyrm@192.168.1.123:/opt/camazotz/
-ssh babywyrm@192.168.1.123 'sudo bash /opt/camazotz/kube/deploy.sh'
-ssh babywyrm@192.168.1.123 'sudo k3s kubectl -n camazotz rollout restart deployment/brain-gateway'
+rsync -avz --delete --exclude '.git' ... user@<node-ip>:/opt/camazotz/
+ssh user@<node-ip> 'sudo bash /opt/camazotz/kube/deploy.sh'
+ssh user@<node-ip> 'sudo k3s kubectl -n camazotz rollout restart deployment/brain-gateway'
 ```
 
 **Step 4: Run e2e matrix against K3s**

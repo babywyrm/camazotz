@@ -32,6 +32,15 @@ compose/.env
 .env
 *.env.local
 
+# Credentials and keys (defense-in-depth)
+*.pem
+*.key
+*.p12
+*.pfx
+credentials*.json
+google-*.json
+service-account*.json
+
 # Runtime and logs
 *.log
 *.pid

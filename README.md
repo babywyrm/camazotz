@@ -1,13 +1,11 @@
-</div>
-
 <h1 align="center">CAMAZOTZ ..beta..</h1>
 <p align="center"><strong>MCP Security Playground</strong></p>
 
 <p align="center">
 <img src="https://img.shields.io/badge/python-3.12%2B-3776ab?style=flat-square&logo=python&logoColor=white" alt="Python 3.12+">
-<img src="https://img.shields.io/badge/tests-292_passing-10b981?style=flat-square" alt="292 tests">
+<img src="https://img.shields.io/badge/tests-533_passing-10b981?style=flat-square" alt="533 tests">
 <img src="https://img.shields.io/badge/coverage-100%25-10b981?style=flat-square" alt="100% coverage">
-<img src="https://img.shields.io/badge/MCP_Red_Team_Playbook-14%2F14-dc2626?style=flat-square" alt="14/14 coverage">
+<img src="https://img.shields.io/badge/modules-25_labs-dc2626?style=flat-square" alt="25 labs">
 <img src="https://img.shields.io/badge/Red_Team_Playbook-14%2F14-10b981?style=flat-square" alt="Playbook 14/14">
 <img src="https://img.shields.io/badge/license-MIT-a89cb8?style=flat-square" alt="MIT License">
 </p>
@@ -88,14 +86,30 @@ For Kubernetes deployment: `make helm-deploy` (see [deploy/README.md](deploy/REA
 │  MCP-T02     │  │  MCP-T09             │  │  MCP-T10         │
 │  Fetched     │  │  Prompt tampering    │  │  Ambiguous input │
 │  injection   │  │                      │  │  → prod data loss│
-├──────────────┤  ├──────────────────────┤  └──────────────────┘
-│  tenant_lab  │  │  audit_lab           │
-│  MCP-T11     │  │  MCP-T13             │
-│  Memory leak │  │  Log evasion         │
-└──────────────┘  └──────────────────────┘
+├──────────────┤  ├──────────────────────┤  ├──────────────────┤
+│  tenant_lab  │  │  audit_lab           │  │  error_lab       │
+│  MCP-T11     │  │  MCP-T13             │  │  MCP-T15         │
+│  Memory leak │  │  Log evasion         │  │  Error leaks     │
+├──────────────┤  ├──────────────────────┤  ├──────────────────┤
+│  temporal_lab│  │  notification_lab    │  │  rbac_lab        │
+│  MCP-T16     │  │  MCP-T17             │  │  MCP-T20         │
+│  Time-of-use │  │  Notification abuse  │  │  RBAC bypass     │
+├──────────────┤  ├──────────────────────┤  ├──────────────────┤
+│  oauth_lab   │  │  attribution_lab     │  │  cred_broker_lab │
+│  MCP-T21     │  │  MCP-T22             │  │  MCP-T23         │
+│  Token replay│  │  Context forgery     │  │  Vault isolation │
+├──────────────┤  ├──────────────────────┤  ├──────────────────┤
+│  downgrade   │  │  delegation_chain    │  │  revocation_lab  │
+│  MCP-T24     │  │  MCP-T25             │  │  MCP-T26         │
+│  Pattern A→B │  │  Chain abuse         │  │  Token lifecycle │
+├──────────────┤  └──────────────────────┘  └──────────────────┘
+│  cost_lab    │
+│  MCP-T27     │
+│  LLM exhaust │
+└──────────────┘
         │                                    ┌──────────────────────────┐
         └───────────────────────────────────▶│  AI Brain                │
-                                             │  Claude API  │  Ollama   │
+                                             │  Bedrock │ API │ Ollama  │
                                              └──────────────────────────┘
 ```
 
@@ -170,6 +184,19 @@ the risk while the underlying vulnerability still fires. This teaches that
 
 **Plus:** SSRF via `egress.fetch_url` — AI proxy with real `httpx.get` fetches when policy allows.
 
+**Plus agentic platform security labs:**
+
+| Threat ID | Risk | Scenario | What Happens |
+|-----------|------|----------|-------------|
+| MCP-T20 | RBAC Bypass | `rbac.list_agents` / `rbac.trigger_agent` | Cross-team agent access via prefix matching and group override |
+| MCP-T21 | OAuth Token Replay | `oauth.exchange_token` / `oauth.call_downstream` | Refresh token theft and replay across delegation flows |
+| MCP-T22 | Attribution Forgery | `attribution.submit_action` | Execution context spoofing — principal and signature manipulation |
+| MCP-T23 | Credential Broker Injection | `cred_broker.read_credential` | Cross-team vault access and sidecar config tampering |
+| MCP-T24 | Pattern Downgrade | `downgrade.authenticate` | Force agents from OAuth delegation (Pattern A) to weaker service account (Pattern B) |
+| MCP-T25 | Delegation Chain Abuse | `delegation.invoke_agent` | Unbounded agent-to-agent invocation depth with principal spoofing |
+| MCP-T26 | Token Revocation Gaps | `revocation.use_token` | Cached tokens remain valid after principal revocation |
+| MCP-T27 | LLM Cost Exhaustion | `cost.invoke_llm` | Quota bypass and cost misattribution via team spoofing |
+
 ---
 
 ## Guardrail Levels
@@ -215,6 +242,17 @@ rating (Easy / Medium / Hard) shown on challenge cards.
 | `hallucination_lab` | No environment guards | Prefers staging paths | Never touches production paths |
 | `tenant_lab` | No isolation (logic bug) | No isolation (logic bug) | No isolation (logic bug) |
 | `audit_lab` | Service account (logic bug) | Service account (logic bug) | Service account (logic bug) |
+| `error_lab` | Stack traces exposed | Partial redaction | Generic errors only |
+| `temporal_lab` | No time checks | Relaxed windows | Strict time-of-use |
+| `notification_lab` | Unrestricted targets | Format validation | Allowlist + rate limit |
+| `rbac_lab` | Full bypass | Prefix matching flaw | Strict group checks |
+| `oauth_delegation_lab` | Raw token leak | Encoded tokens, any refresh works | Strict token validation |
+| `attribution_lab` | Accept any context | Format checks only | HMAC signature required |
+| `credential_broker_lab` | Cross-team vault access | Redacted but readable | Denied + scoped |
+| `pattern_downgrade_lab` | Client-forced pattern | Capability override trick | Server-side enforcement |
+| `delegation_chain_lab` | Unlimited depth | Depth cap, spoofable principal | Chain blocked |
+| `revocation_lab` | Cached tokens survive | Refresh revoked, access persists | Immediate revocation |
+| `cost_exhaustion_lab` | No quotas | Quotas, but team spoofable | Strict quotas + multiplier blocked |
 
 </details>
 
@@ -236,7 +274,7 @@ rating (Easy / Medium / Hard) shown on challenge cards.
 
 | Path | Command | When to Use |
 |------|---------|-------------|
-| Docker Compose (Claude) | `make up` | Quick local setup with API key |
+| Docker Compose (Bedrock) | `make up` | Quick local setup with AWS credentials |
 | Docker Compose (Ollama) | `make up-local` | Offline, no API key, free |
 | Kubernetes (Helm) | `make helm-deploy` | Cluster deployment, production-like |
 | No Docker | `uv run uvicorn ...` | Development, debugging |
@@ -287,6 +325,14 @@ EZ / MOD / MAX.
 
 Set `BRAIN_PROVIDER=bedrock` and configure `AWS_REGION`, credentials (e.g. `AWS_PROFILE` or environment keys), and `CAMAZOTZ_MODEL` to your inference profile or foundation model id. Use `CAMAZOTZ_BEDROCK_STUB=1` for offline tests without calling AWS.
 
+Example (adjust for your account):
+
+```bash
+export AWS_REGION=us-west-2
+export AWS_PROFILE=my-sso-profile
+export CAMAZOTZ_MODEL=us.anthropic.claude-3-5-sonnet-20241022-v2:0
+```
+
 Full reference: [QUICKSTART.md](QUICKSTART.md)
 
 ## Project Structure
@@ -297,20 +343,31 @@ camazotz/
 │   ├── app/brain/           # LLM provider abstraction (Anthropic API, Bedrock, Ollama)
 │   └── app/modules/
 │       └── registry.py      # LabRegistry — auto-discovers modules, middleware pipeline
-├── camazotz_modules/        # 14 vulnerability lab modules (LabModule subclasses)
+├── camazotz_modules/        # 25 vulnerability lab modules (LabModule subclasses)
 │   ├── base.py              # LabModule ABC — shared contract and helpers
 │   ├── audit_lab/           # Audit log evasion, service account attribution (MCP-T13)
 │   ├── auth_lab/            # Confused deputy, privilege escalation, audience bypass
+│   ├── attribution_lab/     # Execution context forgery, principal spoofing (MCP-T22)
 │   ├── comms_lab/           # Exfiltration via messaging channel (MCP-T12)
 │   ├── config_lab/          # Agent config tampering, system prompt modification (MCP-T09)
 │   ├── context_lab/         # Prompt injection, two-stage LLM chain
+│   ├── cost_exhaustion_lab/ # LLM cost exhaustion, quota bypass (MCP-T27)
+│   ├── credential_broker_lab/ # Vault isolation, sidecar tampering (MCP-T23)
+│   ├── delegation_chain_lab/  # Agent-to-agent chain abuse (MCP-T25)
 │   ├── egress_lab/          # SSRF via AI proxy, real httpx fetches
+│   ├── error_lab/           # Error handling leaks (MCP-T15)
 │   ├── hallucination_lab/   # Hallucination-driven destruction of prod data (MCP-T10)
 │   ├── indirect_lab/        # Indirect prompt injection via fetched content (MCP-T02)
+│   ├── notification_lab/    # Notification abuse (MCP-T17)
+│   ├── oauth_delegation_lab/  # OAuth token theft and replay (MCP-T21)
+│   ├── pattern_downgrade_lab/ # Auth pattern downgrade A→B (MCP-T24)
+│   ├── rbac_lab/            # RBAC boundary bypass, cross-team access (MCP-T20)
 │   ├── relay_lab/           # Cross-tool context poisoning broker (MCP-T05)
+│   ├── revocation_lab/      # Token revocation gaps (MCP-T26)
 │   ├── secrets_lab/         # Credential leak, reads real os.environ
 │   ├── shadow_lab/          # Persistent webhook registration, real httpx dispatch
 │   ├── supply_lab/          # Supply chain attack, real pip install in sandbox
+│   ├── temporal_lab/        # Time-of-use vulnerabilities (MCP-T16)
 │   ├── tenant_lab/          # Cross-tenant memory leak, no isolation (MCP-T11)
 │   └── tool_lab/            # Rug pull, tool mutation, real subprocess execution
 ├── frontend/                # Flask portal (dark theme, crimson accent)
@@ -320,7 +377,7 @@ camazotz/
 ├── scripts/
 │   ├── qa_harness.py        # CLI entry point for E2E QA
 │   └── qa_runner/            # Reusable QA engine (shared by CLI + operator panel)
-├── tests/                   # 292 tests, 100% coverage (Streamable HTTP)
+├── tests/                   # 532 tests, 100% coverage (Streamable HTTP)
 └── Makefile                 # Cross-platform dev/deploy targets
 ```
 
@@ -330,7 +387,7 @@ camazotz/
 make up             # start with Claude
 make up-local       # start with Ollama
 make down           # stop all services
-make test           # run 292 tests (100% coverage)
+make test           # run 532 tests (100% coverage)
 make qa             # E2E QA harness against live gateway
 make qa-json        # QA harness with machine-readable JSON output
 make status         # health check all services

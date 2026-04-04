@@ -67,8 +67,8 @@ portal:
       cpu: 250m
       memory: 128Mi
   build:
-    context: ../frontend
-    dockerfile: Dockerfile
+    context: ..
+    dockerfile: frontend/Dockerfile
 
 observer:
   image: camazotz/observer

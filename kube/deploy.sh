@@ -19,7 +19,7 @@ cd "${REPO_DIR}"
 # Build container images with Docker
 echo "[1/5] Building container images..."
 sudo docker build -t camazotz/brain-gateway:latest -f compose/Dockerfile .
-sudo docker build -t camazotz/portal:latest -f frontend/Dockerfile frontend/
+sudo docker build -t camazotz/portal:latest -f frontend/Dockerfile .
 sudo docker build -t camazotz/observer:latest -f compose/observer/Dockerfile compose/observer/
 
 # Import images into K3s containerd
@@ -58,7 +58,12 @@ echo "To deploy Ollama (optional):"
 echo "  $K apply -f ${KUBE_DIR}/ollama.yaml"
 echo "  $K -n ${NS} exec deploy/ollama -- ollama pull llama3.2:3b"
 echo ""
-echo "To set the API key:"
+echo "To configure Bedrock (default):"
+echo "  $K -n ${NS} patch configmap camazotz-config \\"
+echo "    -p '{\"data\":{\"AWS_REGION\":\"us-west-2\",\"CAMAZOTZ_MODEL\":\"<your-model-id>\"}}'"
+echo "  $K -n ${NS} rollout restart deployment/brain-gateway"
+echo ""
+echo "For direct Anthropic API (BRAIN_PROVIDER=cloud):"
 echo "  $K -n ${NS} create secret generic camazotz-secrets \\"
 echo "    --from-literal=ANTHROPIC_API_KEY=sk-ant-... \\"
 echo "    --from-literal=FLASK_SECRET=cztz-k8s-secret \\"

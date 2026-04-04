@@ -5,17 +5,71 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## Agentic Security Labs & Bedrock Default (2026-04-03)
+
+### Amazon Bedrock as Default Brain
+
+- **Default brain provider changed to Bedrock.** `BRAIN_PROVIDER` defaults to
+  `bedrock` (Claude on Amazon Bedrock). Direct Anthropic API (`cloud`) and
+  Ollama (`local`) remain fully supported.
+- **New `BedrockClaudeProvider`** (`brain_gateway/app/brain/bedrock_claude.py`)
+  using `anthropic.AnthropicBedrock` with `boto3` for credential resolution.
+- **Stub mode:** `CAMAZOTZ_BEDROCK_STUB=1` for offline testing without AWS.
+- AWS region, profile, and model id are **not pinned** in repo templates.
+  Set at deploy time via environment or `.env`.
+
+### 8 New Agentic Security Modules (MCP-T20 – MCP-T27)
+
+Generic, reusable labs targeting security patterns common to AI/agentic
+platform deployments. All use synthetic data with no internal references.
+
+- **rbac_lab (MCP-T20)** — RBAC boundary bypass, cross-team agent access,
+  group membership spoofing via prefix matching.
+- **oauth_delegation_lab (MCP-T21)** — OAuth token theft and replay across
+  delegation flows; refresh token leakage.
+- **attribution_lab (MCP-T22)** — Execution context forgery, principal
+  spoofing, HMAC signature manipulation.
+- **credential_broker_lab (MCP-T23)** — Vault scoping failures, sidecar
+  config tampering, cross-team credential access.
+- **pattern_downgrade_lab (MCP-T24)** — Auth pattern downgrade (OAuth
+  delegation → service account fallback), traceability loss.
+- **delegation_chain_lab (MCP-T25)** — Unbounded agent-to-agent invocation
+  depth with principal spoofing.
+- **revocation_lab (MCP-T26)** — Token lifecycle gaps: cached tokens survive
+  principal revocation.
+- **cost_exhaustion_lab (MCP-T27)** — LLM cost exhaustion, quota bypass,
+  cost misattribution via team spoofing.
+
+Each module has 3-tier difficulty (EZ/MOD/MAX), MCP tools + resources,
+`scenario.yaml` metadata, and comprehensive tests.
+
+### Infrastructure
+
+- **Portal Docker build context** fixed: `context: ..` with
+  `dockerfile: frontend/Dockerfile` (repo root as context).
+- **57 MCP tools** across **25 modules** registered at startup.
+- **532 tests** at **100% coverage**.
+
+### Documentation
+
+- README updated: architecture diagram, module count, test count, OWASP
+  tables, guardrail matrix, project structure, deployment table.
+- Sanitized internal references (`dcext-stg` → generic placeholder).
+- CHANGELOG, scenarios.md, module-authoring.md updated for full module set.
+
+---
+
 ## Proofing Round (2026-03-30)
 
 - **Fixed auth_lab threat_id:** Corrected MCP-T03 → MCP-T04 to match
-  `scenario.yaml`. Added consistency test that validates all 14 modules.
+  `scenario.yaml`. Added consistency test that validates all modules.
 - **Hallucination lab MAX hardening:** Added code-level plan validation at MAX
   difficulty — production-path operations are now stripped before execution,
   not relying solely on LLM prompt discipline.
 - **Token-bucket rate limiting:** New per-client rate limiter on `/mcp`
   endpoint. EZ = unlimited, MOD = 30 req/min, MAX = 10 req/min. Resets with
   `POST /reset`.
-- **Schema maxLength constraints:** All 38 string parameters across 14 modules
+- **Schema maxLength constraints:** All string parameters across modules
   now have `maxLength` (256 for identifiers, 1024 for tokens, 2048 for URLs,
   4096 for content fields).
 - **New regression tests:** threat_id consistency, schema maxLength enforcement,

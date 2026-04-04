@@ -49,7 +49,7 @@ make test
 # 3. On the target node, pull changes and rebuild images
 cd /opt/camazotz && git pull
 sudo docker build -t camazotz/brain-gateway:latest -f compose/Dockerfile .
-sudo docker build -t camazotz/portal:latest -f frontend/Dockerfile frontend/
+sudo docker build -t camazotz/portal:latest -f frontend/Dockerfile .
 sudo docker build -t camazotz/observer:latest -f compose/observer/Dockerfile compose/observer/
 
 # 4. Import into K3s (save to file, then import — avoids sudo pipe issues)

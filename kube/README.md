@@ -27,7 +27,7 @@ This builds images, imports them into K3s containerd, and applies all manifests.
 ```bash
 # Build images
 sudo docker build -t camazotz/brain-gateway:latest -f compose/Dockerfile .
-sudo docker build -t camazotz/portal:latest -f frontend/Dockerfile frontend/
+sudo docker build -t camazotz/portal:latest -f frontend/Dockerfile .
 sudo docker build -t camazotz/observer:latest -f compose/observer/Dockerfile compose/observer/
 
 # Import into K3s
@@ -44,13 +44,26 @@ sudo k3s kubectl apply -f kube/portal.yaml
 sudo k3s kubectl apply -f kube/observer.yaml
 ```
 
-## Set the API Key
+## Set Credentials
+
+**Bedrock (default):** Configure AWS region and model in the ConfigMap, and
+ensure the node has AWS credentials (instance profile, IRSA, or env vars):
+
+```bash
+sudo k3s kubectl -n camazotz patch configmap camazotz-config \
+  -p '{"data":{"AWS_REGION":"us-west-2","CAMAZOTZ_MODEL":"us.anthropic.claude-3-5-sonnet-20241022-v2:0"}}'
+sudo k3s kubectl -n camazotz rollout restart deployment/brain-gateway
+```
+
+**Direct Anthropic API (`BRAIN_PROVIDER=cloud`):**
 
 ```bash
 sudo k3s kubectl -n camazotz create secret generic camazotz-secrets \
   --from-literal=ANTHROPIC_API_KEY=sk-ant-... \
   --from-literal=FLASK_SECRET=cztz-k8s-secret \
   --dry-run=client -o yaml | sudo k3s kubectl apply -f -
+sudo k3s kubectl -n camazotz patch configmap camazotz-config \
+  -p '{"data":{"BRAIN_PROVIDER":"cloud"}}'
 sudo k3s kubectl -n camazotz rollout restart deployment/brain-gateway
 ```
 

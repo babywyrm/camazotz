@@ -9,21 +9,32 @@ registration step is required.
 
 ```
 camazotz_modules/
-├── base.py                          # LabModule ABC
-├── audit_lab/app/main.py            # class AuditLab(LabModule) — MCP-T13
-├── auth_lab/app/main.py             # class AuthLab(LabModule) — MCP02/07, MCP-T04
-├── comms_lab/app/main.py            # class CommsLab(LabModule) — MCP-T12
-├── config_lab/app/main.py           # class ConfigLab(LabModule) — MCP-T09
-├── context_lab/app/main.py          # class ContextLab(LabModule) — MCP06/10
-├── egress_lab/app/main.py           # class EgressLab(LabModule) — SSRF
-├── hallucination_lab/app/main.py    # class HallucinationLab(LabModule) — MCP-T10
-├── indirect_lab/app/main.py         # class IndirectLab(LabModule) — MCP-T02
-├── relay_lab/app/main.py            # class RelayLab(LabModule) — MCP-T05
-├── secrets_lab/app/main.py          # class SecretsLab(LabModule) — MCP01
-├── shadow_lab/app/main.py           # class ShadowLab(LabModule) — MCP09
-├── supply_lab/app/main.py           # class SupplyLab(LabModule) — MCP04
-├── tenant_lab/app/main.py           # class TenantLab(LabModule) — MCP-T11
-└── tool_lab/app/main.py             # class ToolLab(LabModule) — MCP03/05
+├── base.py                              # LabModule ABC
+├── attribution_lab/app/main.py          # class AttributionLab(LabModule) — MCP-T22
+├── audit_lab/app/main.py                # class AuditLab(LabModule) — MCP-T13
+├── auth_lab/app/main.py                 # class AuthLab(LabModule) — MCP02/07, MCP-T04
+├── comms_lab/app/main.py                # class CommsLab(LabModule) — MCP-T12
+├── config_lab/app/main.py               # class ConfigLab(LabModule) — MCP-T09
+├── context_lab/app/main.py              # class ContextLab(LabModule) — MCP06/10
+├── cost_exhaustion_lab/app/main.py      # class CostExhaustionLab(LabModule) — MCP-T27
+├── credential_broker_lab/app/main.py    # class CredentialBrokerLab(LabModule) — MCP-T23
+├── delegation_chain_lab/app/main.py     # class DelegationChainLab(LabModule) — MCP-T25
+├── egress_lab/app/main.py               # class EgressLab(LabModule) — SSRF
+├── error_lab/app/main.py                # class ErrorLab(LabModule) — MCP-T15
+├── hallucination_lab/app/main.py        # class HallucinationLab(LabModule) — MCP-T10
+├── indirect_lab/app/main.py             # class IndirectLab(LabModule) — MCP-T02
+├── notification_lab/app/main.py         # class NotificationLab(LabModule) — MCP-T17
+├── oauth_delegation_lab/app/main.py     # class OAuthDelegationLab(LabModule) — MCP-T21
+├── pattern_downgrade_lab/app/main.py    # class PatternDowngradeLab(LabModule) — MCP-T24
+├── rbac_lab/app/main.py                 # class RbacLab(LabModule) — MCP-T20
+├── relay_lab/app/main.py                # class RelayLab(LabModule) — MCP-T05
+├── revocation_lab/app/main.py           # class RevocationLab(LabModule) — MCP-T26
+├── secrets_lab/app/main.py              # class SecretsLab(LabModule) — MCP01
+├── shadow_lab/app/main.py               # class ShadowLab(LabModule) — MCP09
+├── supply_lab/app/main.py               # class SupplyLab(LabModule) — MCP04
+├── temporal_lab/app/main.py             # class TemporalLab(LabModule) — MCP-T16
+├── tenant_lab/app/main.py               # class TenantLab(LabModule) — MCP-T11
+└── tool_lab/app/main.py                 # class ToolLab(LabModule) — MCP03/05
 ```
 
 ## LabModule Contract

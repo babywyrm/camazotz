@@ -3,7 +3,7 @@
 Vulnerability scenarios mapped to the
 [OWASP MCP Top 10 (2025)](https://owasp.org/www-project-mcp-top-10/) and the
 [MCP Red Team Playbook](https://github.com/babywyrm/sysadmin/tree/master/mcp/redteam)
-threat taxonomy. All backed by a live LLM (Claude or Ollama) with deterministic
+threat taxonomy. All backed by a live LLM (Claude on Bedrock, direct API, or Ollama) with deterministic
 vulnerability mechanics underneath.
 
 > **Transport note:** The gateway implements MCP 2025-03-26 Streamable HTTP.
@@ -41,6 +41,38 @@ vulnerability mechanics underneath.
 | `tenant.list_tenants` | TenantLab | MCP-T11 | Enumerate all tenant IDs in the store | — |
 | `audit.perform_action` | AuditLab | MCP-T13 | Privileged actions attributed to service account | In-memory audit log |
 | `audit.list_actions` | AuditLab | MCP-T13 | List audit log entries (all show service account) | — |
+| `error.trigger_crash` | ErrorLab | MCP-T15 | Error handling leaks stack traces and internal paths | Simulated crashes |
+| `error.debug_info` | ErrorLab | MCP-T15 | Debug endpoint exposes framework internals | In-memory state |
+| `error.validate_input` | ErrorLab | MCP-T15 | Input validation errors leak implementation details | — |
+| `temporal.get_config` | TemporalLab | MCP-T16 | Time-of-check/time-of-use configuration access | In-memory config |
+| `temporal.check_permission` | TemporalLab | MCP-T16 | Permission checks with time window vulnerabilities | In-memory state |
+| `temporal.get_status` | TemporalLab | MCP-T16 | Status queries with stale data exposure | — |
+| `notification.subscribe` | NotificationLab | MCP-T17 | Notification channel subscription abuse | In-memory subscriptions |
+| `notification.trigger_event` | NotificationLab | MCP-T17 | Event trigger with unrestricted targets | In-memory dispatch |
+| `notification.check_inbox` | NotificationLab | MCP-T17 | Inbox access with cross-user visibility | — |
+| `rbac.list_agents` | RbacLab | MCP-T20 | Cross-team agent enumeration via prefix matching | In-memory registry |
+| `rbac.trigger_agent` | RbacLab | MCP-T20 | Agent invocation with group override bypass | In-memory registry |
+| `rbac.check_membership` | RbacLab | MCP-T20 | Group membership check with spoofable caller | — |
+| `oauth.list_connections` | OAuthDelegationLab | MCP-T21 | Token store enumeration with raw token leak | In-memory token store |
+| `oauth.exchange_token` | OAuthDelegationLab | MCP-T21 | Refresh token exchange with replay vulnerability | In-memory tokens |
+| `oauth.call_downstream` | OAuthDelegationLab | MCP-T21 | Downstream API call with stolen access token | Simulated API |
+| `attribution.submit_action` | AttributionLab | MCP-T22 | Action with spoofable attribution metadata | In-memory audit log |
+| `attribution.verify_context` | AttributionLab | MCP-T22 | Execution context integrity verification | — |
+| `attribution.read_audit` | AttributionLab | MCP-T22 | Audit log filtered by execution_id | — |
+| `cred_broker.list_vaults` | CredentialBrokerLab | MCP-T23 | Vault enumeration with cross-team visibility | In-memory vault |
+| `cred_broker.read_credential` | CredentialBrokerLab | MCP-T23 | Cross-team credential read from vault | In-memory vault |
+| `cred_broker.configure_sidecar` | CredentialBrokerLab | MCP-T23 | Sidecar config tampering with path injection | In-memory config |
+| `downgrade.check_pattern` | PatternDowngradeLab | MCP-T24 | Authentication pattern capability check | In-memory capabilities |
+| `downgrade.authenticate` | PatternDowngradeLab | MCP-T24 | Auth with client-forced pattern downgrade | In-memory tokens |
+| `downgrade.list_capabilities` | PatternDowngradeLab | MCP-T24 | Service capability enumeration | — |
+| `delegation.invoke_agent` | DelegationChainLab | MCP-T25 | Agent-to-agent invocation with unbounded depth | In-memory chain log |
+| `delegation.read_chain` | DelegationChainLab | MCP-T25 | Delegation chain log inspection | — |
+| `revocation.issue_token` | RevocationLab | MCP-T26 | Token issuance for revocation testing | In-memory token store |
+| `revocation.revoke_principal` | RevocationLab | MCP-T26 | Principal revocation with cached token gaps | In-memory store |
+| `revocation.use_token` | RevocationLab | MCP-T26 | Token usage after principal revocation | In-memory store |
+| `cost.invoke_llm` | CostExhaustionLab | MCP-T27 | LLM invocation with quota bypass and multiplier | In-memory usage tracking |
+| `cost.check_usage` | CostExhaustionLab | MCP-T27 | Usage dashboard with team spoofing visibility | — |
+| `cost.reset_usage` | CostExhaustionLab | MCP-T27 | Usage counter reset | — |
 
 All tools return an `ai_analysis` field containing the LLM's reasoning about
 the request. On easy mode, the LLM is helpful and permissive. On hard mode,
@@ -800,6 +832,17 @@ Reset all lab state with `POST /reset`.
 | `hallucination_lab` | No environment guards | Prefers staging paths | Never touches production paths |
 | `tenant_lab` | No isolation (logic bug) | No isolation (logic bug) | No isolation (logic bug) |
 | `audit_lab` | Service account (logic bug) | Service account (logic bug) | Service account (logic bug) |
+| `error_lab` | Stack traces exposed | Partial redaction | Generic errors only |
+| `temporal_lab` | No time checks | Relaxed windows | Strict time-of-use |
+| `notification_lab` | Unrestricted targets | Format validation | Allowlist + rate limit |
+| `rbac_lab` | Full bypass | Prefix matching flaw | Strict group checks |
+| `oauth_delegation_lab` | Raw token leak | Encoded tokens, any refresh works | Strict token validation |
+| `attribution_lab` | Accept any context | Format checks only | HMAC signature required |
+| `credential_broker_lab` | Cross-team vault access | Redacted but readable | Denied + scoped |
+| `pattern_downgrade_lab` | Client-forced pattern | Capability override trick | Server-side enforcement |
+| `delegation_chain_lab` | Unlimited depth | Depth cap, spoofable principal | Chain blocked |
+| `revocation_lab` | Cached tokens survive | Refresh revoked, access persists | Immediate revocation |
+| `cost_exhaustion_lab` | No quotas | Quotas, but team spoofable | Strict quotas + multiplier blocked |
 
 All guardrail levels remain exploitable through different techniques:
 
