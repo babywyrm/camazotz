@@ -4,31 +4,14 @@ import json
 
 from fastapi.testclient import TestClient
 
-from brain_gateway.app.brain.factory import reset_provider
-from brain_gateway.app.config import reset_difficulty, set_difficulty
+from brain_gateway.app.config import set_difficulty
 from brain_gateway.app.main import app
 from brain_gateway.app.modules.registry import reset_registry
+from tests.helpers import rpc_call, tool_call
 
 
 def setup_function() -> None:
-    reset_registry()
-    reset_provider()
-    reset_difficulty()
     set_difficulty("easy")
-
-
-def _rpc(client: TestClient, method: str, params: dict, req_id: int = 1) -> dict:
-    resp = client.post(
-        "/mcp",
-        json={"jsonrpc": "2.0", "id": req_id, "method": method, "params": params},
-    )
-    assert resp.status_code == 200
-    return resp.json()
-
-
-def _call(client: TestClient, tool: str, arguments: dict, req_id: int = 1) -> dict:
-    body = _rpc(client, "tools/call", {"name": tool, "arguments": arguments}, req_id)
-    return json.loads(body["result"]["content"][0]["text"])
 
 
 # -- tool registration -------------------------------------------------------
@@ -36,7 +19,7 @@ def _call(client: TestClient, tool: str, arguments: dict, req_id: int = 1) -> di
 
 def test_rbac_tools_registered() -> None:
     client = TestClient(app)
-    body = _rpc(client, "tools/list", {}, 10)
+    body = rpc_call(client, "tools/list", {}, 10)
     names = {t["name"] for t in body["result"]["tools"]}
     assert "rbac.list_agents" in names
     assert "rbac.trigger_agent" in names
@@ -48,7 +31,7 @@ def test_rbac_tools_registered() -> None:
 
 def test_list_agents_easy_returns_all() -> None:
     client = TestClient(app)
-    result = _call(client, "rbac.list_agents", {"principal": "eve@example.com"})
+    result = tool_call(client, "rbac.list_agents", {"principal": "eve@example.com"})
     assert result["count"] == 4
     assert result["_difficulty"] == "easy"
     agent_names = {a["name"] for a in result["agents"]}
@@ -58,7 +41,7 @@ def test_list_agents_easy_returns_all() -> None:
 def test_list_agents_medium_with_matching_groups() -> None:
     set_difficulty("medium")
     client = TestClient(app)
-    result = _call(client, "rbac.list_agents", {"principal": "bob@example.com"})
+    result = tool_call(client, "rbac.list_agents", {"principal": "bob@example.com"})
     agent_names = {a["name"] for a in result["agents"]}
     assert "agent-coder-v1" in agent_names
     assert "agent-deployer-v2" in agent_names
@@ -69,14 +52,14 @@ def test_list_agents_medium_with_matching_groups() -> None:
 def test_list_agents_medium_fallthrough_returns_all() -> None:
     set_difficulty("medium")
     client = TestClient(app)
-    result = _call(client, "rbac.list_agents", {"principal": "eve@example.com"})
+    result = tool_call(client, "rbac.list_agents", {"principal": "eve@example.com"})
     assert result["count"] == 4
 
 
 def test_list_agents_hard_strict_filter() -> None:
     set_difficulty("hard")
     client = TestClient(app)
-    result = _call(client, "rbac.list_agents", {"principal": "alice@example.com"})
+    result = tool_call(client, "rbac.list_agents", {"principal": "alice@example.com"})
     agent_names = {a["name"] for a in result["agents"]}
     assert "agent-coder-v1" in agent_names
     assert "agent-docs-v1" in agent_names
@@ -88,7 +71,7 @@ def test_list_agents_hard_strict_filter() -> None:
 def test_list_agents_hard_unknown_principal_empty() -> None:
     set_difficulty("hard")
     client = TestClient(app)
-    result = _call(client, "rbac.list_agents", {"principal": "nobody@example.com"})
+    result = tool_call(client, "rbac.list_agents", {"principal": "nobody@example.com"})
     assert result["count"] == 0
     assert result["agents"] == []
 
@@ -98,7 +81,7 @@ def test_list_agents_hard_unknown_principal_empty() -> None:
 
 def test_trigger_agent_easy_always_authorized() -> None:
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client,
         "rbac.trigger_agent",
         {"principal": "eve@example.com", "agent_id": "agent-admin-v1"},
@@ -110,7 +93,7 @@ def test_trigger_agent_easy_always_authorized() -> None:
 
 def test_trigger_agent_easy_with_override() -> None:
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client,
         "rbac.trigger_agent",
         {
@@ -124,7 +107,7 @@ def test_trigger_agent_easy_with_override() -> None:
 
 def test_trigger_agent_unknown_agent() -> None:
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client,
         "rbac.trigger_agent",
         {"principal": "alice@example.com", "agent_id": "nonexistent"},
@@ -137,7 +120,7 @@ def test_trigger_agent_medium_prefix_bypass() -> None:
     """The prefix-matching vulnerability: 'plat' matches 'platform-admin'."""
     set_difficulty("medium")
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client,
         "rbac.trigger_agent",
         {
@@ -152,7 +135,7 @@ def test_trigger_agent_medium_prefix_bypass() -> None:
 def test_trigger_agent_medium_authorized_without_override() -> None:
     set_difficulty("medium")
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client,
         "rbac.trigger_agent",
         {"principal": "bob@example.com", "agent_id": "agent-deployer-v2"},
@@ -163,7 +146,7 @@ def test_trigger_agent_medium_authorized_without_override() -> None:
 def test_trigger_agent_medium_denied_without_override() -> None:
     set_difficulty("medium")
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client,
         "rbac.trigger_agent",
         {"principal": "eve@example.com", "agent_id": "agent-admin-v1"},
@@ -175,7 +158,7 @@ def test_trigger_agent_medium_denied_without_override() -> None:
 def test_trigger_agent_hard_authorized() -> None:
     set_difficulty("hard")
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client,
         "rbac.trigger_agent",
         {"principal": "admin@example.com", "agent_id": "agent-admin-v1"},
@@ -186,7 +169,7 @@ def test_trigger_agent_hard_authorized() -> None:
 def test_trigger_agent_hard_denied() -> None:
     set_difficulty("hard")
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client,
         "rbac.trigger_agent",
         {"principal": "eve@example.com", "agent_id": "agent-admin-v1"},
@@ -197,7 +180,7 @@ def test_trigger_agent_hard_denied() -> None:
 def test_trigger_agent_hard_override_ignored() -> None:
     set_difficulty("hard")
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client,
         "rbac.trigger_agent",
         {
@@ -214,7 +197,7 @@ def test_trigger_agent_hard_override_ignored() -> None:
 
 def test_check_membership_known_principal() -> None:
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client, "rbac.check_membership", {"principal": "alice@example.com"}
     )
     assert "platform-eng" in result["groups"]
@@ -224,7 +207,7 @@ def test_check_membership_known_principal() -> None:
 
 def test_check_membership_unknown_principal() -> None:
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client, "rbac.check_membership", {"principal": "nobody@example.com"}
     )
     assert result["groups"] == []
@@ -236,7 +219,7 @@ def test_check_membership_unknown_principal() -> None:
 
 def test_rbac_resources_listed() -> None:
     client = TestClient(app)
-    body = _rpc(client, "resources/list", {}, 50)
+    body = rpc_call(client, "resources/list", {}, 50)
     uris = {r["uri"] for r in body["result"]["resources"]}
     assert "rbac://policy/platform-eng" in uris
     assert "rbac://policy/platform-admin" in uris
@@ -244,7 +227,7 @@ def test_rbac_resources_listed() -> None:
 
 def test_rbac_read_resource_valid_group() -> None:
     client = TestClient(app)
-    body = _rpc(
+    body = rpc_call(
         client, "resources/read", {"uri": "rbac://policy/platform-eng"}, 51
     )
     content = json.loads(body["result"]["contents"][0]["text"])
@@ -255,7 +238,7 @@ def test_rbac_read_resource_valid_group() -> None:
 
 def test_rbac_read_resource_unknown_group_returns_error() -> None:
     client = TestClient(app)
-    body = _rpc(
+    body = rpc_call(
         client, "resources/read", {"uri": "rbac://policy/nonexistent-group"}, 52
     )
     assert "error" in body
@@ -263,7 +246,7 @@ def test_rbac_read_resource_unknown_group_returns_error() -> None:
 
 def test_rbac_read_resource_wrong_prefix_ignored() -> None:
     client = TestClient(app)
-    body = _rpc(
+    body = rpc_call(
         client, "resources/read", {"uri": "other://something"}, 53
     )
     assert "error" in body
@@ -274,7 +257,7 @@ def test_rbac_read_resource_wrong_prefix_ignored() -> None:
 
 def test_rbac_reset_clears_access_log() -> None:
     client = TestClient(app)
-    _call(
+    tool_call(
         client,
         "rbac.trigger_agent",
         {"principal": "alice@example.com", "agent_id": "agent-coder-v1"},

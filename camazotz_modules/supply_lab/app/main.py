@@ -23,6 +23,8 @@ KNOWN_MALICIOUS = ("evil-pkg", "backdoor", "typosquat", "cryptominer")
 class SupplyLab(LabModule):
     name = "supply"
     threat_id = "MCP-T08"
+    title = "Supply Chain via Content"
+    category = "supply-chain"
 
     system_prompts = {
         "easy": (

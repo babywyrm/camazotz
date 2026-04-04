@@ -1,3 +1,7 @@
+"""Claude via Amazon Bedrock — default brain for enterprise AWS deployments."""
+
+from __future__ import annotations
+
 import os
 
 import anthropic
@@ -8,6 +12,7 @@ from brain_gateway.app.config import estimate_cost
 
 
 def _aws_credentials_available() -> bool:
+    """Return True if boto3 can resolve usable AWS credentials."""
     try:
         return boto3.Session().get_credentials() is not None
     except Exception:
@@ -17,10 +22,11 @@ def _aws_credentials_available() -> bool:
 class BedrockClaudeProvider:
     """Claude via Amazon Bedrock (default brain for enterprise AWS deployments)."""
 
-    name = "bedrock"
+    name: str = "bedrock"
 
     def __init__(self) -> None:
-        self._region = os.getenv("AWS_REGION") or os.getenv("AWS_DEFAULT_REGION") or ""
+        self._region: str = os.getenv("AWS_REGION") or os.getenv("AWS_DEFAULT_REGION") or ""
+        self._client: anthropic.AnthropicBedrock | None
         if os.getenv("CAMAZOTZ_BEDROCK_STUB", "").lower() in ("1", "true", "yes"):
             self._client = None
         elif not _aws_credentials_available():

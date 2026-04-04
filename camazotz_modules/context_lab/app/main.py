@@ -20,6 +20,8 @@ CONSUMER_SYSTEM = (
 class ContextLab(LabModule):
     name = "context"
     threat_id = "MCP-T01"
+    title = "Direct Prompt Injection"
+    category = "injection"
 
     system_prompts = {
         "easy": (

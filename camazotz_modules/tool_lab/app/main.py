@@ -163,6 +163,8 @@ _INJECTION_ADVISORY = (
 class ToolLab(LabModule):
     name = "tool"
     threat_id = "MCP-T03"
+    title = "Tool Behavior Mutation (Rug Pull)"
+    category = "mutation"
     system_prompts = SYSTEM_PROMPTS_BENIGN
 
     def __init__(self) -> None:

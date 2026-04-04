@@ -4,36 +4,19 @@ import json
 
 from fastapi.testclient import TestClient
 
-from brain_gateway.app.brain.factory import reset_provider
-from brain_gateway.app.config import reset_difficulty, set_difficulty
+from brain_gateway.app.config import set_difficulty
 from brain_gateway.app.main import app
 from brain_gateway.app.modules.registry import reset_registry
+from tests.helpers import rpc_call, tool_call
 
 
 def setup_function() -> None:
-    reset_registry()
-    reset_provider()
-    reset_difficulty()
     set_difficulty("easy")
-
-
-def _rpc(client: TestClient, method: str, params: dict, req_id: int = 1) -> dict:
-    resp = client.post(
-        "/mcp",
-        json={"jsonrpc": "2.0", "id": req_id, "method": method, "params": params},
-    )
-    assert resp.status_code == 200
-    return resp.json()
-
-
-def _call(client: TestClient, tool: str, arguments: dict, req_id: int = 1) -> dict:
-    body = _rpc(client, "tools/call", {"name": tool, "arguments": arguments}, req_id)
-    return json.loads(body["result"]["content"][0]["text"])
 
 
 def test_cost_tools_registered() -> None:
     client = TestClient(app)
-    body = _rpc(client, "tools/list", {}, 10)
+    body = rpc_call(client, "tools/list", {}, 10)
     names = {t["name"] for t in body["result"]["tools"]}
     assert "cost.invoke_llm" in names
     assert "cost.check_usage" in names
@@ -45,7 +28,7 @@ def test_cost_tools_registered() -> None:
 
 def test_invoke_llm_easy_no_quota() -> None:
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client,
         "cost.invoke_llm",
         {"team": "team-alpha", "prompt": "hello"},
@@ -56,7 +39,7 @@ def test_invoke_llm_easy_no_quota() -> None:
 
 def test_invoke_llm_easy_any_team() -> None:
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client,
         "cost.invoke_llm",
         {"team": "fake-team", "prompt": "anything"},
@@ -66,7 +49,7 @@ def test_invoke_llm_easy_any_team() -> None:
 
 def test_invoke_llm_easy_multiplier() -> None:
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client,
         "cost.invoke_llm",
         {"team": "team-alpha", "prompt": "big", "multiplier": 100.0},
@@ -81,7 +64,7 @@ def test_invoke_llm_easy_multiplier() -> None:
 def test_invoke_llm_medium_within_quota() -> None:
     set_difficulty("medium")
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client,
         "cost.invoke_llm",
         {"team": "team-alpha", "prompt": "hello"},
@@ -93,12 +76,12 @@ def test_invoke_llm_medium_within_quota() -> None:
 def test_invoke_llm_medium_exceeds_quota() -> None:
     set_difficulty("medium")
     client = TestClient(app)
-    _call(
+    tool_call(
         client,
         "cost.invoke_llm",
         {"team": "team-bravo", "prompt": "fill", "multiplier": 120.0},
     )
-    result = _call(
+    result = tool_call(
         client,
         "cost.invoke_llm",
         {"team": "team-bravo", "prompt": "over the limit"},
@@ -110,7 +93,7 @@ def test_invoke_llm_medium_exceeds_quota() -> None:
 def test_invoke_llm_medium_unknown_team() -> None:
     set_difficulty("medium")
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client,
         "cost.invoke_llm",
         {"team": "nonexistent", "prompt": "test"},
@@ -125,7 +108,7 @@ def test_invoke_llm_medium_unknown_team() -> None:
 def test_invoke_llm_hard_within_quota() -> None:
     set_difficulty("hard")
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client,
         "cost.invoke_llm",
         {"team": "team-alpha", "prompt": "test"},
@@ -136,7 +119,7 @@ def test_invoke_llm_hard_within_quota() -> None:
 def test_invoke_llm_hard_multiplier_blocked() -> None:
     set_difficulty("hard")
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client,
         "cost.invoke_llm",
         {"team": "team-alpha", "prompt": "amplify", "multiplier": 5.0},
@@ -147,13 +130,13 @@ def test_invoke_llm_hard_multiplier_blocked() -> None:
 
 def test_invoke_llm_hard_exceeds_quota() -> None:
     client = TestClient(app)
-    _call(
+    tool_call(
         client,
         "cost.invoke_llm",
         {"team": "team-bravo", "prompt": "fill", "multiplier": 120.0},
     )
     set_difficulty("hard")
-    result = _call(
+    result = tool_call(
         client,
         "cost.invoke_llm",
         {"team": "team-bravo", "prompt": "one more"},
@@ -165,7 +148,7 @@ def test_invoke_llm_hard_exceeds_quota() -> None:
 def test_invoke_llm_hard_unknown_team() -> None:
     set_difficulty("hard")
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client,
         "cost.invoke_llm",
         {"team": "nonexistent", "prompt": "test"},
@@ -178,12 +161,12 @@ def test_invoke_llm_hard_unknown_team() -> None:
 
 def test_check_usage_known_team() -> None:
     client = TestClient(app)
-    _call(
+    tool_call(
         client,
         "cost.invoke_llm",
         {"team": "team-alpha", "prompt": "test"},
     )
-    result = _call(
+    result = tool_call(
         client, "cost.check_usage", {"team": "team-alpha"}
     )
     assert result["used"] > 0
@@ -192,7 +175,7 @@ def test_check_usage_known_team() -> None:
 
 def test_check_usage_unknown_team() -> None:
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client, "cost.check_usage", {"team": "nonexistent"}
     )
     assert result["used"] == 0.0
@@ -204,18 +187,18 @@ def test_check_usage_unknown_team() -> None:
 
 def test_reset_usage() -> None:
     client = TestClient(app)
-    _call(
+    tool_call(
         client,
         "cost.invoke_llm",
         {"team": "team-alpha", "prompt": "test"},
     )
-    result = _call(
+    result = tool_call(
         client, "cost.reset_usage", {"team": "team-alpha"}
     )
     assert result["reset"] is True
     assert result["previous_usage"] > 0
 
-    check = _call(
+    check = tool_call(
         client, "cost.check_usage", {"team": "team-alpha"}
     )
     assert check["used"] == 0.0
@@ -226,19 +209,19 @@ def test_reset_usage() -> None:
 
 def test_cost_resources_listed() -> None:
     client = TestClient(app)
-    body = _rpc(client, "resources/list", {}, 50)
+    body = rpc_call(client, "resources/list", {}, 50)
     uris = {r["uri"] for r in body["result"]["resources"]}
     assert "cost://usage_dashboard" in uris
 
 
 def test_cost_read_usage_dashboard() -> None:
     client = TestClient(app)
-    _call(
+    tool_call(
         client,
         "cost.invoke_llm",
         {"team": "team-alpha", "prompt": "test"},
     )
-    body = _rpc(
+    body = rpc_call(
         client, "resources/read", {"uri": "cost://usage_dashboard"}, 51
     )
     content = json.loads(body["result"]["contents"][0]["text"])
@@ -248,7 +231,7 @@ def test_cost_read_usage_dashboard() -> None:
 
 def test_cost_read_resource_wrong_uri() -> None:
     client = TestClient(app)
-    body = _rpc(
+    body = rpc_call(
         client, "resources/read", {"uri": "other://something"}, 52
     )
     assert "error" in body
@@ -259,7 +242,7 @@ def test_cost_read_resource_wrong_uri() -> None:
 
 def test_cost_reset_clears_all() -> None:
     client = TestClient(app)
-    _call(
+    tool_call(
         client,
         "cost.invoke_llm",
         {"team": "team-alpha", "prompt": "test"},
@@ -267,7 +250,7 @@ def test_cost_reset_clears_all() -> None:
     reset_registry()
     set_difficulty("easy")
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client, "cost.check_usage", {"team": "team-alpha"}
     )
     assert result["used"] == 0.0

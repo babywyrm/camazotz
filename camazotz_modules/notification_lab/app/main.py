@@ -1,4 +1,4 @@
-"""Notification / sampling abuse lab — MCP-T13.
+"""Notification / sampling abuse lab — MCP-T17.
 
 Simulates a malicious MCP server that attempts to send unsolicited
 server-initiated requests to the client.  Because MCP-over-HTTP lacks a

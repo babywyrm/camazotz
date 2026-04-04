@@ -4,31 +4,14 @@ import json
 
 from fastapi.testclient import TestClient
 
-from brain_gateway.app.brain.factory import reset_provider
-from brain_gateway.app.config import reset_difficulty, set_difficulty
+from brain_gateway.app.config import set_difficulty
 from brain_gateway.app.main import app
 from brain_gateway.app.modules.registry import reset_registry
+from tests.helpers import rpc_call, tool_call
 
 
 def setup_function() -> None:
-    reset_registry()
-    reset_provider()
-    reset_difficulty()
     set_difficulty("easy")
-
-
-def _rpc(client: TestClient, method: str, params: dict, req_id: int = 1) -> dict:
-    resp = client.post(
-        "/mcp",
-        json={"jsonrpc": "2.0", "id": req_id, "method": method, "params": params},
-    )
-    assert resp.status_code == 200
-    return resp.json()
-
-
-def _call(client: TestClient, tool: str, arguments: dict, req_id: int = 1) -> dict:
-    body = _rpc(client, "tools/call", {"name": tool, "arguments": arguments}, req_id)
-    return json.loads(body["result"]["content"][0]["text"])
 
 
 # -- tool registration -------------------------------------------------------
@@ -36,7 +19,7 @@ def _call(client: TestClient, tool: str, arguments: dict, req_id: int = 1) -> di
 
 def test_cred_broker_tools_registered() -> None:
     client = TestClient(app)
-    body = _rpc(client, "tools/list", {}, 10)
+    body = rpc_call(client, "tools/list", {}, 10)
     names = {t["name"] for t in body["result"]["tools"]}
     assert "cred_broker.list_vaults" in names
     assert "cred_broker.read_credential" in names
@@ -48,7 +31,7 @@ def test_cred_broker_tools_registered() -> None:
 
 def test_list_vaults_easy_returns_all_teams() -> None:
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client, "cred_broker.list_vaults", {"caller_team": "team-alpha"}
     )
     assert "team-alpha" in result["vaults"]
@@ -60,7 +43,7 @@ def test_list_vaults_easy_returns_all_teams() -> None:
 def test_list_vaults_medium_returns_own_team_only() -> None:
     set_difficulty("medium")
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client, "cred_broker.list_vaults", {"caller_team": "team-alpha"}
     )
     assert "team-alpha" in result["vaults"]
@@ -70,7 +53,7 @@ def test_list_vaults_medium_returns_own_team_only() -> None:
 def test_list_vaults_medium_unknown_team_empty() -> None:
     set_difficulty("medium")
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client, "cred_broker.list_vaults", {"caller_team": "team-unknown"}
     )
     assert result["vaults"] == {}
@@ -79,7 +62,7 @@ def test_list_vaults_medium_unknown_team_empty() -> None:
 def test_list_vaults_hard_returns_own_team_only() -> None:
     set_difficulty("hard")
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client, "cred_broker.list_vaults", {"caller_team": "team-bravo"}
     )
     assert "team-bravo" in result["vaults"]
@@ -92,7 +75,7 @@ def test_list_vaults_hard_returns_own_team_only() -> None:
 
 def test_read_credential_easy_own_team() -> None:
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client,
         "cred_broker.read_credential",
         {
@@ -107,7 +90,7 @@ def test_read_credential_easy_own_team() -> None:
 
 def test_read_credential_easy_cross_team_leaks() -> None:
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client,
         "cred_broker.read_credential",
         {
@@ -123,7 +106,7 @@ def test_read_credential_easy_cross_team_leaks() -> None:
 def test_read_credential_medium_own_team_full_access() -> None:
     set_difficulty("medium")
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client,
         "cred_broker.read_credential",
         {
@@ -140,7 +123,7 @@ def test_read_credential_medium_own_team_full_access() -> None:
 def test_read_credential_medium_cross_team_redacted() -> None:
     set_difficulty("medium")
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client,
         "cred_broker.read_credential",
         {
@@ -157,7 +140,7 @@ def test_read_credential_medium_cross_team_redacted() -> None:
 def test_read_credential_hard_cross_team_denied() -> None:
     set_difficulty("hard")
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client,
         "cred_broker.read_credential",
         {
@@ -173,7 +156,7 @@ def test_read_credential_hard_cross_team_denied() -> None:
 def test_read_credential_hard_own_team_allowed() -> None:
     set_difficulty("hard")
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client,
         "cred_broker.read_credential",
         {
@@ -188,7 +171,7 @@ def test_read_credential_hard_own_team_allowed() -> None:
 
 def test_read_credential_unknown_team() -> None:
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client,
         "cred_broker.read_credential",
         {
@@ -203,7 +186,7 @@ def test_read_credential_unknown_team() -> None:
 
 def test_read_credential_unknown_service() -> None:
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client,
         "cred_broker.read_credential",
         {
@@ -221,7 +204,7 @@ def test_read_credential_unknown_service() -> None:
 
 def test_configure_sidecar_easy_accepts_anything() -> None:
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client,
         "cred_broker.configure_sidecar",
         {
@@ -238,7 +221,7 @@ def test_configure_sidecar_easy_accepts_anything() -> None:
 def test_configure_sidecar_medium_own_team_no_warning() -> None:
     set_difficulty("medium")
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client,
         "cred_broker.configure_sidecar",
         {
@@ -255,7 +238,7 @@ def test_configure_sidecar_medium_own_team_no_warning() -> None:
 def test_configure_sidecar_medium_cross_team_warns() -> None:
     set_difficulty("medium")
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client,
         "cred_broker.configure_sidecar",
         {
@@ -273,7 +256,7 @@ def test_configure_sidecar_medium_cross_team_warns() -> None:
 def test_configure_sidecar_hard_cross_team_rejected() -> None:
     set_difficulty("hard")
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client,
         "cred_broker.configure_sidecar",
         {
@@ -290,7 +273,7 @@ def test_configure_sidecar_hard_cross_team_rejected() -> None:
 def test_configure_sidecar_hard_own_team_accepted() -> None:
     set_difficulty("hard")
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client,
         "cred_broker.configure_sidecar",
         {
@@ -308,14 +291,14 @@ def test_configure_sidecar_hard_own_team_accepted() -> None:
 
 def test_cred_broker_resources_listed() -> None:
     client = TestClient(app)
-    body = _rpc(client, "resources/list", {}, 50)
+    body = rpc_call(client, "resources/list", {}, 50)
     uris = {r["uri"] for r in body["result"]["resources"]}
     assert "cred_broker://sidecar_config" in uris
 
 
 def test_cred_broker_read_sidecar_config_easy() -> None:
     client = TestClient(app)
-    body = _rpc(
+    body = rpc_call(
         client,
         "resources/read",
         {"uri": "cred_broker://sidecar_config"},
@@ -331,7 +314,7 @@ def test_cred_broker_read_sidecar_config_easy() -> None:
 def test_cred_broker_read_sidecar_config_hard_denied() -> None:
     set_difficulty("hard")
     client = TestClient(app)
-    body = _rpc(
+    body = rpc_call(
         client,
         "resources/read",
         {"uri": "cred_broker://sidecar_config"},
@@ -344,7 +327,7 @@ def test_cred_broker_read_sidecar_config_hard_denied() -> None:
 
 def test_cred_broker_read_resource_wrong_uri_ignored() -> None:
     client = TestClient(app)
-    body = _rpc(
+    body = rpc_call(
         client,
         "resources/read",
         {"uri": "other://something"},
@@ -358,7 +341,7 @@ def test_cred_broker_read_resource_wrong_uri_ignored() -> None:
 
 def test_cred_broker_reset_clears_state() -> None:
     client = TestClient(app)
-    _call(
+    tool_call(
         client,
         "cred_broker.configure_sidecar",
         {
@@ -371,7 +354,7 @@ def test_cred_broker_reset_clears_state() -> None:
     reset_registry()
     set_difficulty("easy")
     client = TestClient(app)
-    body = _rpc(
+    body = rpc_call(
         client,
         "resources/read",
         {"uri": "cred_broker://sidecar_config"},

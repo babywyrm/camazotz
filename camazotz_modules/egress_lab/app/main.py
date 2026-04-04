@@ -23,6 +23,8 @@ INTERNAL_RANGES = ("10.", "172.16.", "172.17.", "192.168.", "127.", "localhost",
 class EgressLab(LabModule):
     name = "egress"
     threat_id = "MCP-T06"
+    title = "SSRF via Tool"
+    category = "ssrf"
 
     system_prompts = {
         "easy": (

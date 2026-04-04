@@ -4,31 +4,13 @@ import json
 
 from fastapi.testclient import TestClient
 
-from brain_gateway.app.config import reset_difficulty, set_difficulty
-from brain_gateway.app.brain.factory import reset_provider
+from brain_gateway.app.config import set_difficulty
 from brain_gateway.app.main import app
-from brain_gateway.app.modules.registry import reset_registry
+from tests.helpers import rpc_call, tool_call
 
 
 def setup_function() -> None:
-    reset_registry()
-    reset_provider()
-    reset_difficulty()
     set_difficulty("easy")
-
-
-def _rpc(client: TestClient, method: str, params: dict, req_id: int = 1) -> dict:
-    resp = client.post(
-        "/mcp",
-        json={"jsonrpc": "2.0", "id": req_id, "method": method, "params": params},
-    )
-    assert resp.status_code == 200
-    return resp.json()
-
-
-def _call(client: TestClient, tool: str, arguments: dict, req_id: int = 1) -> dict:
-    body = _rpc(client, "tools/call", {"name": tool, "arguments": arguments}, req_id)
-    return json.loads(body["result"]["content"][0]["text"])
 
 
 # -- discovery ---------------------------------------------------------------
@@ -37,7 +19,7 @@ def _call(client: TestClient, tool: str, arguments: dict, req_id: int = 1) -> di
 def test_error_lab_discoverable() -> None:
     """ErrorLab is auto-discovered and its tools appear in tools/list."""
     client = TestClient(app)
-    body = _rpc(client, "tools/list", {}, 10)
+    body = rpc_call(client, "tools/list", {}, 10)
     names = {t["name"] for t in body["result"]["tools"]}
     assert "error.trigger_crash" in names
     assert "error.debug_info" in names
@@ -49,7 +31,7 @@ def test_error_lab_discoverable() -> None:
 
 def test_trigger_crash_easy_returns_full_traceback() -> None:
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client, "error.trigger_crash", {"module_name": "auth_gateway"}, 20
     )
     assert result["error"] is True
@@ -63,7 +45,7 @@ def test_trigger_crash_easy_returns_full_traceback() -> None:
 def test_trigger_crash_hard_returns_minimal_info() -> None:
     set_difficulty("hard")
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client, "error.trigger_crash", {"module_name": "auth_gateway"}, 21
     )
     assert result["error"] is True
@@ -78,7 +60,7 @@ def test_trigger_crash_hard_returns_minimal_info() -> None:
 def test_trigger_crash_medium_returns_partial_traceback() -> None:
     set_difficulty("medium")
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client, "error.trigger_crash", {"module_name": "auth_gateway"}, 22
     )
     assert result["error"] is True
@@ -93,7 +75,7 @@ def test_trigger_crash_medium_returns_partial_traceback() -> None:
 
 def test_debug_info_easy_returns_env_vars() -> None:
     client = TestClient(app)
-    result = _call(client, "error.debug_info", {"component": "brain"}, 30)
+    result = tool_call(client, "error.debug_info", {"component": "brain"}, 30)
     debug = result["debug"]
     assert "environment" in debug
     env = debug["environment"]
@@ -108,7 +90,7 @@ def test_debug_info_easy_returns_env_vars() -> None:
 def test_debug_info_hard_returns_sanitized() -> None:
     set_difficulty("hard")
     client = TestClient(app)
-    result = _call(client, "error.debug_info", {"component": "brain"}, 31)
+    result = tool_call(client, "error.debug_info", {"component": "brain"}, 31)
     debug = result["debug"]
     assert debug["status"] == "operational"
     assert "environment" not in debug
@@ -119,7 +101,7 @@ def test_debug_info_hard_returns_sanitized() -> None:
 def test_debug_info_medium_returns_partial_redaction() -> None:
     set_difficulty("medium")
     client = TestClient(app)
-    result = _call(client, "error.debug_info", {"component": "brain"}, 32)
+    result = tool_call(client, "error.debug_info", {"component": "brain"}, 32)
     debug = result["debug"]
     env = debug["environment"]
     assert env["OLLAMA_HOST"] == "http://127.0.0.1:11434"
@@ -133,7 +115,7 @@ def test_debug_info_medium_returns_partial_redaction() -> None:
 
 def test_validate_input_invalid_json() -> None:
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client,
         "error.validate_input",
         {"data": "{not valid json", "schema": "user"},
@@ -148,7 +130,7 @@ def test_validate_input_invalid_json() -> None:
 
 def test_validate_input_missing_schema() -> None:
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client,
         "error.validate_input",
         {"data": '{"name": "test"}', "schema": ""},
@@ -162,7 +144,7 @@ def test_validate_input_missing_schema() -> None:
 
 def test_validate_input_non_dict_json_raises_type_error() -> None:
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client,
         "error.validate_input",
         {"data": "[]", "schema": "user"},
@@ -176,7 +158,7 @@ def test_validate_input_non_dict_json_raises_type_error() -> None:
 
 def test_validate_input_valid_dict() -> None:
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client,
         "error.validate_input",
         {"data": '{"name": "ok"}', "schema": "user"},

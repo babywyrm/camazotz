@@ -15,6 +15,8 @@ ALLOWED_DOMAINS = ("internal.corp.com", "hooks.slack.com", "hooks.opsgenie.com")
 class ShadowLab(LabModule):
     name = "shadow"
     threat_id = "MCP-T14"
+    title = "Persistence via Webhook"
+    category = "persistence"
 
     system_prompts = {
         "easy": (

@@ -45,6 +45,8 @@ def _scan_for_secrets(text: str) -> list[str]:
 class CommsLab(LabModule):
     name = "comms"
     threat_id = "MCP-T12"
+    title = "Exfiltration via Chaining"
+    category = "exfiltration"
 
     system_prompts = {
         "easy": (

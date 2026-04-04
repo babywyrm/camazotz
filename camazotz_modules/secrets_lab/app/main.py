@@ -49,6 +49,8 @@ def _load_env() -> dict[str, str]:
 class SecretsLab(LabModule):
     name = "secrets"
     threat_id = "MCP-T07"
+    title = "Secrets in Tool Output"
+    category = "secrets"
 
     system_prompts = {
         "easy": (

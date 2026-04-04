@@ -50,6 +50,8 @@ _INJECTION_PAYLOAD = (
 class TemporalLab(LabModule):
     name = "temporal"
     threat_id = "MCP-T16"
+    title = "Temporal Consistency Drift"
+    category = "injection"
 
     def __init__(self) -> None:
         self._lock = threading.Lock()

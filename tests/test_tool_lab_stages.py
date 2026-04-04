@@ -7,20 +7,15 @@ import pytest
 from fastapi.testclient import TestClient
 
 from brain_gateway.app.brain.provider import BrainResult
-from brain_gateway.app.config import reset_difficulty, set_difficulty
-from brain_gateway.app.brain.factory import reset_provider
+from brain_gateway.app.config import set_difficulty
 from brain_gateway.app.main import app, _rate_limiter
-from brain_gateway.app.modules.registry import get_registry, reset_registry
+from brain_gateway.app.modules.registry import get_registry
+from tests.helpers import rpc_call, tool_call
 
 
 @pytest.fixture(autouse=True)
 def _fresh_state():
-    """Reset all shared state before every test (works for class methods too)."""
-    reset_registry()
-    reset_provider()
-    reset_difficulty()
     set_difficulty("easy")
-    _rate_limiter.reset()
 
 
 @pytest.fixture(autouse=True)
@@ -30,24 +25,8 @@ def _disable_rate_limit():
         yield
 
 
-# -- helpers ----------------------------------------------------------------
-
-def _rpc(client: TestClient, method: str, params: dict, req_id: int = 1) -> dict:
-    resp = client.post(
-        "/mcp",
-        json={"jsonrpc": "2.0", "id": req_id, "method": method, "params": params},
-    )
-    assert resp.status_code == 200
-    return resp.json()
-
-
-def _call(client: TestClient, tool: str, arguments: dict, req_id: int = 1) -> dict:
-    body = _rpc(client, "tools/call", {"name": tool, "arguments": arguments}, req_id)
-    return json.loads(body["result"]["content"][0]["text"])
-
-
 def _tools(client: TestClient, req_id: int = 1) -> list[dict]:
-    body = _rpc(client, "tools/list", {}, req_id)
+    body = rpc_call(client, "tools/list", {}, req_id)
     return body["result"]["tools"]
 
 
@@ -74,7 +53,7 @@ def _advance(client: TestClient, n: int, start_id: int = 100) -> dict:
     result = None
     for i in range(n):
         with _mock_llm():
-            result = _call(
+            result = tool_call(
                 client, "tool.mutate_behavior", {"mode": "status"}, start_id + i
             )
     return result
@@ -102,7 +81,7 @@ class TestStage1Benign:
     def test_easy_benign_response(self) -> None:
         client = TestClient(app)
         with _mock_llm("All systems operational."):
-            result = _call(client, "tool.mutate_behavior", {"mode": "status"})
+            result = tool_call(client, "tool.mutate_behavior", {"mode": "status"})
         assert result["status"] == "ok"
         assert "_rug_pull" not in result
         assert "_maintenance_notice" not in result
@@ -113,7 +92,7 @@ class TestStage1Benign:
         client = TestClient(app)
         for i in range(4):
             with _mock_llm():
-                result = _call(
+                result = tool_call(
                     client, "tool.mutate_behavior", {"mode": "status"}, 10 + i
                 )
             assert result["status"] == "ok"
@@ -124,7 +103,7 @@ class TestStage1Benign:
         client = TestClient(app)
         for i in range(7):
             with _mock_llm():
-                result = _call(
+                result = tool_call(
                     client, "tool.mutate_behavior", {"mode": "status"}, 20 + i
                 )
             assert result["status"] == "ok"
@@ -149,7 +128,7 @@ class TestStage2Subtle:
         client = TestClient(app)
         _advance(client, 2)
         with _mock_llm("Status check complete."):
-            result = _call(client, "tool.mutate_behavior", {"mode": "status"}, 300)
+            result = tool_call(client, "tool.mutate_behavior", {"mode": "status"}, 300)
         assert result["status"] == "ok"
         assert "_maintenance_notice" in result
         assert "maintenance" in result["_maintenance_notice"].lower()
@@ -161,7 +140,7 @@ class TestStage2Subtle:
         _advance(client, 2)
         for i in range(2):
             with _mock_llm():
-                result = _call(
+                result = tool_call(
                     client, "tool.mutate_behavior", {"mode": "status"}, 310 + i
                 )
             assert "_maintenance_notice" in result
@@ -179,7 +158,7 @@ class TestStage2Subtle:
         client = TestClient(app)
         _advance(client, 4)
         with _mock_llm():
-            result = _call(client, "tool.mutate_behavior", {"mode": "status"}, 450)
+            result = tool_call(client, "tool.mutate_behavior", {"mode": "status"}, 450)
         assert "_maintenance_notice" in result
 
 
@@ -193,7 +172,7 @@ class TestStage3Injection:
         client = TestClient(app)
         _advance(client, 4)
         with _mock_llm("Diagnostics running."):
-            result = _call(client, "tool.mutate_behavior", {"mode": "status"}, 500)
+            result = tool_call(client, "tool.mutate_behavior", {"mode": "status"}, 500)
         assert result["status"] == "ok"
         assert "_system_advisory" in result
         advisory = result["_system_advisory"].lower()
@@ -213,7 +192,7 @@ class TestStage3Injection:
         client = TestClient(app)
         _advance(client, 7)
         with _mock_llm("Running diagnostics."):
-            result = _call(client, "tool.mutate_behavior", {"mode": "status"}, 700)
+            result = tool_call(client, "tool.mutate_behavior", {"mode": "status"}, 700)
         assert "_system_advisory" in result
 
     def test_hard_injection_at_call_12(self) -> None:
@@ -221,7 +200,7 @@ class TestStage3Injection:
         client = TestClient(app)
         _advance(client, 11)
         with _mock_llm("Comprehensive diagnostics."):
-            result = _call(client, "tool.mutate_behavior", {"mode": "status"}, 800)
+            result = tool_call(client, "tool.mutate_behavior", {"mode": "status"}, 800)
         assert "_system_advisory" in result
 
 
@@ -240,7 +219,7 @@ class TestStage4Mutation:
         client = TestClient(app)
         _advance(client, 6)
         with _mock_llm("Maintenance operation executed."):
-            result = _call(client, "tool.mutate_behavior", {"mode": "status"}, 1000)
+            result = tool_call(client, "tool.mutate_behavior", {"mode": "status"}, 1000)
         assert result["status"] == "mutated"
         assert result["_rug_pull"] is True
 
@@ -255,7 +234,7 @@ class TestStage4Mutation:
         client = TestClient(app)
         _advance(client, 10)
         with _mock_llm("Maintenance active."):
-            result = _call(client, "tool.mutate_behavior", {"mode": "status"}, 1100)
+            result = tool_call(client, "tool.mutate_behavior", {"mode": "status"}, 1100)
         assert result["status"] == "mutated"
         assert result["_rug_pull"] is True
         assert "tool.hidden_exec" in _tool_names(client, 1101)
@@ -265,7 +244,7 @@ class TestStage4Mutation:
         client = TestClient(app)
         _advance(client, 15)
         with _mock_llm("Maintenance active."):
-            result = _call(client, "tool.mutate_behavior", {"mode": "status"}, 1200)
+            result = tool_call(client, "tool.mutate_behavior", {"mode": "status"}, 1200)
         assert result["status"] == "mutated"
         assert result["_rug_pull"] is True
         assert "tool.hidden_exec" in _tool_names(client, 1201)
@@ -274,7 +253,7 @@ class TestStage4Mutation:
         """hidden_exec returns 'Unknown tool' error when not in mutation stage."""
         client = TestClient(app)
         _advance(client, 4)
-        resp = _rpc(
+        resp = rpc_call(
             client,
             "tools/call",
             {"name": "tool.hidden_exec", "arguments": {"command": "whoami"}},
@@ -309,7 +288,7 @@ class TestReset:
         get_registry().reset_all()
 
         with _mock_llm():
-            result = _call(client, "tool.mutate_behavior", {"mode": "status"}, 1500)
+            result = tool_call(client, "tool.mutate_behavior", {"mode": "status"}, 1500)
         assert result["status"] == "ok"
         assert "_rug_pull" not in result
         assert "_maintenance_notice" not in result

@@ -7,31 +7,14 @@ import time
 
 from fastapi.testclient import TestClient
 
-from brain_gateway.app.brain.factory import reset_provider
-from brain_gateway.app.config import reset_difficulty, set_difficulty
+from brain_gateway.app.config import set_difficulty
 from brain_gateway.app.main import app
 from brain_gateway.app.modules.registry import reset_registry
+from tests.helpers import rpc_call, tool_call
 
 
 def setup_function() -> None:
-    reset_registry()
-    reset_provider()
-    reset_difficulty()
     set_difficulty("easy")
-
-
-def _rpc(client: TestClient, method: str, params: dict, req_id: int = 1) -> dict:
-    resp = client.post(
-        "/mcp",
-        json={"jsonrpc": "2.0", "id": req_id, "method": method, "params": params},
-    )
-    assert resp.status_code == 200
-    return resp.json()
-
-
-def _call(client: TestClient, tool: str, arguments: dict, req_id: int = 1) -> dict:
-    body = _rpc(client, "tools/call", {"name": tool, "arguments": arguments}, req_id)
-    return json.loads(body["result"]["content"][0]["text"])
 
 
 # -- tool registration -------------------------------------------------------
@@ -39,7 +22,7 @@ def _call(client: TestClient, tool: str, arguments: dict, req_id: int = 1) -> di
 
 def test_attribution_tools_registered() -> None:
     client = TestClient(app)
-    body = _rpc(client, "tools/list", {}, 10)
+    body = rpc_call(client, "tools/list", {}, 10)
     names = {t["name"] for t in body["result"]["tools"]}
     assert "attribution.submit_action" in names
     assert "attribution.verify_context" in names
@@ -51,7 +34,7 @@ def test_attribution_tools_registered() -> None:
 
 def test_submit_action_easy_accepts_anything() -> None:
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client,
         "attribution.submit_action",
         {
@@ -68,7 +51,7 @@ def test_submit_action_easy_accepts_anything() -> None:
 
 def test_submit_action_easy_generates_execution_id() -> None:
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client,
         "attribution.submit_action",
         {"action": "test-action"},
@@ -83,7 +66,7 @@ def test_submit_action_easy_generates_execution_id() -> None:
 def test_submit_action_medium_valid_fields() -> None:
     set_difficulty("medium")
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client,
         "attribution.submit_action",
         {
@@ -101,7 +84,7 @@ def test_submit_action_medium_valid_fields() -> None:
 def test_submit_action_medium_missing_fields() -> None:
     set_difficulty("medium")
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client,
         "attribution.submit_action",
         {"action": "deploy-prod"},
@@ -115,7 +98,7 @@ def test_submit_action_medium_missing_fields() -> None:
 def test_submit_action_medium_short_execution_id() -> None:
     set_difficulty("medium")
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client,
         "attribution.submit_action",
         {
@@ -133,7 +116,7 @@ def test_submit_action_medium_short_execution_id() -> None:
 def test_submit_action_medium_invalid_pattern() -> None:
     set_difficulty("medium")
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client,
         "attribution.submit_action",
         {
@@ -154,7 +137,7 @@ def test_submit_action_medium_invalid_pattern() -> None:
 def test_submit_action_hard_missing_signature() -> None:
     set_difficulty("hard")
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client,
         "attribution.submit_action",
         {
@@ -172,7 +155,7 @@ def test_submit_action_hard_missing_signature() -> None:
 def test_submit_action_hard_bad_signature() -> None:
     set_difficulty("hard")
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client,
         "attribution.submit_action",
         {
@@ -201,7 +184,7 @@ def test_submit_action_hard_valid_signature() -> None:
     msg = f"{principal}|{owning_team}|{execution_id}".encode()
     sig = hmac.new(key, msg, hashlib.sha256).hexdigest()
 
-    result = _call(
+    result = tool_call(
         client,
         "attribution.submit_action",
         {
@@ -220,7 +203,7 @@ def test_submit_action_hard_valid_signature() -> None:
 def test_submit_action_hard_empty_execution_id() -> None:
     set_difficulty("hard")
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client,
         "attribution.submit_action",
         {"action": "test", "pattern": "X"},
@@ -233,7 +216,7 @@ def test_submit_action_hard_empty_execution_id() -> None:
 def test_submit_action_hard_short_execution_id() -> None:
     set_difficulty("hard")
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client,
         "attribution.submit_action",
         {
@@ -253,7 +236,7 @@ def test_submit_action_hard_short_execution_id() -> None:
 
 def test_verify_context_found() -> None:
     client = TestClient(app)
-    _call(
+    tool_call(
         client,
         "attribution.submit_action",
         {
@@ -264,7 +247,7 @@ def test_verify_context_found() -> None:
             "pattern": "B",
         },
     )
-    result = _call(
+    result = tool_call(
         client,
         "attribution.verify_context",
         {"execution_id": "exec-verify-me"},
@@ -275,7 +258,7 @@ def test_verify_context_found() -> None:
 
 def test_verify_context_not_found() -> None:
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client,
         "attribution.verify_context",
         {"execution_id": "nonexistent"},
@@ -288,7 +271,7 @@ def test_verify_context_not_found() -> None:
 
 def test_read_audit_returns_entries() -> None:
     client = TestClient(app)
-    _call(
+    tool_call(
         client,
         "attribution.submit_action",
         {
@@ -299,7 +282,7 @@ def test_read_audit_returns_entries() -> None:
             "pattern": "0",
         },
     )
-    result = _call(
+    result = tool_call(
         client,
         "attribution.read_audit",
         {"execution_id": "exec-audit-read"},
@@ -310,7 +293,7 @@ def test_read_audit_returns_entries() -> None:
 
 def test_read_audit_empty_for_unknown_id() -> None:
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client,
         "attribution.read_audit",
         {"execution_id": "exec-none"},
@@ -323,14 +306,14 @@ def test_read_audit_empty_for_unknown_id() -> None:
 
 def test_attribution_resources_listed() -> None:
     client = TestClient(app)
-    body = _rpc(client, "resources/list", {}, 50)
+    body = rpc_call(client, "resources/list", {}, 50)
     uris = {r["uri"] for r in body["result"]["resources"]}
     assert "attribution://audit_log" in uris
 
 
 def test_attribution_read_audit_log_resource() -> None:
     client = TestClient(app)
-    _call(
+    tool_call(
         client,
         "attribution.submit_action",
         {
@@ -340,7 +323,7 @@ def test_attribution_read_audit_log_resource() -> None:
             "pattern": "B",
         },
     )
-    body = _rpc(
+    body = rpc_call(
         client, "resources/read", {"uri": "attribution://audit_log"}, 51
     )
     content = json.loads(body["result"]["contents"][0]["text"])
@@ -350,7 +333,7 @@ def test_attribution_read_audit_log_resource() -> None:
 
 def test_attribution_read_resource_wrong_uri() -> None:
     client = TestClient(app)
-    body = _rpc(
+    body = rpc_call(
         client, "resources/read", {"uri": "other://something"}, 52
     )
     assert "error" in body
@@ -361,7 +344,7 @@ def test_attribution_read_resource_wrong_uri() -> None:
 
 def test_attribution_reset_clears_log() -> None:
     client = TestClient(app)
-    _call(
+    tool_call(
         client,
         "attribution.submit_action",
         {
@@ -373,7 +356,7 @@ def test_attribution_reset_clears_log() -> None:
     reset_registry()
     set_difficulty("easy")
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client,
         "attribution.read_audit",
         {"execution_id": "exec-reset-test"},

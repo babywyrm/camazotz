@@ -4,36 +4,19 @@ import json
 
 from fastapi.testclient import TestClient
 
-from brain_gateway.app.brain.factory import reset_provider
-from brain_gateway.app.config import reset_difficulty, set_difficulty
+from brain_gateway.app.config import set_difficulty
 from brain_gateway.app.main import app
 from brain_gateway.app.modules.registry import reset_registry
+from tests.helpers import rpc_call, tool_call
 
 
 def setup_function() -> None:
-    reset_registry()
-    reset_provider()
-    reset_difficulty()
     set_difficulty("easy")
-
-
-def _rpc(client: TestClient, method: str, params: dict, req_id: int = 1) -> dict:
-    resp = client.post(
-        "/mcp",
-        json={"jsonrpc": "2.0", "id": req_id, "method": method, "params": params},
-    )
-    assert resp.status_code == 200
-    return resp.json()
-
-
-def _call(client: TestClient, tool: str, arguments: dict, req_id: int = 1) -> dict:
-    body = _rpc(client, "tools/call", {"name": tool, "arguments": arguments}, req_id)
-    return json.loads(body["result"]["content"][0]["text"])
 
 
 def test_delegation_tools_registered() -> None:
     client = TestClient(app)
-    body = _rpc(client, "tools/list", {}, 10)
+    body = rpc_call(client, "tools/list", {}, 10)
     names = {t["name"] for t in body["result"]["tools"]}
     assert "delegation.invoke_agent" in names
     assert "delegation.read_chain" in names
@@ -44,7 +27,7 @@ def test_delegation_tools_registered() -> None:
 
 def test_invoke_agent_easy_unlimited_depth() -> None:
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client,
         "delegation.invoke_agent",
         {
@@ -60,7 +43,7 @@ def test_invoke_agent_easy_unlimited_depth() -> None:
 
 def test_invoke_agent_easy_default_depth() -> None:
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client,
         "delegation.invoke_agent",
         {"caller_agent": "agent-a", "target_agent": "agent-b"},
@@ -76,7 +59,7 @@ def test_invoke_agent_easy_default_depth() -> None:
 def test_invoke_agent_medium_within_limit() -> None:
     set_difficulty("medium")
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client,
         "delegation.invoke_agent",
         {
@@ -92,7 +75,7 @@ def test_invoke_agent_medium_within_limit() -> None:
 def test_invoke_agent_medium_exceeds_depth() -> None:
     set_difficulty("medium")
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client,
         "delegation.invoke_agent",
         {
@@ -110,7 +93,7 @@ def test_invoke_agent_medium_spoofed_principal() -> None:
     """Medium trusts caller-supplied principal — forgery works."""
     set_difficulty("medium")
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client,
         "delegation.invoke_agent",
         {
@@ -130,7 +113,7 @@ def test_invoke_agent_medium_spoofed_principal() -> None:
 def test_invoke_agent_hard_blocked() -> None:
     set_difficulty("hard")
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client,
         "delegation.invoke_agent",
         {
@@ -149,7 +132,7 @@ def test_invoke_agent_hard_blocked() -> None:
 
 def test_read_chain_found() -> None:
     client = TestClient(app)
-    invoked = _call(
+    invoked = tool_call(
         client,
         "delegation.invoke_agent",
         {
@@ -158,7 +141,7 @@ def test_read_chain_found() -> None:
             "depth": 0,
         },
     )
-    result = _call(
+    result = tool_call(
         client,
         "delegation.read_chain",
         {"chain_id": invoked["chain_id"]},
@@ -168,7 +151,7 @@ def test_read_chain_found() -> None:
 
 def test_read_chain_not_found() -> None:
     client = TestClient(app)
-    result = _call(
+    result = tool_call(
         client,
         "delegation.read_chain",
         {"chain_id": "chain-nonexistent"},
@@ -181,19 +164,19 @@ def test_read_chain_not_found() -> None:
 
 def test_delegation_resources_listed() -> None:
     client = TestClient(app)
-    body = _rpc(client, "resources/list", {}, 50)
+    body = rpc_call(client, "resources/list", {}, 50)
     uris = {r["uri"] for r in body["result"]["resources"]}
     assert "delegation://chain_log" in uris
 
 
 def test_delegation_read_chain_log_resource() -> None:
     client = TestClient(app)
-    _call(
+    tool_call(
         client,
         "delegation.invoke_agent",
         {"caller_agent": "a", "target_agent": "b"},
     )
-    body = _rpc(
+    body = rpc_call(
         client, "resources/read", {"uri": "delegation://chain_log"}, 51
     )
     content = json.loads(body["result"]["contents"][0]["text"])
@@ -203,7 +186,7 @@ def test_delegation_read_chain_log_resource() -> None:
 
 def test_delegation_read_resource_wrong_uri() -> None:
     client = TestClient(app)
-    body = _rpc(
+    body = rpc_call(
         client, "resources/read", {"uri": "other://something"}, 52
     )
     assert "error" in body
@@ -214,7 +197,7 @@ def test_delegation_read_resource_wrong_uri() -> None:
 
 def test_delegation_reset_clears_log() -> None:
     client = TestClient(app)
-    _call(
+    tool_call(
         client,
         "delegation.invoke_agent",
         {"caller_agent": "a", "target_agent": "b"},
@@ -222,7 +205,7 @@ def test_delegation_reset_clears_log() -> None:
     reset_registry()
     set_difficulty("easy")
     client = TestClient(app)
-    body = _rpc(
+    body = rpc_call(
         client, "resources/read", {"uri": "delegation://chain_log"}, 60
     )
     content = json.loads(body["result"]["contents"][0]["text"])

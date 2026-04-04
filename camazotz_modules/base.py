@@ -12,6 +12,7 @@ from brain_gateway.app.config import get_difficulty
 
 if TYPE_CHECKING:
     from brain_gateway.app.brain.provider import BrainProvider
+    from brain_gateway.app.modules.registry import LabRegistry
 
 
 class LabModule(ABC):
@@ -32,8 +33,7 @@ class LabModule(ABC):
     category: str = ""
     canary_prefix: str = "CZTZ"
 
-    # Back-reference set by the registry after instantiation.
-    _registry: Any = None
+    _registry: LabRegistry | None = None
 
     # --- abstract contract ---------------------------------------------------
 

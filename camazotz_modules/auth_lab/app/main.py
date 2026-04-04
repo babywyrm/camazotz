@@ -22,6 +22,8 @@ _TICKET_RE = re.compile(r"INC-\d{4,6}")
 class AuthLab(LabModule):
     name = "auth"
     threat_id = "MCP-T04"
+    title = "Confused Deputy / Token Theft"
+    category = "auth"
 
     system_prompts = {
         "easy": (

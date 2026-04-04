@@ -124,12 +124,15 @@ class LabRegistry:
     # -- middleware pipeline --------------------------------------------------
 
     def add_middleware(self, fn: Middleware) -> None:
-        self._middlewares.append(fn)
+        with self._lock:
+            self._middlewares.append(fn)
 
     def _run_middleware(
         self, tool_name: str, arguments: dict, result: dict, module_name: str
     ) -> None:
-        for mw in self._middlewares:
+        with self._lock:
+            middlewares = list(self._middlewares)
+        for mw in middlewares:
             try:
                 mw(tool_name, arguments, result, module_name)
             except Exception:

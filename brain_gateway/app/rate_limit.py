@@ -5,14 +5,15 @@ from __future__ import annotations
 import threading
 import time
 from dataclasses import dataclass, field
+from typing import Final
 
-LIMITS: dict[str, int] = {
+LIMITS: Final[dict[str, int]] = {
     "easy": 0,
     "medium": 30,
     "hard": 10,
 }
 
-WINDOW_SECONDS: float = 60.0
+WINDOW_SECONDS: Final[float] = 60.0
 
 
 @dataclass

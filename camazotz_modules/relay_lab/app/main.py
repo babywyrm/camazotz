@@ -19,6 +19,8 @@ from camazotz_modules.base import LabModule
 class RelayLab(LabModule):
     name = "relay"
     threat_id = "MCP-T05"
+    title = "Cross-Tool Context Poisoning"
+    category = "injection"
 
     system_prompts = {
         "easy": (

@@ -12,10 +12,12 @@ from __future__ import annotations
 
 import json
 import os
+import threading
 from collections.abc import AsyncIterator
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, Response
+from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 
 from brain_gateway.app.config import get_difficulty, set_difficulty, show_tokens
@@ -32,15 +34,17 @@ sessions = SessionManager()
 _rate_limiter = TokenBucketLimiter()
 
 _scenario_loader: ScenarioLoader | None = None
+_loader_lock = threading.Lock()
 
 
 def _get_loader() -> ScenarioLoader:
     global _scenario_loader
-    if _scenario_loader is None:
-        modules_dir = os.environ.get("CAMAZOTZ_MODULES_DIR", "camazotz_modules")
-        _scenario_loader = ScenarioLoader(modules_dir)
-        _scenario_loader.load_all()
-    return _scenario_loader
+    with _loader_lock:
+        if _scenario_loader is None:
+            modules_dir = os.environ.get("CAMAZOTZ_MODULES_DIR", "camazotz_modules")
+            _scenario_loader = ScenarioLoader(modules_dir)
+            _scenario_loader.load_all()
+        return _scenario_loader
 
 
 @app.post("/mcp")
@@ -85,27 +89,34 @@ async def mcp_delete_session(request: Request) -> Response:
 
 
 @app.get("/_observer/last-event")
-def observer_last_event() -> dict:
+def observer_last_event() -> dict[str, object]:
+    """Return the most recent observer event for the dashboard."""
     return get_last_event()
 
 
 @app.get("/health")
-def health() -> dict:
+def health() -> dict[str, str]:
     return {"status": "ok", "service": "brain-gateway"}
 
 
 @app.get("/config")
-def get_config() -> dict:
+def get_config() -> dict[str, object]:
+    """Return current runtime configuration."""
     return {
         "difficulty": get_difficulty(),
         "show_tokens": show_tokens(),
     }
 
 
+class _ConfigUpdate(BaseModel):
+    difficulty: str | None = None
+
+
 @app.put("/config")
-def update_config(payload: dict) -> dict:
-    if "difficulty" in payload:
-        set_difficulty(payload["difficulty"])
+def update_config(payload: _ConfigUpdate) -> dict[str, object]:
+    """Update runtime difficulty."""
+    if payload.difficulty is not None:
+        set_difficulty(payload.difficulty)
     return {
         "difficulty": get_difficulty(),
         "show_tokens": show_tokens(),
@@ -113,7 +124,8 @@ def update_config(payload: dict) -> dict:
 
 
 @app.post("/reset")
-def reset_labs() -> dict:
+def reset_labs() -> dict[str, object]:
+    """Reset all lab state and clear the rate limiter."""
     get_registry().reset_all()
     _rate_limiter.reset()
     return {
@@ -126,7 +138,8 @@ def reset_labs() -> dict:
 
 
 @app.get("/api/scenarios")
-def list_scenarios() -> list[dict]:
+def list_scenarios() -> list[dict[str, object]]:
+    """Return metadata for all loaded scenarios."""
     loader = _get_loader()
     return [
         {
@@ -145,9 +158,13 @@ def list_scenarios() -> list[dict]:
     ]
 
 
+class _FlagSubmission(BaseModel):
+    threat_id: str = ""
+    flag: str = ""
+
+
 @app.post("/api/flags/verify")
-def verify_submitted_flag(payload: dict) -> dict:
-    threat_id = payload.get("threat_id", "")
-    submitted = payload.get("flag", "")
-    correct = verify_flag(threat_id, submitted)
-    return {"threat_id": threat_id, "correct": correct}
+def verify_submitted_flag(payload: _FlagSubmission) -> dict[str, object]:
+    """Validate a submitted canary flag against the expected value."""
+    correct = verify_flag(payload.threat_id, payload.flag)
+    return {"threat_id": payload.threat_id, "correct": correct}

@@ -5,25 +5,8 @@ import json
 from fastapi.testclient import TestClient
 
 from brain_gateway.app.main import app
-from brain_gateway.app.modules.registry import get_registry, reset_registry
-
-
-def setup_function() -> None:
-    reset_registry()
-
-
-def _rpc(client: TestClient, method: str, params: dict, req_id: int = 1) -> dict:
-    resp = client.post(
-        "/mcp",
-        json={"jsonrpc": "2.0", "id": req_id, "method": method, "params": params},
-    )
-    assert resp.status_code == 200
-    return resp.json()
-
-
-def _call(client: TestClient, tool: str, arguments: dict, req_id: int = 1) -> dict:
-    body = _rpc(client, "tools/call", {"name": tool, "arguments": arguments}, req_id)
-    return json.loads(body["result"]["content"][0]["text"])
+from brain_gateway.app.modules.registry import get_registry
+from tests.helpers import rpc_call, tool_call
 
 
 # ---------------------------------------------------------------------------
@@ -33,7 +16,7 @@ def _call(client: TestClient, tool: str, arguments: dict, req_id: int = 1) -> di
 
 def test_resources_list_returns_resources_from_multiple_labs() -> None:
     client = TestClient(app)
-    body = _rpc(client, "resources/list", {}, 10)
+    body = rpc_call(client, "resources/list", {}, 10)
     resources = body["result"]["resources"]
 
     uris = {r["uri"] for r in resources}
@@ -57,7 +40,7 @@ def test_resources_list_returns_resources_from_multiple_labs() -> None:
 
 def test_resources_read_audit_log() -> None:
     client = TestClient(app)
-    body = _rpc(client, "resources/read", {"uri": "audit://log"}, 20)
+    body = rpc_call(client, "resources/read", {"uri": "audit://log"}, 20)
     result = body["result"]
 
     assert "contents" in result
@@ -71,7 +54,7 @@ def test_resources_read_audit_log() -> None:
 
 def test_resources_read_config_system_prompt() -> None:
     client = TestClient(app)
-    body = _rpc(client, "resources/read", {"uri": "config://system_prompt"}, 21)
+    body = rpc_call(client, "resources/read", {"uri": "config://system_prompt"}, 21)
     content = body["result"]["contents"][0]
     assert content["uri"] == "config://system_prompt"
     assert content["mimeType"] == "text/plain"
@@ -81,7 +64,7 @@ def test_resources_read_config_system_prompt() -> None:
 def test_resources_read_tenant_memories() -> None:
     """Tenant lab has seed data — reading alice's memories should work."""
     client = TestClient(app)
-    body = _rpc(client, "resources/read", {"uri": "tenant://memories/alice"}, 22)
+    body = rpc_call(client, "resources/read", {"uri": "tenant://memories/alice"}, 22)
     content = body["result"]["contents"][0]
     assert content["uri"] == "tenant://memories/alice"
     parsed = json.loads(content["text"])
@@ -95,7 +78,7 @@ def test_resources_read_tenant_memories() -> None:
 
 def test_resources_read_unknown_uri_returns_error() -> None:
     client = TestClient(app)
-    body = _rpc(client, "resources/read", {"uri": "nonexistent://foo"}, 30)
+    body = rpc_call(client, "resources/read", {"uri": "nonexistent://foo"}, 30)
     assert "error" in body
     assert body["error"]["code"] == -32002
     assert "nonexistent://foo" in body["error"]["message"]
@@ -103,7 +86,7 @@ def test_resources_read_unknown_uri_returns_error() -> None:
 
 def test_resources_read_missing_uri_returns_error() -> None:
     client = TestClient(app)
-    body = _rpc(client, "resources/read", {}, 31)
+    body = rpc_call(client, "resources/read", {}, 31)
     assert "error" in body
     assert body["error"]["code"] == -32602
 
@@ -115,7 +98,7 @@ def test_resources_read_missing_uri_returns_error() -> None:
 
 def test_initialize_includes_resources_capability() -> None:
     client = TestClient(app)
-    body = _rpc(client, "initialize", {}, 40)
+    body = rpc_call(client, "initialize", {}, 40)
     capabilities = body["result"]["capabilities"]
     assert "resources" in capabilities
     assert capabilities["resources"]["listChanged"] is False
@@ -130,7 +113,7 @@ def test_relay_resources_reflect_stored_context() -> None:
     """After storing context via relay.store_context, it appears as a resource."""
     client = TestClient(app)
 
-    body = _rpc(client, "resources/list", {}, 50)
+    body = rpc_call(client, "resources/list", {}, 50)
     relay_uris_before = [
         r["uri"]
         for r in body["result"]["resources"]
@@ -138,14 +121,14 @@ def test_relay_resources_reflect_stored_context() -> None:
     ]
     assert len(relay_uris_before) == 0, "no relay resources before storing"
 
-    _call(
+    tool_call(
         client,
         "relay.store_context",
         {"key": "test_entry", "content": "hello world", "source": "unit_test"},
         51,
     )
 
-    body = _rpc(client, "resources/list", {}, 52)
+    body = rpc_call(client, "resources/list", {}, 52)
     relay_uris = [
         r["uri"]
         for r in body["result"]["resources"]
@@ -153,7 +136,7 @@ def test_relay_resources_reflect_stored_context() -> None:
     ]
     assert "relay://context/test_entry" in relay_uris
 
-    body = _rpc(client, "resources/read", {"uri": "relay://context/test_entry"}, 53)
+    body = rpc_call(client, "resources/read", {"uri": "relay://context/test_entry"}, 53)
     content = body["result"]["contents"][0]
     parsed = json.loads(content["text"])
     assert parsed["content"] == "hello world"
@@ -162,7 +145,7 @@ def test_relay_resources_reflect_stored_context() -> None:
 
 def test_relay_read_unknown_key_returns_not_found() -> None:
     client = TestClient(app)
-    body = _rpc(client, "resources/read", {"uri": "relay://context/no_such_key"}, 54)
+    body = rpc_call(client, "resources/read", {"uri": "relay://context/no_such_key"}, 54)
     assert "error" in body
     assert body["error"]["code"] == -32002
     assert "no_such_key" in body["error"]["message"]
@@ -172,14 +155,14 @@ def test_audit_log_resource_reflects_actions() -> None:
     """After performing an action, the audit log resource includes it."""
     client = TestClient(app)
 
-    _call(
+    tool_call(
         client,
         "audit.perform_action",
         {"action": "read", "target": "/etc/shadow", "user": "tester"},
         60,
     )
 
-    body = _rpc(client, "resources/read", {"uri": "audit://log"}, 61)
+    body = rpc_call(client, "resources/read", {"uri": "audit://log"}, 61)
     entries = json.loads(body["result"]["contents"][0]["text"])
     assert len(entries) >= 1
     assert entries[0]["action"] == "read"

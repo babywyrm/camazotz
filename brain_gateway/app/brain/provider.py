@@ -1,9 +1,15 @@
-from dataclasses import dataclass, field
+"""LLM provider protocol and shared result type."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
 from typing import Any, Protocol
 
 
 @dataclass
 class BrainResult:
+    """Unified return value from any LLM provider call."""
+
     text: str
     input_tokens: int = 0
     output_tokens: int = 0
@@ -20,12 +26,15 @@ class BrainResult:
 
 
 def attach_usage(response: dict[str, Any], result: BrainResult) -> None:
+    """Inject ``_usage`` into *response* when token display is enabled."""
     from brain_gateway.app.config import show_tokens
     if show_tokens():
         response["_usage"] = result.usage_dict()
 
 
 class BrainProvider(Protocol):
+    """Structural protocol every LLM backend must satisfy."""
+
     name: str
 
     def generate(self, prompt: str, system: str = "") -> BrainResult:
