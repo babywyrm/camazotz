@@ -363,9 +363,9 @@ EZ / MOD / MAX.
 Example (adjust for your account):
 
 ```bash
-export AWS_REGION=us-west-2
-export AWS_PROFILE=my-sso-profile
-export CAMAZOTZ_MODEL=us.anthropic.claude-3-5-sonnet-20241022-v2:0
+export AWS_REGION=us-east-1
+export AWS_PROFILE=your-named-profile
+export CAMAZOTZ_MODEL=<your-bedrock-model-or-inference-profile-id>
 ```
 
 Full reference: [QUICKSTART.md](QUICKSTART.md)
@@ -422,7 +422,7 @@ camazotz/
 make up             # start with Claude
 make up-local       # start with Ollama
 make down           # stop all services
-make test           # run 532 tests (100% coverage)
+make test           # run 533 tests (100% coverage)
 make qa             # E2E QA harness against live gateway
 make qa-json        # QA harness with machine-readable JSON output
 make status         # health check all services

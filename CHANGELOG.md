@@ -5,13 +5,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
-## Agentic Security Labs & Bedrock Default (2026-04-03)
+## Agentic Security Labs & Amazon Bedrock (2026-04-03)
 
-### Amazon Bedrock as Default Brain
+### Amazon Bedrock (optional brain)
 
-- **Default brain provider changed to Bedrock.** `BRAIN_PROVIDER` defaults to
-  `bedrock` (Claude on Amazon Bedrock). Direct Anthropic API (`cloud`) and
-  Ollama (`local`) remain fully supported.
+- **Default for open source remains Anthropic API:** `BRAIN_PROVIDER` defaults
+  to `cloud`. Set `BRAIN_PROVIDER=bedrock` to use Claude on Amazon Bedrock;
+  `local` (Ollama) unchanged.
 - **New `BedrockClaudeProvider`** (`brain_gateway/app/brain/bedrock_claude.py`)
   using `anthropic.AnthropicBedrock` with `boto3` for credential resolution.
 - **Stub mode:** `CAMAZOTZ_BEDROCK_STUB=1` for offline testing without AWS.
@@ -48,13 +48,13 @@ Each module has 3-tier difficulty (EZ/MOD/MAX), MCP tools + resources,
 - **Portal Docker build context** fixed: `context: ..` with
   `dockerfile: frontend/Dockerfile` (repo root as context).
 - **57 MCP tools** across **25 modules** registered at startup.
-- **532 tests** at **100% coverage**.
+- **533 tests** at **100% coverage**.
 
 ### Documentation
 
 - README updated: architecture diagram, module count, test count, OWASP
   tables, guardrail matrix, project structure, deployment table.
-- Sanitized internal references (`dcext-stg` → generic placeholder).
+- Sanitized internal references (internal SSO profile name → generic placeholder).
 - CHANGELOG, scenarios.md, module-authoring.md updated for full module set.
 
 ---

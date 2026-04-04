@@ -51,7 +51,7 @@ ensure the node has AWS credentials (instance profile, IRSA, or env vars):
 
 ```bash
 sudo k3s kubectl -n camazotz patch configmap camazotz-config \
-  -p '{"data":{"AWS_REGION":"us-west-2","CAMAZOTZ_MODEL":"us.anthropic.claude-3-5-sonnet-20241022-v2:0"}}'
+  -p '{"data":{"AWS_REGION":"us-east-1","CAMAZOTZ_MODEL":"<your-bedrock-model-id>"}}'
 sudo k3s kubectl -n camazotz rollout restart deployment/brain-gateway
 ```
 

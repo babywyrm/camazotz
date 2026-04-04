@@ -37,8 +37,8 @@ Edit `compose/.env`:
 
 ```bash
 BRAIN_PROVIDER=bedrock
-AWS_REGION=us-west-2
-CAMAZOTZ_MODEL=anthropic.claude-3-haiku-20240307-v1:0  # or your inference profile
+AWS_REGION=us-east-1
+CAMAZOTZ_MODEL=anthropic.claude-3-haiku-20240307-v1:0  # or your inference profile id
 
 # For SSO/assume-role, export temporary credentials:
 #   eval $(aws configure export-credentials --format env)

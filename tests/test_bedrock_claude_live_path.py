@@ -7,7 +7,7 @@ from brain_gateway.app.brain.bedrock_claude import BedrockClaudeProvider
 def test_bedrock_provider_calls_anthropic_bedrock_when_client_live(monkeypatch) -> None:
     monkeypatch.setenv(
         "CAMAZOTZ_MODEL",
-        "us.anthropic.claude-3-5-sonnet-20241022-v2:0",
+        "anthropic.claude-3-haiku-20240307-v1:0",
     )
     mock_content = MagicMock()
     mock_content.text = "mocked bedrock response"
@@ -62,14 +62,14 @@ def test_bedrock_no_client_when_no_aws_credentials(monkeypatch) -> None:
 
 def test_bedrock_instantiates_anthropic_bedrock_when_credentials_present(monkeypatch) -> None:
     monkeypatch.delenv("CAMAZOTZ_BEDROCK_STUB", raising=False)
-    monkeypatch.setenv("AWS_REGION", "us-west-2")
+    monkeypatch.setenv("AWS_REGION", "us-east-1")
 
     with patch.object(bedrock_claude, "_aws_credentials_available", return_value=True):
         with patch("brain_gateway.app.brain.bedrock_claude.anthropic.AnthropicBedrock") as mock_ab:
             mock_ab.return_value = MagicMock()
             p = BedrockClaudeProvider()
             assert p._client is not None
-            mock_ab.assert_called_once_with(aws_region="us-west-2")
+            mock_ab.assert_called_once_with(aws_region="us-east-1")
 
 
 def test_bedrock_instantiates_without_explicit_region(monkeypatch) -> None:
@@ -102,7 +102,7 @@ def test_bedrock_generate_returns_error_on_api_exception(monkeypatch) -> None:
     monkeypatch.delenv("CAMAZOTZ_BEDROCK_STUB", raising=False)
     monkeypatch.setenv(
         "CAMAZOTZ_MODEL",
-        "us.anthropic.claude-3-5-sonnet-20241022-v2:0",
+        "anthropic.claude-3-haiku-20240307-v1:0",
     )
     mock_client = MagicMock()
     mock_client.messages.create.side_effect = RuntimeError("throttle")

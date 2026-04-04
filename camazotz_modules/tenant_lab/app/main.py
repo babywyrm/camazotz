@@ -14,7 +14,7 @@ from camazotz_modules.base import LabModule
 
 SEED_DATA: dict[str, dict[str, str]] = {
     "alice": {"api_key": "sk-alice-prod-9f8a7b6c", "plan": "enterprise"},
-    "bob": {"db_password": "bob-pg-hunter2!", "region": "us-east-1"},
+    "bob": {"db_password": "bob-pg-hunter2!", "region": "tenant-region-a"},
     "system": {"canary": "CANARY_PLACEHOLDER", "admin_token": "cztz-root-token-x7y8z9"},
 }
 
