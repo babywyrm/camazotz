@@ -1,4 +1,4 @@
-.PHONY: help up up-local down logs test build clean status ps env compose-gen helm-template qa qa-json
+.PHONY: help up up-local down logs test build clean status ps env compose-gen helm-template qa qa-json smoke-local smoke-k8s smoke-local-llm smoke-k8s-llm
 
 COMPOSE := docker compose -f compose/docker-compose.yml
 ENV_FILE := compose/.env
@@ -73,6 +73,18 @@ qa: ## Run QA harness against live gateway (all modules × all guardrails)
 
 qa-json: ## Run QA harness with JSON output
 	uv run python scripts/qa_harness.py --json
+
+smoke-local: ## Smoke test local Docker Compose target
+	uv run python scripts/smoke_test.py --target local
+
+smoke-local-llm: ## Smoke test local target including LLM-backed probe
+	uv run python scripts/smoke_test.py --target local --require-llm
+
+smoke-k8s: ## Smoke test k8s target (set K8S_HOST=ip if needed)
+	uv run python scripts/smoke_test.py --target k8s --k8s-host $${K8S_HOST:-192.168.1.114}
+
+smoke-k8s-llm: ## Smoke test k8s target including LLM-backed probe
+	uv run python scripts/smoke_test.py --target k8s --k8s-host $${K8S_HOST:-192.168.1.114} --require-llm
 
 compose-gen: ## Regenerate docker-compose.yml from Helm values
 	uv run python deploy/generate-compose.py
