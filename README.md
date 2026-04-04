@@ -14,7 +14,7 @@
 <p align="center">
 <img src="https://img.shields.io/badge/docker-compose-2496ed?style=flat-square&logo=docker&logoColor=white" alt="Docker Compose">
 <img src="https://img.shields.io/badge/kubernetes-helm-326ce5?style=flat-square&logo=kubernetes&logoColor=white" alt="Kubernetes">
-<img src="https://img.shields.io/badge/LLM-Claude_%7C_Ollama-f87171?style=flat-square" alt="Claude | Ollama">
+<img src="https://img.shields.io/badge/LLM-Bedrock_%7C_Claude_API_%7C_Ollama-f87171?style=flat-square" alt="Bedrock | Claude API | Ollama">
 </p>
 
 ---
@@ -23,7 +23,8 @@ Camazotz is a hands-on training platform for understanding how
 [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) tools
 can be exploited when backed by large language models. Every scenario is
 mapped to the [OWASP MCP Top 10 (2025)](https://owasp.org/www-project-mcp-top-10/)
-and backed by a live LLM (Claude or Ollama) so exploits emerge from real
+and backed by a live LLM (Anthropic API or Ollama by default; optional
+Amazon Bedrock via `BRAIN_PROVIDER=bedrock`) so exploits emerge from real
 AI behavior, not static mock responses.
 
 > **The core insight Camazotz teaches:** LLM guardrails are not security
@@ -37,9 +38,10 @@ AI behavior, not static mock responses.
 ```bash
 git clone https://github.com/babywyrm/camazotz && cd camazotz
 make env          # create .env from template
-make up           # start with Claude (needs ANTHROPIC_API_KEY in .env)
+make up           # start with Claude API (needs ANTHROPIC_API_KEY in .env)
 # — or —
 make up-local     # start with Ollama (fully offline, no API key needed)
+# Optional: BRAIN_PROVIDER=bedrock + AWS region/credentials for Amazon Bedrock
 ```
 
 Open **http://localhost:3000** — the Camazotz Security Portal.
@@ -270,11 +272,20 @@ EZ / MOD / MAX.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `BRAIN_PROVIDER` | `cloud` | `cloud` (Claude) or `local` (Ollama) |
-| `ANTHROPIC_API_KEY` | — | Required for Claude |
+| `BRAIN_PROVIDER` | `cloud` | `cloud` (Anthropic API), `bedrock` (Claude on Amazon Bedrock), or `local` (Ollama) |
+| `AWS_REGION` | — | Region for Bedrock when `BRAIN_PROVIDER=bedrock` |
+| `AWS_PROFILE` | — | Optional named AWS profile (e.g. local SSO) |
+| `CAMAZOTZ_MODEL` | — | Model id for Bedrock when using `bedrock`; also used for Anthropic API when set |
+| `CAMAZOTZ_BEDROCK_MODEL` | — | Optional override for Bedrock only (takes precedence over `CAMAZOTZ_MODEL`) |
+| `CAMAZOTZ_BEDROCK_STUB` | — | Set `1` for offline Bedrock stub (`[bedrock-stub]`) without AWS credentials |
+| `ANTHROPIC_API_KEY` | — | Required when `BRAIN_PROVIDER=cloud` |
 | `CAMAZOTZ_DIFFICULTY` | `medium` | Guardrail level: EZ / MOD / MAX (switchable from portal) |
 | `CAMAZOTZ_SHOW_TOKENS` | `false` | Show LLM token usage and cost per call |
 | `CAMAZOTZ_OLLAMA_MODEL` | `llama3.2:3b` | Ollama model name |
+
+### Amazon Bedrock (optional)
+
+Set `BRAIN_PROVIDER=bedrock` and configure `AWS_REGION`, credentials (e.g. `AWS_PROFILE` or environment keys), and `CAMAZOTZ_MODEL` to your inference profile or foundation model id. Use `CAMAZOTZ_BEDROCK_STUB=1` for offline tests without calling AWS.
 
 Full reference: [QUICKSTART.md](QUICKSTART.md)
 
@@ -283,7 +294,7 @@ Full reference: [QUICKSTART.md](QUICKSTART.md)
 ```
 camazotz/
 ├── brain_gateway/           # FastAPI backend (MCP JSON-RPC, config, observer)
-│   ├── app/brain/           # LLM provider abstraction (Claude + Ollama)
+│   ├── app/brain/           # LLM provider abstraction (Anthropic API, Bedrock, Ollama)
 │   └── app/modules/
 │       └── registry.py      # LabRegistry — auto-discovers modules, middleware pipeline
 ├── camazotz_modules/        # 14 vulnerability lab modules (LabModule subclasses)

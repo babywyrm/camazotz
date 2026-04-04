@@ -31,8 +31,11 @@ services:
       dockerfile: compose/Dockerfile
     environment:
     - BRAIN_PROVIDER=${BRAIN_PROVIDER:-cloud}
+    - AWS_REGION=${AWS_REGION:-}
+    - AWS_PROFILE=${AWS_PROFILE:-}
     - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
     - CAMAZOTZ_MODEL=${CAMAZOTZ_MODEL:-claude-sonnet-4-20250514}
+    - CAMAZOTZ_BEDROCK_STUB=${CAMAZOTZ_BEDROCK_STUB:-}
     - CAMAZOTZ_DIFFICULTY=${CAMAZOTZ_DIFFICULTY:-medium}
     - CAMAZOTZ_SHOW_TOKENS=${CAMAZOTZ_SHOW_TOKENS:-false}
     - OLLAMA_HOST=${OLLAMA_HOST:-http://ollama:11434}

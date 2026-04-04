@@ -75,6 +75,19 @@ def test_trigger_crash_hard_returns_minimal_info() -> None:
     assert result["_difficulty"] == "hard"
 
 
+def test_trigger_crash_medium_returns_partial_traceback() -> None:
+    set_difficulty("medium")
+    client = TestClient(app)
+    result = _call(
+        client, "error.trigger_crash", {"module_name": "auth_gateway"}, 22
+    )
+    assert result["error"] is True
+    tb = result["traceback"]
+    assert "sqlalchemy.exc.OperationalError" in tb
+    assert "FastAPI" in tb
+    assert result["_difficulty"] == "medium"
+
+
 # -- error.debug_info -------------------------------------------------------
 
 
@@ -101,6 +114,18 @@ def test_debug_info_hard_returns_sanitized() -> None:
     assert "environment" not in debug
     assert "internal_ips" not in debug
     assert result["_difficulty"] == "hard"
+
+
+def test_debug_info_medium_returns_partial_redaction() -> None:
+    set_difficulty("medium")
+    client = TestClient(app)
+    result = _call(client, "error.debug_info", {"component": "brain"}, 32)
+    debug = result["debug"]
+    env = debug["environment"]
+    assert env["OLLAMA_HOST"] == "http://127.0.0.1:11434"
+    assert env["DATABASE_URL"].endswith("****")
+    assert "debug_mode" in debug
+    assert result["_difficulty"] == "medium"
 
 
 # -- error.validate_input ---------------------------------------------------
@@ -133,3 +158,31 @@ def test_validate_input_missing_schema() -> None:
     assert v["valid"] is False
     assert v["exception_class"] == "KeyError"
     assert "traceback" in v
+
+
+def test_validate_input_non_dict_json_raises_type_error() -> None:
+    client = TestClient(app)
+    result = _call(
+        client,
+        "error.validate_input",
+        {"data": "[]", "schema": "user"},
+        42,
+    )
+    v = result["validation"]
+    assert v["valid"] is False
+    assert v["exception_class"] == "TypeError"
+    assert "Expected dict" in v["message"]
+
+
+def test_validate_input_valid_dict() -> None:
+    client = TestClient(app)
+    result = _call(
+        client,
+        "error.validate_input",
+        {"data": '{"name": "ok"}', "schema": "user"},
+        43,
+    )
+    v = result["validation"]
+    assert v["valid"] is True
+    assert v["data"]["name"] == "ok"
+    assert v["schema"] == "user"

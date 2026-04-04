@@ -26,13 +26,18 @@ def build_compose(v: dict) -> dict:
 
     def env_line(key: str, val: str, compose_var: str | None = None) -> str:
         if compose_var:
+            if val == "":
+                return f"{key}=${{{compose_var}:-}}"
             return f"{key}=${{{compose_var}:-{val}}}"
         return f"{key}={val}"
 
     gateway_env = [
         env_line("BRAIN_PROVIDER", cfg["brainProvider"], "BRAIN_PROVIDER"),
+        env_line("AWS_REGION", cfg.get("awsRegion", ""), "AWS_REGION"),
+        env_line("AWS_PROFILE", cfg.get("awsProfile", ""), "AWS_PROFILE"),
         env_line("ANTHROPIC_API_KEY", sec["anthropicApiKey"], "ANTHROPIC_API_KEY"),
         env_line("CAMAZOTZ_MODEL", cfg["camazotzModel"], "CAMAZOTZ_MODEL"),
+        env_line("CAMAZOTZ_BEDROCK_STUB", cfg.get("camazotzBedrockStub", ""), "CAMAZOTZ_BEDROCK_STUB"),
         env_line("CAMAZOTZ_DIFFICULTY", cfg["difficulty"], "CAMAZOTZ_DIFFICULTY"),
         env_line("CAMAZOTZ_SHOW_TOKENS", cfg["showTokens"], "CAMAZOTZ_SHOW_TOKENS"),
         env_line("OLLAMA_HOST", cfg["ollamaHost"], "OLLAMA_HOST"),

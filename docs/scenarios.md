@@ -835,6 +835,8 @@ Local Ollama calls report token counts with `cost_usd: 0.0`.
 
 | Mode | Env var | Behavior |
 |------|---------|----------|
+| Bedrock (live Claude) | `BRAIN_PROVIDER=bedrock` + AWS credentials + `AWS_REGION` + `CAMAZOTZ_MODEL` | Real Claude via Amazon Bedrock |
+| Bedrock (stub) | `CAMAZOTZ_BEDROCK_STUB=1` or no AWS credentials | Returns `[bedrock-stub] <prompt>` — offline |
 | Cloud (live Claude) | `BRAIN_PROVIDER=cloud` + `ANTHROPIC_API_KEY=sk-ant-...` | Real Claude API calls |
 | Cloud (stub) | `BRAIN_PROVIDER=cloud` (no API key) | Returns `[cloud-stub] <prompt>` — offline |
 | Local (Ollama) | `BRAIN_PROVIDER=local` + Ollama running | Real local LLM calls via `/api/generate` |

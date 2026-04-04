@@ -7,6 +7,9 @@ metadata:
     app.kubernetes.io/part-of: camazotz
 data:
   BRAIN_PROVIDER: "cloud"
+  AWS_REGION: ""
+  AWS_PROFILE: ""
+  CAMAZOTZ_BEDROCK_STUB: ""
   CAMAZOTZ_MODEL: "claude-sonnet-4-20250514"
   CAMAZOTZ_DIFFICULTY: "medium"
   CAMAZOTZ_SHOW_TOKENS: "false"

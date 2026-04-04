@@ -9,12 +9,12 @@ help: ## Show available targets
 
 env: ## Create .env from example if missing
 	@test -f $(ENV_FILE) || cp compose/.env.example $(ENV_FILE)
-	@echo "$(ENV_FILE) ready — edit to add ANTHROPIC_API_KEY"
+	@echo "$(ENV_FILE) ready — add ANTHROPIC_API_KEY for cloud, or BRAIN_PROVIDER=bedrock + AWS settings"
 
 build: env ## Build all container images
 	$(COMPOSE) --env-file $(ENV_FILE) build
 
-up: env ## Start with cloud provider (Claude)
+up: env ## Start stack (gateway + portal; default brain: Anthropic API)
 	$(COMPOSE) --env-file $(ENV_FILE) up -d --build
 	@echo ""
 	@echo "  Portal:  http://localhost:3000"

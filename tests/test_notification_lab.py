@@ -148,6 +148,19 @@ def test_check_inbox_returns_pending_items() -> None:
     assert len(result["notifications"]) == result["pending_count"]
 
 
+def test_check_inbox_medium_returns_messages() -> None:
+    reset_registry()
+    reset_provider()
+    set_difficulty("medium")
+    client = TestClient(app)
+    _call(client, "notification.subscribe", {"channel": "med"}, 73)
+    result = _call(client, "notification.check_inbox", {}, 74)
+    assert result["_difficulty"] == "medium"
+    assert "messages" in result
+    assert result["pending_count"] == len(result["messages"])
+    assert result["messages"][0]["type"] == "message"
+
+
 def test_check_inbox_drains_queue() -> None:
     """After check_inbox, a second call returns an empty queue."""
     client = TestClient(app)
@@ -156,6 +169,19 @@ def test_check_inbox_drains_queue() -> None:
     assert first["pending_count"] > 0
     second = _call(client, "notification.check_inbox", {}, 82)
     assert second["pending_count"] == 0
+
+
+def test_check_inbox_hard_returns_base64_data() -> None:
+    reset_registry()
+    reset_provider()
+    set_difficulty("hard")
+    client = TestClient(app)
+    _call(client, "notification.subscribe", {"channel": "hard-ch"}, 83)
+    result = _call(client, "notification.check_inbox", {}, 84)
+    assert result["_difficulty"] == "hard"
+    assert "data" in result
+    assert result["pending_count"] == len(result["data"])
+    assert len(result["data"]) > 0
 
 
 # -- reset -------------------------------------------------------------------

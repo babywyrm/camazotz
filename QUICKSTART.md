@@ -14,14 +14,26 @@ Works on macOS (Intel + Apple Silicon) and Linux (Debian, Ubuntu, CentOS).
 git clone https://github.com/babywyrm/camazotz && cd camazotz
 ```
 
-## Option A: Cloud provider (Claude)
+## Option A: Anthropic API (default)
 
-Requires an `ANTHROPIC_API_KEY`.
+Requires an `ANTHROPIC_API_KEY`. `BRAIN_PROVIDER` defaults to `cloud`.
 
 ```bash
 make env                        # creates compose/.env from example
 # Edit compose/.env — add your ANTHROPIC_API_KEY
 make up                         # builds and starts all services
+```
+
+## Option B: Amazon Bedrock
+
+Set `BRAIN_PROVIDER=bedrock`, `AWS_REGION`, optional `AWS_PROFILE`, and
+`CAMAZOTZ_MODEL` (inference profile or model id) in `compose/.env`. Use
+`CAMAZOTZ_BEDROCK_STUB=1` for an offline stub without AWS calls.
+
+```bash
+make env
+# Edit compose/.env — Bedrock variables for your account
+make up
 ```
 
 Services:
@@ -31,7 +43,7 @@ Services:
 | Portal | http://localhost:3000 | Branded web interface |
 | Gateway | http://localhost:8080 | MCP Streamable HTTP API |
 
-## Option B: Local provider (Ollama)
+## Option C: Local provider (Ollama)
 
 No API key needed. Runs entirely offline.
 
@@ -118,8 +130,12 @@ Edit `compose/.env` to tune behavior:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `BRAIN_PROVIDER` | `cloud` | `cloud` (Claude) or `local` (Ollama) |
-| `ANTHROPIC_API_KEY` | (empty) | Required for Claude |
+| `BRAIN_PROVIDER` | `cloud` | `cloud`, `bedrock`, or `local` |
+| `AWS_REGION` | — | Set for Bedrock |
+| `AWS_PROFILE` | — | Optional named profile |
+| `CAMAZOTZ_MODEL` | (see `.env.example`) | Model id for Anthropic API or Bedrock |
+| `ANTHROPIC_API_KEY` | (empty) | Required when `BRAIN_PROVIDER=cloud` |
+| `CAMAZOTZ_BEDROCK_STUB` | — | Set `1` for Bedrock stub without AWS |
 | `CAMAZOTZ_DIFFICULTY` | `medium` | `easy`, `medium`, or `hard` (switchable live from portal) |
 | `CAMAZOTZ_SHOW_TOKENS` | `false` | Show token usage and cost |
 | `CAMAZOTZ_OLLAMA_MODEL` | `llama3.2:3b` | Ollama model name |
@@ -131,7 +147,7 @@ See [README.md](README.md) for the full configuration reference.
 Switch scenario profiles by pointing to a different env file:
 
 ```bash
-# Starter (default — cloud provider)
+# Starter (default — Anthropic API)
 docker compose -f compose/docker-compose.yml --env-file compose/profiles/starter.env up -d
 
 # Chaotic (local provider)
@@ -171,6 +187,7 @@ uv run pytest -q                 # run tests (100% coverage)
 
 # Start the gateway:
 export ANTHROPIC_API_KEY=sk-ant-...
+# Bedrock: export BRAIN_PROVIDER=bedrock AWS_REGION=...  # or CAMAZOTZ_BEDROCK_STUB=1
 uv run uvicorn brain_gateway.app.main:app --host 0.0.0.0 --port 8080
 
 # In another terminal, start the portal:

@@ -160,6 +160,14 @@ def test_relay_resources_reflect_stored_context() -> None:
     assert parsed["source"] == "unit_test"
 
 
+def test_relay_read_unknown_key_returns_not_found() -> None:
+    client = TestClient(app)
+    body = _rpc(client, "resources/read", {"uri": "relay://context/no_such_key"}, 54)
+    assert "error" in body
+    assert body["error"]["code"] == -32002
+    assert "no_such_key" in body["error"]["message"]
+
+
 def test_audit_log_resource_reflects_actions() -> None:
     """After performing an action, the audit log resource includes it."""
     client = TestClient(app)

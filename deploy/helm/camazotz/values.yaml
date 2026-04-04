@@ -1,9 +1,14 @@
 # Camazotz Helm values — single source of truth for K8s and Docker Compose.
+#
+# For Bedrock: set brainProvider, awsRegion, awsProfile, and camazotzModel at deploy time.
 
 namespace: camazotz
 
 config:
   brainProvider: cloud
+  awsRegion: ""
+  awsProfile: ""
+  camazotzBedrockStub: ""
   camazotzModel: "claude-sonnet-4-20250514"
   difficulty: medium
   showTokens: "false"

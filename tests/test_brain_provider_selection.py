@@ -19,12 +19,36 @@ def test_default_provider_is_cloud(monkeypatch) -> None:
     reset_provider()
 
 
+def test_bedrock_provider_selected(monkeypatch) -> None:
+    reset_provider()
+    monkeypatch.setenv("BRAIN_PROVIDER", "bedrock")
+    monkeypatch.setenv("CAMAZOTZ_BEDROCK_STUB", "1")
+    provider = get_provider()
+    assert provider.name == "bedrock"
+    result = provider.generate("hello")
+    assert "[bedrock-stub]" in result.text
+    assert result.input_tokens == 0
+    reset_provider()
+
+
 def test_local_provider_selected(monkeypatch) -> None:
     reset_provider()
     monkeypatch.setenv("BRAIN_PROVIDER", "local")
     provider = get_provider()
     assert provider.name == "local"
     assert isinstance(provider, LocalOllamaProvider)
+    reset_provider()
+
+
+def test_cloud_provider_selected(monkeypatch) -> None:
+    from brain_gateway.app.brain.cloud_claude import CloudClaudeProvider
+
+    reset_provider()
+    monkeypatch.setenv("BRAIN_PROVIDER", "cloud")
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    provider = get_provider()
+    assert isinstance(provider, CloudClaudeProvider)
+    assert provider.generate("x").text.startswith("[cloud-stub]")
     reset_provider()
 
 

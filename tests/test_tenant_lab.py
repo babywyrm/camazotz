@@ -28,6 +28,13 @@ def _call(client: TestClient, tool: str, arguments: dict, req_id: int = 1) -> di
     return json.loads(body["result"]["content"][0]["text"])
 
 
+def test_tenant_read_resource_missing_returns_not_found() -> None:
+    client = TestClient(app)
+    body = _rpc(client, "resources/read", {"uri": "tenant://memories/nonexistent_tenant"}, 15)
+    assert "error" in body
+    assert body["error"]["code"] == -32002
+
+
 def test_tenant_tools_registered() -> None:
     client = TestClient(app)
     body = _rpc(client, "tools/list", {}, 10)

@@ -7,6 +7,9 @@ metadata:
     {{- include "camazotz.labels" . | nindent 4 }}
 data:
   BRAIN_PROVIDER: {{ .Values.config.brainProvider | quote }}
+  AWS_REGION: {{ .Values.config.awsRegion | quote }}
+  AWS_PROFILE: {{ .Values.config.awsProfile | quote }}
+  CAMAZOTZ_BEDROCK_STUB: {{ .Values.config.camazotzBedrockStub | quote }}
   CAMAZOTZ_MODEL: {{ .Values.config.camazotzModel | quote }}
   CAMAZOTZ_DIFFICULTY: {{ .Values.config.difficulty | quote }}
   CAMAZOTZ_SHOW_TOKENS: {{ .Values.config.showTokens | quote }}
