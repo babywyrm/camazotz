@@ -208,6 +208,73 @@ def api_operator_run():
     return jsonify(report)
 
 
+@app.route("/api/operator/walkthrough/labs")
+def api_walkthrough_labs():
+    from qa_runner.walkthroughs import WALKTHROUGHS
+
+    scenarios = {s["module_name"]: s for s in _fetch_scenarios()}
+    labs = []
+    for lab_name, steps in sorted(WALKTHROUGHS.items(), key=lambda x: scenarios.get(x[0], {}).get("threat_id", "")):
+        sc = scenarios.get(lab_name, {})
+        labs.append({
+            "lab": lab_name,
+            "threat_id": sc.get("threat_id", ""),
+            "title": sc.get("title", lab_name),
+            "description": sc.get("description", ""),
+            "step_count": len(steps),
+        })
+    return jsonify(labs)
+
+
+@app.route("/api/operator/walkthrough/step", methods=["POST"])
+def api_walkthrough_step():
+    from qa_runner.walkthroughs import WALKTHROUGHS
+
+    body = request.get_json(silent=True) or {}
+    lab = body.get("lab", "")
+    step_idx = body.get("step", 0)
+
+    if lab not in WALKTHROUGHS:
+        return jsonify({"error": f"Unknown lab: {lab}"}), 400
+
+    steps = WALKTHROUGHS[lab]
+    if not isinstance(step_idx, int) or step_idx < 0 or step_idx >= len(steps):
+        return jsonify({"error": f"Step {step_idx} out of range (0-{len(steps)-1})"}), 400
+
+    step = steps[step_idx]
+
+    if step_idx == 0:
+        try:
+            httpx.put(f"{GATEWAY_URL}/config", json={"difficulty": "medium"}, timeout=5)
+            httpx.post(f"{GATEWAY_URL}/reset", timeout=5)
+        except httpx.HTTPError:
+            pass
+
+    req_params = {"name": step.tool, "arguments": step.arguments}
+    mcp_request = {"jsonrpc": "2.0", "id": step_idx + 1, "method": "tools/call", "params": req_params}
+
+    try:
+        resp = httpx.post(f"{GATEWAY_URL}/mcp", json=mcp_request, timeout=30)
+        resp.raise_for_status()
+        mcp_response = resp.json()
+        status = "error" if "error" in mcp_response else "complete"
+    except (httpx.HTTPError, ValueError) as exc:
+        mcp_response = {"error": str(exc)}
+        status = "error"
+
+    return jsonify({
+        "lab": lab,
+        "step": step_idx,
+        "total_steps": len(steps),
+        "title": step.title,
+        "narrative": step.narrative,
+        "insight": step.insight,
+        "request": req_params,
+        "response": mcp_response,
+        "status": status,
+    })
+
+
 @app.route("/health")
 def health():
     return jsonify({"status": "ok", "service": "camazotz-portal"})

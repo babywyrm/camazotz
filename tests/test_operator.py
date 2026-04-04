@@ -124,10 +124,6 @@ def test_operator_no_nav_link(frontend_client) -> None:
 
 def test_results_to_dict_structure() -> None:
     """Verify results_to_dict produces the expected JSON shape."""
-    scripts_dir = str(__import__("pathlib").Path(__file__).resolve().parents[1] / "scripts")
-    if scripts_dir not in sys.path:
-        sys.path.insert(0, scripts_dir)
-
     from qa_runner import results_to_dict
     from qa_runner.types import CheckResult, LevelResult, ModuleResult
 
@@ -147,5 +143,89 @@ def test_results_to_dict_structure() -> None:
     assert d["modules"][0]["name"] == "test_mod"
     assert d["modules"][0]["levels"][0]["checks"][1]["detail"] == "oops"
 
-    if scripts_dir in sys.path:
-        sys.path.remove(scripts_dir)
+
+def test_walkthroughs_cover_all_labs():
+    from qa_runner.walkthroughs import WALKTHROUGHS
+    expected = {
+        "auth_lab", "context_lab", "secrets_lab", "egress_lab", "tool_lab",
+        "shadow_lab", "supply_lab", "relay_lab", "comms_lab", "indirect_lab",
+        "config_lab", "hallucination_lab", "tenant_lab", "audit_lab",
+        "error_lab", "temporal_lab", "notification_lab", "attribution_lab",
+        "credential_broker_lab", "pattern_downgrade_lab", "delegation_chain_lab",
+        "revocation_lab", "cost_exhaustion_lab", "oauth_delegation_lab", "rbac_lab",
+    }
+    assert set(WALKTHROUGHS.keys()) == expected
+
+
+def test_walkthrough_steps_valid():
+    from qa_runner.walkthroughs import WALKTHROUGHS, WalkthroughStep
+    for lab, steps in WALKTHROUGHS.items():
+        assert len(steps) >= 2, f"{lab} must have >= 2 steps"
+        for i, s in enumerate(steps):
+            assert isinstance(s, WalkthroughStep), f"{lab} step {i} wrong type"
+            assert s.title, f"{lab} step {i} missing title"
+            assert s.narrative, f"{lab} step {i} missing narrative"
+            assert s.tool, f"{lab} step {i} missing tool"
+            assert isinstance(s.arguments, dict), f"{lab} step {i} arguments not dict"
+            assert s.insight, f"{lab} step {i} missing insight"
+
+
+def test_walkthrough_step_dataclass():
+    from qa_runner.walkthroughs import WalkthroughStep
+
+    step = WalkthroughStep(
+        title="Test step",
+        narrative="We do a thing.",
+        tool="auth.issue_token",
+        arguments={"username": "alice"},
+        check="token",
+        insight="Tokens are issued without validation.",
+    )
+    assert step.title == "Test step"
+    assert step.tool == "auth.issue_token"
+    assert step.check == "token"
+
+
+def test_walkthrough_labs_endpoint(frontend_client):
+    client, _ = frontend_client
+    resp = client.get("/api/operator/walkthrough/labs")
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert isinstance(data, list)
+    assert len(data) == 25
+    labs = {d["lab"] for d in data}
+    assert "auth_lab" in labs
+    for entry in data:
+        assert "lab" in entry
+        assert "threat_id" in entry
+        assert "title" in entry
+        assert "step_count" in entry
+        assert entry["step_count"] >= 2
+
+
+def test_walkthrough_step_endpoint(frontend_client):
+    client, _ = frontend_client
+    resp = client.post("/api/operator/walkthrough/step", json={"lab": "auth_lab", "step": 0})
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data["lab"] == "auth_lab"
+    assert data["step"] == 0
+    assert "title" in data
+    assert "narrative" in data
+    assert "insight" in data
+    assert "request" in data
+    assert "response" in data
+    assert "status" in data
+    assert "total_steps" in data
+
+
+def test_walkthrough_step_invalid_lab(frontend_client):
+    client, _ = frontend_client
+    resp = client.post("/api/operator/walkthrough/step", json={"lab": "nonexistent_lab", "step": 0})
+    assert resp.status_code == 400
+
+
+def test_walkthrough_step_out_of_range(frontend_client):
+    client, _ = frontend_client
+    resp = client.post("/api/operator/walkthrough/step", json={"lab": "auth_lab", "step": 999})
+    assert resp.status_code == 400

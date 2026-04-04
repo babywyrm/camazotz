@@ -12,6 +12,7 @@ from typing import Callable
 
 from .checks import MODULE_TESTS
 from .client import GatewayClient
+from .walkthroughs import WALKTHROUGHS, WalkthroughStep
 from .types import (
     GUARDRAIL_LABELS,
     GUARDRAIL_LEVELS,
@@ -28,6 +29,8 @@ __all__ = [
     "LevelResult",
     "MODULE_TESTS",
     "ModuleResult",
+    "WALKTHROUGHS",
+    "WalkthroughStep",
     "run_qa",
     "results_to_dict",
 ]

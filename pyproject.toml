@@ -28,7 +28,7 @@ default-groups = ["dev"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = [".", "frontend"]
+pythonpath = [".", "frontend", "scripts"]
 addopts = [
     "--strict-markers",
     "--strict-config",
