@@ -1,4 +1,6 @@
+import json
 import os
+import re
 import sys
 import time
 
@@ -21,6 +23,30 @@ app = Flask(__name__)
 app.config["SECRET_KEY"] = os.getenv("FLASK_SECRET", "cztz-dev-key")
 
 GATEWAY_URL = os.getenv("GATEWAY_URL", "http://localhost:8080")
+
+
+def _resolve_prev_refs(arguments: dict, prev_response: dict | None) -> dict:
+    """Replace {{prev.<key>}} in argument values with data from previous step response."""
+    if not prev_response:
+        return dict(arguments)
+    resolved = {}
+    for k, v in arguments.items():
+        if isinstance(v, str) and "{{prev." in v:
+
+            def replacer(m, _prev=prev_response):
+                key = m.group(1)
+                try:
+                    result = _prev.get("result", {})
+                    content = result.get("content", [{}])[0].get("text", "{}")
+                    parsed = json.loads(content)
+                    return str(parsed.get(key, m.group(0)))
+                except (json.JSONDecodeError, IndexError, KeyError, AttributeError):
+                    return m.group(0)
+
+            resolved[k] = re.sub(r"\{\{prev\.(\w+)\}\}", replacer, v)
+        else:
+            resolved[k] = v
+    return resolved
 
 
 def _mcp_call(method: str, params: dict | None = None) -> dict:
@@ -180,7 +206,28 @@ def challenge_verify(threat_id: str):
 
 @app.route("/operator")
 def operator():
-    return render_template("operator.html", modules=list(MODULE_TESTS.keys()), levels=list(GUARDRAIL_LEVELS))
+    from qa_runner.walkthroughs import WALKTHROUGHS
+
+    scenarios = {s["module_name"]: s for s in _fetch_scenarios()}
+    walkthrough_labs = []
+    for lab_name, steps in sorted(
+        WALKTHROUGHS.items(),
+        key=lambda x: scenarios.get(x[0], {}).get("threat_id", ""),
+    ):
+        sc = scenarios.get(lab_name, {})
+        walkthrough_labs.append({
+            "lab": lab_name,
+            "threat_id": sc.get("threat_id", ""),
+            "title": sc.get("title", lab_name),
+            "description": sc.get("description", ""),
+            "step_count": len(steps),
+        })
+    return render_template(
+        "operator.html",
+        modules=list(MODULE_TESTS.keys()),
+        levels=list(GUARDRAIL_LEVELS),
+        walkthrough_labs=walkthrough_labs,
+    )
 
 
 @app.route("/api/operator/run", methods=["POST"])
@@ -242,6 +289,8 @@ def api_walkthrough_step():
         return jsonify({"error": f"Step {step_idx} out of range (0-{len(steps)-1})"}), 400
 
     step = steps[step_idx]
+    prev_response = body.get("prev_response")
+    resolved_arguments = _resolve_prev_refs(step.arguments, prev_response)
 
     if step_idx == 0:
         try:
@@ -250,7 +299,7 @@ def api_walkthrough_step():
         except httpx.HTTPError:
             pass
 
-    req_params = {"name": step.tool, "arguments": step.arguments}
+    req_params = {"name": step.tool, "arguments": resolved_arguments}
     mcp_request = {"jsonrpc": "2.0", "id": step_idx + 1, "method": "tools/call", "params": req_params}
 
     try:

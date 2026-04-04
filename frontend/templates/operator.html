@@ -7,9 +7,94 @@
 .op-hero h1{font-size:1.8rem;font-weight:700;letter-spacing:-.03em;margin-bottom:.3rem}
 .op-hero h1 span{color:var(--accent2)}
 .op-hero p{color:var(--text2);font-size:.88rem;max-width:520px;margin:0 auto .8rem}
-.op-hero .mono{font-family:var(--font-mono);font-size:.72rem;color:var(--muted);
-  background:var(--surface);padding:.25rem .7rem;border-radius:6px;display:inline-block;
-  border:1px solid var(--border)}
+
+.op-tabs{display:flex;gap:2px;border-bottom:1px solid var(--border);margin-bottom:1.5rem}
+.op-tab{padding:.65rem 1.5rem;font-size:.85rem;font-weight:600;cursor:pointer;
+  border:none;background:var(--surface);color:var(--text2);border-radius:8px 8px 0 0;
+  transition:all .2s;font-family:inherit}
+.op-tab:hover{color:var(--text)}
+.op-tab.active{background:var(--accent);color:#fff}
+.op-tab-panel{display:none}
+.op-tab-panel.active{display:block}
+
+.lab-picker{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:2rem}
+@media(max-width:860px){.lab-picker{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:520px){.lab-picker{grid-template-columns:1fr}}
+.lab-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:1.2rem;cursor:pointer;transition:all .2s}
+.lab-card:hover{border-color:var(--border2);transform:translateY(-2px)}
+.lab-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem}
+.lab-card-threat{background:var(--accent-glow);color:var(--accent2);border:1px solid rgba(220,38,38,.2);
+  padding:.15rem .5rem;border-radius:5px;font-size:.7rem;font-weight:700;font-family:var(--font-mono);
+  letter-spacing:.03em}
+.lab-card-steps{background:var(--bg2);color:var(--muted);padding:.15rem .5rem;border-radius:5px;
+  font-size:.65rem;font-weight:600}
+.lab-card-title{font-size:.88rem;font-weight:600;color:var(--text);margin-bottom:.35rem;line-height:1.3}
+.lab-card-desc{font-size:.75rem;color:var(--text2);line-height:1.4;
+  overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+
+.step-player{display:none}
+.step-player.active{display:block}
+.player-header{display:flex;align-items:center;gap:.8rem;flex-wrap:wrap;margin-bottom:1rem}
+.player-back{color:var(--accent2);font-size:.85rem;font-weight:600;cursor:pointer;
+  background:none;border:none;font-family:inherit;transition:color .2s;padding:0}
+.player-back:hover{color:#fca5a5}
+.player-title{font-size:1.1rem;font-weight:700;flex:1}
+.player-badge{padding:.2rem .6rem;border-radius:6px;font-size:.68rem;font-weight:600;
+  text-transform:uppercase;letter-spacing:.04em}
+.player-badge-threat{background:var(--accent-glow);color:var(--accent2);border:1px solid rgba(220,38,38,.2)}
+.player-badge-guardrail{background:rgba(234,179,8,.1);color:#facc15;border:1px solid rgba(234,179,8,.15)}
+
+.player-controls{display:flex;align-items:center;gap:.5rem;margin-bottom:1.2rem;flex-wrap:wrap}
+.player-btn{background:var(--surface);color:var(--text2);border:1px solid var(--border);
+  border-radius:8px;padding:.45rem 1rem;font-size:.78rem;font-weight:600;cursor:pointer;
+  font-family:inherit;transition:all .2s}
+.player-btn:hover{border-color:var(--border2);color:var(--text)}
+.player-btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.player-btn.primary:hover{background:var(--accent2)}
+.player-btn:disabled{opacity:.4;cursor:not-allowed}
+.player-step-counter{font-family:var(--font-mono);font-size:.78rem;color:var(--muted);margin-left:auto}
+
+.step-item{border:1px solid var(--border);border-radius:var(--radius);margin-bottom:.8rem;
+  overflow:hidden;background:var(--surface);transition:border-color .3s}
+.step-item.pending{opacity:.5}
+.step-item.pending .step-body{display:none}
+.step-item.current{border-color:var(--accent);border-width:1px 1px 1px 3px}
+.step-item.complete{border-left:3px solid var(--green)}
+.step-item.failed{border-left:3px solid var(--red)}
+.step-header{display:flex;align-items:center;gap:.6rem;padding:.7rem 1rem;font-size:.82rem}
+.step-num{background:var(--bg2);color:var(--muted);width:24px;height:24px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;flex-shrink:0}
+.step-item.complete .step-num{background:rgba(16,185,129,.15);color:var(--green)}
+.step-item.failed .step-num{background:rgba(239,68,68,.15);color:var(--red)}
+.step-title{font-weight:600;flex:1}
+.step-status-icon{font-size:.85rem}
+.step-spinner{width:16px;height:16px;border:2px solid var(--border2);border-top-color:var(--accent);
+  border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.step-body{padding:0 1rem .8rem}
+.step-narrative{font-size:.8rem;color:var(--text2);line-height:1.5;margin-bottom:.6rem}
+.step-insight{background:rgba(251,191,36,.1);border-left:3px solid rgba(251,191,36,.6);
+  border-radius:0 8px 8px 0;padding:.6rem .8rem;margin-bottom:.6rem;font-size:.78rem;
+  color:var(--text);line-height:1.45}
+.step-insight-label{font-weight:700;color:rgba(251,191,36,.85);font-size:.68rem;
+  text-transform:uppercase;letter-spacing:.04em;margin-bottom:.2rem}
+.step-error{background:rgba(239,68,68,.08);border-left:3px solid var(--red);
+  border-radius:0 8px 8px 0;padding:.5rem .8rem;margin-bottom:.6rem;font-size:.78rem;
+  color:#f87171;font-family:var(--font-mono);line-height:1.4}
+
+.step-json-toggle{font-size:.75rem;color:var(--accent2);cursor:pointer;font-weight:600;
+  background:none;border:none;font-family:inherit;padding:0;transition:color .2s}
+.step-json-toggle:hover{color:#fca5a5}
+.step-json-body{display:none;margin-top:.5rem}
+.step-json-body.open{display:block}
+.step-json-section{margin-bottom:.5rem}
+.step-json-label{font-size:.68rem;color:var(--muted);font-weight:700;text-transform:uppercase;
+  letter-spacing:.04em;margin-bottom:.3rem}
+.step-json-pre{background:var(--bg2);border:1px solid var(--border);border-radius:8px;
+  padding:.6rem .8rem;font-family:var(--font-mono);font-size:.7rem;color:var(--text2);
+  overflow-x:auto;line-height:1.5;max-height:300px;overflow-y:auto;white-space:pre-wrap;word-break:break-all}
 
 .op-controls{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;padding:.8rem 0 1.2rem}
 .op-select{background:var(--surface);color:var(--text);border:1px solid var(--border);
@@ -36,7 +121,7 @@
 .op-progress-text span{color:var(--text);font-weight:600}
 .op-progress-module{color:var(--accent);font-weight:600}
 
-.op-summary{display:flex;gap:1rem;flex-wrap:wrap;padding:.8rem 0;display:none}
+.op-summary{display:none;gap:1rem;flex-wrap:wrap;padding:.8rem 0}
 .op-summary.show{display:flex}
 .op-stat{background:var(--surface);border:1px solid var(--border);border-radius:8px;
   padding:.6rem 1rem;min-width:110px;text-align:center}
@@ -86,46 +171,271 @@
 <div class="container">
   <div class="op-hero">
     <h1>Operator <span>Console</span></h1>
-    <p>QA orchestrator — validates every scenario across all guardrail levels. Watch the grid fill in as each module is tested.</p>
-    <span class="mono">POST /api/operator/run</span>
+    <p>Walkthrough labs and QA orchestrator for Camazotz MCP security scenarios.</p>
   </div>
 
-  <div class="op-controls">
-    <select class="op-select" id="opModules" multiple size="1" title="Filter modules (Ctrl+click for multi)">
-      <option value="" selected>All modules</option>
-      {% for m in modules %}
-      <option value="{{ m }}">{{ m }}</option>
-      {% endfor %}
-    </select>
-    <select class="op-select" id="opLevels" multiple size="1" title="Filter levels (Ctrl+click for multi)">
-      <option value="" selected>All levels</option>
-      {% for l in levels %}
-      <option value="{{ l }}">{{ l }}</option>
-      {% endfor %}
-    </select>
-    <button class="op-run" id="opRun" onclick="runQA()">Run QA Suite</button>
-    <div class="op-spacer"></div>
-    <button class="op-copy" id="opCopy" onclick="copyJSON()">Copy JSON</button>
+  <div class="op-tabs">
+    <button class="op-tab active" data-tab="walkthrough" onclick="switchTab('walkthrough')">Walkthrough</button>
+    <button class="op-tab" data-tab="qa" onclick="switchTab('qa')">QA Dashboard</button>
   </div>
 
-  <div class="op-progress" id="opProgress">
-    <div class="op-progress-bar"><div class="op-progress-fill" id="opProgressFill" style="width:0%"></div></div>
-    <div class="op-progress-text" id="opProgressText"></div>
+  <!-- Tab 1: Walkthrough -->
+  <div class="op-tab-panel active" id="tab-walkthrough">
+    <div id="labPicker">
+      <div class="lab-picker">
+        {% for lab in walkthrough_labs %}
+        <div class="lab-card" onclick="enterLab('{{ lab.lab }}')">
+          <div class="lab-card-header">
+            <span class="lab-card-threat">{{ lab.threat_id or '\u2014' }}</span>
+            <span class="lab-card-steps">{{ lab.step_count }} steps</span>
+          </div>
+          <div class="lab-card-title">{{ lab.title }}</div>
+          <div class="lab-card-desc">{{ lab.description or lab.lab }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="step-player" id="stepPlayer">
+      <div class="player-header">
+        <button class="player-back" onclick="exitPlayer()">&larr; Back</button>
+        <span class="player-title" id="playerTitle"></span>
+        <span class="player-badge player-badge-threat" id="playerThreat"></span>
+        <span class="player-badge player-badge-guardrail">Medium Guardrails</span>
+      </div>
+      <div class="player-controls">
+        <button class="player-btn primary" id="btnPlay" onclick="wtPlay()">&#9654; Play</button>
+        <button class="player-btn" id="btnPause" onclick="wtPause()" disabled>&#9208; Pause</button>
+        <button class="player-btn" id="btnStep" onclick="wtStepNext()">&#9197; Step</button>
+        <button class="player-btn" id="btnReset" onclick="wtReset()">&#8634; Reset</button>
+        <span class="player-step-counter" id="stepCounter">Step 0 of 0</span>
+      </div>
+      <div id="stepList"></div>
+    </div>
   </div>
 
-  <div class="op-summary" id="opSummary">
-    <div class="op-stat" id="opStatModules"><span class="val">—</span><span class="lbl">Modules</span></div>
-    <div class="op-stat" id="opStatChecks"><span class="val">—</span><span class="lbl">Checks</span></div>
-    <div class="op-stat" id="opStatIssues"><span class="val">—</span><span class="lbl">Issues</span></div>
-    <div class="op-stat" id="opStatTime"><span class="val">—</span><span class="lbl">Seconds</span></div>
-  </div>
+  <!-- Tab 2: QA Dashboard -->
+  <div class="op-tab-panel" id="tab-qa">
+    <div class="op-controls">
+      <select class="op-select" id="opModules">
+        <option value="" selected>All modules</option>
+        {% for m in modules %}
+        <option value="{{ m }}">{{ m }}</option>
+        {% endfor %}
+      </select>
+      <select class="op-select" id="opLevels">
+        <option value="" selected>All levels</option>
+        {% for l in levels %}
+        <option value="{{ l }}">{{ l }}</option>
+        {% endfor %}
+      </select>
+      <button class="op-run" id="opRun" onclick="runQA()">Run QA Suite</button>
+      <div class="op-spacer"></div>
+      <button class="op-copy" id="opCopy" onclick="copyJSON()">Copy JSON</button>
+    </div>
 
-  <div class="op-grid hidden" id="opGrid"></div>
+    <div class="op-progress" id="opProgress">
+      <div class="op-progress-bar"><div class="op-progress-fill" id="opProgressFill" style="width:0%"></div></div>
+      <div class="op-progress-text" id="opProgressText"></div>
+    </div>
+
+    <div class="op-summary" id="opSummary">
+      <div class="op-stat" id="opStatModules"><span class="val">&mdash;</span><span class="lbl">Modules</span></div>
+      <div class="op-stat" id="opStatChecks"><span class="val">&mdash;</span><span class="lbl">Checks</span></div>
+      <div class="op-stat" id="opStatIssues"><span class="val">&mdash;</span><span class="lbl">Issues</span></div>
+      <div class="op-stat" id="opStatTime"><span class="val">&mdash;</span><span class="lbl">Seconds</span></div>
+    </div>
+
+    <div class="op-grid hidden" id="opGrid"></div>
+  </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
+/* ---- Tab switching ---- */
+function switchTab(name){
+  document.querySelectorAll('.op-tab').forEach(function(t){
+    t.classList.toggle('active',t.dataset.tab===name);
+  });
+  document.querySelectorAll('.op-tab-panel').forEach(function(p){
+    p.classList.toggle('active',p.id==='tab-'+name);
+  });
+  history.replaceState(null,null,'#'+name);
+}
+(function(){
+  var hash=location.hash.replace('#','');
+  if(hash==='qa'||hash==='walkthrough') switchTab(hash);
+  else switchTab('walkthrough');
+})();
+
+/* ---- Walkthrough Player ---- */
+var _walkthroughLabs={{ walkthrough_labs | tojson }};
+var _currentLab=null;
+var _currentLabData=null;
+var _stepResults=[];
+var _currentStep=-1;
+var _totalSteps=0;
+var _playing=false;
+var _playTimer=null;
+
+function _escHtml(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+function enterLab(labName){
+  _currentLab=labName;
+  _currentLabData=_walkthroughLabs.find(function(l){return l.lab===labName;});
+  if(!_currentLabData)return;
+  _totalSteps=_currentLabData.step_count;
+  _stepResults=[];
+  _currentStep=-1;
+  _playing=false;
+  clearTimeout(_playTimer);
+
+  document.getElementById('playerTitle').textContent=_currentLabData.title;
+  document.getElementById('playerThreat').textContent=_currentLabData.threat_id||'\u2014';
+  document.getElementById('stepCounter').textContent='Step 0 of '+_totalSteps;
+
+  var html='';
+  for(var i=0;i<_totalSteps;i++){
+    html+='<div class="step-item pending" id="step-'+i+'">'
+      +'<div class="step-header"><span class="step-num">'+(i+1)+'</span>'
+      +'<span class="step-title">Step '+(i+1)+'</span></div>'
+      +'<div class="step-body"></div></div>';
+  }
+  document.getElementById('stepList').innerHTML=html;
+
+  document.getElementById('labPicker').style.display='none';
+  document.getElementById('stepPlayer').classList.add('active');
+  _updateButtons();
+}
+
+function exitPlayer(){
+  _playing=false;
+  clearTimeout(_playTimer);
+  document.getElementById('stepPlayer').classList.remove('active');
+  document.getElementById('labPicker').style.display='';
+}
+
+function _updateButtons(){
+  var allDone=_currentStep>=_totalSteps-1&&_stepResults.length===_totalSteps;
+  document.getElementById('btnPlay').disabled=_playing||allDone;
+  document.getElementById('btnPause').disabled=!_playing;
+  document.getElementById('btnStep').disabled=_playing||allDone;
+}
+
+async function _executeStep(idx){
+  if(idx<0||idx>=_totalSteps)return;
+  _currentStep=idx;
+  document.getElementById('stepCounter').textContent='Step '+(idx+1)+' of '+_totalSteps;
+
+  var el=document.getElementById('step-'+idx);
+  el.className='step-item current';
+  el.querySelector('.step-header').innerHTML=
+    '<span class="step-num">'+(idx+1)+'</span>'
+    +'<span class="step-title">Loading\u2026</span>'
+    +'<div class="step-spinner"></div>';
+  el.querySelector('.step-body').innerHTML='';
+
+  var body={lab:_currentLab,step:idx};
+  if(idx>0&&_stepResults[idx-1]&&_stepResults[idx-1].response){
+    body.prev_response=_stepResults[idx-1].response;
+  }
+
+  try{
+    var resp=await fetch('/api/operator/walkthrough/step',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(body)
+    });
+    var data=await resp.json();
+    _stepResults[idx]=data;
+
+    var ok=data.status!=='error';
+    el.className='step-item '+(ok?'complete':'failed');
+
+    el.querySelector('.step-header').innerHTML=
+      '<span class="step-num">'+(idx+1)+'</span>'
+      +'<span class="step-title">'+_escHtml(data.title)+'</span>'
+      +'<span class="step-status-icon">'+(ok?'\u2713':'\u2717')+'</span>';
+
+    var bodyHtml='<div class="step-narrative">'+_escHtml(data.narrative)+'</div>';
+
+    if(!ok&&data.response&&data.response.error){
+      bodyHtml+='<div class="step-error">'+_escHtml(
+        typeof data.response.error==='string'?data.response.error:JSON.stringify(data.response.error))+'</div>';
+    }
+
+    if(data.insight){
+      bodyHtml+='<div class="step-insight"><div class="step-insight-label">Security Insight</div>'
+        +_escHtml(data.insight)+'</div>';
+    }
+
+    var jsonId='json-'+idx;
+    bodyHtml+='<button class="step-json-toggle" onclick="toggleStepJson(\''+jsonId+'\')">'
+      +(ok?'Show JSON \u25B8':'Hide JSON \u25BE')+'</button>';
+    bodyHtml+='<div class="step-json-body'+(ok?'':' open')+'" id="'+jsonId+'">'
+      +'<div class="step-json-section"><div class="step-json-label">Request</div>'
+      +'<pre class="step-json-pre">'+_escHtml(JSON.stringify(data.request,null,2))+'</pre></div>'
+      +'<div class="step-json-section"><div class="step-json-label">Response</div>'
+      +'<pre class="step-json-pre">'+_escHtml(JSON.stringify(data.response,null,2))+'</pre></div>'
+      +'</div>';
+
+    el.querySelector('.step-body').innerHTML=bodyHtml;
+  }catch(err){
+    el.className='step-item failed';
+    el.querySelector('.step-header').innerHTML=
+      '<span class="step-num">'+(idx+1)+'</span>'
+      +'<span class="step-title">Network Error</span>'
+      +'<span class="step-status-icon">\u2717</span>';
+    el.querySelector('.step-body').innerHTML=
+      '<div class="step-error">'+_escHtml(err.message)+'</div>';
+    _stepResults[idx]={status:'error',response:{error:err.message}};
+  }
+  _updateButtons();
+}
+
+function toggleStepJson(id){
+  var el=document.getElementById(id);
+  if(!el)return;
+  var open=el.classList.toggle('open');
+  var btn=el.previousElementSibling;
+  if(btn)btn.textContent=open?'Hide JSON \u25BE':'Show JSON \u25B8';
+}
+
+async function wtPlay(){
+  _playing=true;
+  _updateButtons();
+  var start=_currentStep+1;
+  for(var i=start;i<_totalSteps;i++){
+    if(!_playing)break;
+    await _executeStep(i);
+    if(i<_totalSteps-1&&_playing){
+      await new Promise(function(r){_playTimer=setTimeout(r,2500);});
+    }
+  }
+  _playing=false;
+  _updateButtons();
+}
+
+function wtPause(){
+  _playing=false;
+  clearTimeout(_playTimer);
+  _updateButtons();
+}
+
+async function wtStepNext(){
+  var next=_currentStep+1;
+  if(next<_totalSteps){
+    await _executeStep(next);
+  }
+}
+
+function wtReset(){
+  _playing=false;
+  clearTimeout(_playTimer);
+  exitPlayer();
+}
+
+/* ---- QA Dashboard (existing logic preserved) ---- */
 var _lastReport=null;
 var _allModules={{ modules | tojson }};
 var _allLevels={{ levels | tojson }};
@@ -133,10 +443,9 @@ var _labels={easy:'EZ',medium:'MOD',hard:'MAX'};
 var _running=false;
 
 function _sel(id){
-  var opts=document.getElementById(id).selectedOptions;
-  var vals=[];
-  for(var i=0;i<opts.length;i++){if(opts[i].value)vals.push(opts[i].value);}
-  return vals.length?vals:null;
+  var el=document.getElementById(id);
+  var val=el.value;
+  return val?[val]:null;
 }
 
 function _esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
@@ -194,7 +503,7 @@ function updateProgress(done,total,currentMod){
   var pct=total?Math.round(done/total*100):0;
   document.getElementById('opProgressFill').style.width=pct+'%';
   var txt='<span>'+done+'/'+total+'</span> modules complete';
-  if(currentMod&&done<total)txt+=' — testing <span class="op-progress-module">'+currentMod+'</span>';
+  if(currentMod&&done<total)txt+=' \u2014 testing <span class="op-progress-module">'+currentMod+'</span>';
   document.getElementById('opProgressText').innerHTML=txt;
 }
 

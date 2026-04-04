@@ -5,6 +5,7 @@ from unittest.mock import patch, MagicMock
 import importlib
 import sys
 
+import httpx
 import pytest
 
 
@@ -219,6 +220,21 @@ def test_walkthrough_step_endpoint(frontend_client):
     assert "total_steps" in data
 
 
+def test_walkthrough_step_gateway_http_errors_step0(frontend_client):
+    """Guardrail and MCP httpx calls swallow or surface errors when the gateway is unreachable."""
+    client, mod = frontend_client
+
+    def _fail(*_args, **_kwargs):
+        raise httpx.ConnectError("connection refused")
+
+    with patch.object(mod.httpx, "put", side_effect=_fail), patch.object(mod.httpx, "post", side_effect=_fail):
+        resp = client.post("/api/operator/walkthrough/step", json={"lab": "auth_lab", "step": 0})
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data["status"] == "error"
+    assert "error" in data["response"]
+
+
 def test_walkthrough_step_invalid_lab(frontend_client):
     client, _ = frontend_client
     resp = client.post("/api/operator/walkthrough/step", json={"lab": "nonexistent_lab", "step": 0})
@@ -229,3 +245,67 @@ def test_walkthrough_step_out_of_range(frontend_client):
     client, _ = frontend_client
     resp = client.post("/api/operator/walkthrough/step", json={"lab": "auth_lab", "step": 999})
     assert resp.status_code == 400
+
+
+def test_operator_has_tabs(frontend_client):
+    client, _ = frontend_client
+    resp = client.get("/operator")
+    html = resp.data.decode()
+    assert "Walkthrough" in html
+    assert "QA Dashboard" in html
+
+
+def test_operator_has_player_controls(frontend_client):
+    client, _ = frontend_client
+    resp = client.get("/operator")
+    html = resp.data.decode()
+    assert "step-player" in html or "stepPlayer" in html
+
+
+def test_resolve_prev_refs_basic(frontend_client):
+    """Test that _resolve_prev_refs replaces {{prev.token}} with extracted value."""
+    _, mod = frontend_client
+    prev_response = {
+        "result": {
+            "content": [{"type": "text", "text": '{"token": "abc123", "user": "alice"}'}],
+        },
+    }
+    arguments = {"token": "{{prev.token}}", "static": "unchanged"}
+    resolved = mod._resolve_prev_refs(arguments, prev_response)
+    assert resolved["token"] == "abc123"
+    assert resolved["static"] == "unchanged"
+
+
+def test_resolve_prev_refs_no_prev(frontend_client):
+    """Without prev_response, arguments pass through unchanged."""
+    _, mod = frontend_client
+    arguments = {"token": "{{prev.token}}", "static": "unchanged"}
+    resolved = mod._resolve_prev_refs(arguments, None)
+    assert resolved["token"] == "{{prev.token}}"
+    assert resolved["static"] == "unchanged"
+
+
+def test_resolve_prev_refs_missing_key(frontend_client):
+    """If the key doesn't exist in prev response, keep the original placeholder."""
+    _, mod = frontend_client
+    prev_response = {
+        "result": {
+            "content": [{"type": "text", "text": '{"other_key": "value"}'}],
+        },
+    }
+    arguments = {"token": "{{prev.nonexistent}}"}
+    resolved = mod._resolve_prev_refs(arguments, prev_response)
+    assert resolved["token"] == "{{prev.nonexistent}}"
+
+
+def test_resolve_prev_refs_malformed_content(frontend_client):
+    """When prev_response content text is not valid JSON, placeholders pass through unchanged."""
+    _, mod = frontend_client
+    prev_response = {
+        "result": {
+            "content": [{"type": "text", "text": "not json at all"}],
+        },
+    }
+    arguments = {"token": "{{prev.token}}"}
+    resolved = mod._resolve_prev_refs(arguments, prev_response)
+    assert resolved["token"] == "{{prev.token}}"
