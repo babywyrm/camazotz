@@ -82,6 +82,76 @@ controls.
 
 ---
 
+## Agentic Credential Flow Model
+
+The eight agentic security labs (MCP-T20 – MCP-T27) simulate vulnerabilities
+found in AI agent platforms that broker identity between humans, agents, and
+downstream services. The labs are generic and applicable to any deployment
+that uses one of the following patterns:
+
+```
+Pattern 0: Headless Agent (service account)
+
+  Cron/Webhook ──▶ Agent Platform ──▶ Downstream Service
+                        │                    ▲
+                  service acct creds         │
+                  from secrets manager ──────┘
+                  + team attribution metadata
+
+  Attacked by: attribution_lab, credential_broker_lab, cost_exhaustion_lab
+```
+
+```
+Pattern A: Human-Triggered Agent (OAuth delegation)
+
+  Engineer ──▶ Agent Platform ──▶ Downstream Service
+  (SSO-authed)       │                    ▲
+                 exchange user's          │
+                 refresh token for ───────┘
+                 short-lived access token
+
+  Attacked by: oauth_delegation_lab, revocation_lab, delegation_chain_lab
+```
+
+```
+Pattern B: Human-Triggered Agent (service account fallback)
+
+  Engineer ──▶ Agent Platform ──▶ Downstream Service
+  (SSO-authed)       │           (no OAuth support)
+                 service acct         ▲
+                 creds + user ────────┘
+                 attribution metadata
+
+  Attacked by: pattern_downgrade_lab, rbac_lab
+```
+
+```
+Threat Summary Across Patterns
+
+  ┌──────────────────────────────────────────────────────────────────────┐
+  │                  Agentic Security Labs                               │
+  │                                                                      │
+  │  Identity      │  rbac_lab (MCP-T20)         Group boundary bypass   │
+  │  Isolation     │  credential_broker_lab (T23) Cross-team vault read  │
+  │                │                                                      │
+  │  Attribution   │  attribution_lab (MCP-T22)   Execution ctx forgery  │
+  │  Integrity     │  pattern_downgrade_lab (T24) Force A→B downgrade   │
+  │                │                                                      │
+  │  Token         │  oauth_delegation_lab (T21)  Refresh token replay   │
+  │  Lifecycle     │  revocation_lab (MCP-T26)    Cached token survives  │
+  │                │                                                      │
+  │  Chain         │  delegation_chain_lab (T25)  Unbounded agent depth  │
+  │  Abuse         │  cost_exhaustion_lab (T27)   Quota bypass / exhaust │
+  └──────────────────────────────────────────────────────────────────────┘
+```
+
+Each lab provides three guardrail tiers (easy / medium / hard) that
+progressively harden the simulated platform. On easy, attacks succeed
+trivially. On hard, the platform enforces proper isolation, but the labs
+still demonstrate the attack surface and show defenders what to look for.
+
+---
+
 ## Scenarios
 
 ### 1. Indirect Prompt Injection — `context.injectable_summary`

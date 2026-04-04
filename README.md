@@ -312,8 +312,11 @@ EZ / MOD / MAX.
 |----------|---------|-------------|
 | `BRAIN_PROVIDER` | `cloud` | `cloud` (Anthropic API), `bedrock` (Claude on Amazon Bedrock), or `local` (Ollama) |
 | `AWS_REGION` | — | Region for Bedrock when `BRAIN_PROVIDER=bedrock` |
-| `AWS_PROFILE` | — | Optional named AWS profile (e.g. local SSO) |
-| `CAMAZOTZ_MODEL` | — | Model id for Bedrock when using `bedrock`; also used for Anthropic API when set |
+| `AWS_PROFILE` | — | Optional named AWS profile (host-only; containers do not read `~/.aws` by default) |
+| `AWS_ACCESS_KEY_ID` | — | AWS access key — often required in Docker unless using an IAM role on the host |
+| `AWS_SECRET_ACCESS_KEY` | — | AWS secret key — required with access key for static credentials |
+| `AWS_SESSION_TOKEN` | — | Session token for temporary credentials (SSO / assume-role) |
+| `CAMAZOTZ_MODEL` | — | Model or inference profile id for Bedrock; also used for Anthropic API when set |
 | `CAMAZOTZ_BEDROCK_MODEL` | — | Optional override for Bedrock only (takes precedence over `CAMAZOTZ_MODEL`) |
 | `CAMAZOTZ_BEDROCK_STUB` | — | Set `1` for offline Bedrock stub (`[bedrock-stub]`) without AWS credentials |
 | `ANTHROPIC_API_KEY` | — | Required when `BRAIN_PROVIDER=cloud` |
@@ -321,9 +324,41 @@ EZ / MOD / MAX.
 | `CAMAZOTZ_SHOW_TOKENS` | `false` | Show LLM token usage and cost per call |
 | `CAMAZOTZ_OLLAMA_MODEL` | `llama3.2:3b` | Ollama model name |
 
-### Amazon Bedrock (optional)
+### How Bedrock credentials reach the container
 
-Set `BRAIN_PROVIDER=bedrock` and configure `AWS_REGION`, credentials (e.g. `AWS_PROFILE` or environment keys), and `CAMAZOTZ_MODEL` to your inference profile or foundation model id. Use `CAMAZOTZ_BEDROCK_STUB=1` for offline tests without calling AWS.
+```
+  Operator                  compose/.env              brain-gateway container        Bedrock
+     │                           │                           │                         │
+     │  Option 1: .env file      │                           │                         │
+     │  AWS_ACCESS_KEY_ID=...    │                           │                         │
+     │  AWS_SECRET_ACCESS_KEY=...│                           │                         │
+     │──────────────────────────▶│  docker compose reads     │                         │
+     │                           │──────────────────────────▶│  boto3.Session()        │
+     │                           │                           │──────────────────────────▶
+     │                           │                           │  AnthropicBedrock(      │
+     │                           │                           │    aws_region=...)      │
+     │                           │                           │                         │
+     │  Option 2: IAM role       │                           │                         │
+     │  (EC2/ECS/EKS)           │  (no keys in .env)        │                         │
+     │                           │                           │  boto3 auto-discovers   │
+     │                           │                           │──────────────────────────▶
+     │                           │                           │                         │
+     │  Option 3: Stub mode      │                           │                         │
+     │  CAMAZOTZ_BEDROCK_STUB=1 │                           │  returns [bedrock-stub] │
+     │                           │                           │  (no AWS calls)         │
+```
+
+| Credential method | Where to set | Best for |
+|-------------------|-------------|----------|
+| `AWS_ACCESS_KEY_ID` + `AWS_SECRET_ACCESS_KEY` in `.env` | `compose/.env` | Local Docker development with IAM user or temporary credentials |
+| `aws configure export-credentials --format env` piped to `.env` | Shell → `.env` | SSO/assume-role credentials (short-lived, refresh as needed) |
+| IAM instance profile / IRSA / ECS task role | Infrastructure | EC2, EKS, ECS — no keys needed, boto3 auto-discovers |
+| `CAMAZOTZ_BEDROCK_STUB=1` | `compose/.env` or shell | Offline testing, CI, demos without AWS |
+| No Docker (`uv run uvicorn ...`) | Shell env or `~/.aws` | Local development — boto3 reads `~/.aws/credentials` directly |
+
+> **Important:** `AWS_PROFILE` works for local development without Docker
+> (where boto3 reads `~/.aws/config`), but Docker containers don't mount
+> your home directory. For Docker, use explicit key/secret or IAM roles.
 
 Example (adjust for your account):
 
@@ -377,7 +412,7 @@ camazotz/
 ├── scripts/
 │   ├── qa_harness.py        # CLI entry point for E2E QA
 │   └── qa_runner/            # Reusable QA engine (shared by CLI + operator panel)
-├── tests/                   # 532 tests, 100% coverage (Streamable HTTP)
+├── tests/                   # 533 tests, 100% coverage (Streamable HTTP)
 └── Makefile                 # Cross-platform dev/deploy targets
 ```
 

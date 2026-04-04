@@ -8,6 +8,9 @@ config:
   brainProvider: cloud
   awsRegion: ""
   awsProfile: ""
+  awsAccessKeyId: ""
+  awsSecretAccessKey: ""
+  awsSessionToken: ""
   camazotzBedrockStub: ""
   camazotzModel: "claude-sonnet-4-20250514"
   difficulty: medium

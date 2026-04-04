@@ -26,15 +26,38 @@ make up                         # builds and starts all services
 
 ## Option B: Amazon Bedrock
 
-Set `BRAIN_PROVIDER=bedrock`, `AWS_REGION`, optional `AWS_PROFILE`, and
-`CAMAZOTZ_MODEL` (inference profile or model id) in `compose/.env`. Use
-`CAMAZOTZ_BEDROCK_STUB=1` for an offline stub without AWS calls.
+Uses Claude via Bedrock. Docker containers typically need explicit AWS credentials
+(they do not read `~/.aws` from the host unless you mount it).
 
 ```bash
-make env
-# Edit compose/.env — Bedrock variables for your account
-make up
+make env                        # creates compose/.env from example
 ```
+
+Edit `compose/.env`:
+
+```bash
+BRAIN_PROVIDER=bedrock
+AWS_REGION=us-west-2
+CAMAZOTZ_MODEL=anthropic.claude-3-haiku-20240307-v1:0  # or your inference profile
+
+# For SSO/assume-role, export temporary credentials:
+#   eval $(aws configure export-credentials --format env)
+# Then copy them into .env, or for IAM users set directly:
+AWS_ACCESS_KEY_ID=AKIA...
+AWS_SECRET_ACCESS_KEY=...
+AWS_SESSION_TOKEN=           # only needed for temporary credentials
+```
+
+```bash
+make up                         # builds and starts all services
+```
+
+> **Tip:** On EC2/ECS/EKS with an IAM role, leave the key fields empty —
+> boto3 auto-discovers instance credentials. For local development
+> **without Docker**, boto3 reads `~/.aws/credentials` directly so
+> `AWS_PROFILE` works. See README for the credential flow diagram.
+
+Use `CAMAZOTZ_BEDROCK_STUB=1` for an offline stub without AWS calls.
 
 Services:
 
