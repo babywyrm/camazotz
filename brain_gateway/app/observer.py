@@ -18,7 +18,7 @@ from datetime import UTC, datetime
 
 _lock = threading.Lock()
 _last_event: dict | None = None
-_buffer: collections.deque[dict] = collections.deque(maxlen=10)
+_buffer: collections.deque[dict] = collections.deque(maxlen=50)
 _total_recorded: int = 0
 
 _GRANT_KEYS = frozenset({
@@ -39,9 +39,8 @@ def _init_buffer() -> None:
     try:
         size = int(raw)
     except (ValueError, TypeError):
-        size = 10
-    if not (1 <= size <= 200):
-        size = 10
+        size = 50
+    size = max(1, min(size, 200))
     _buffer = collections.deque(maxlen=size)
     _total_recorded = 0
     _last_event = None

@@ -182,14 +182,14 @@ def test_buffer_size_clamped_high(monkeypatch):
     monkeypatch.setenv("OBSERVER_BUFFER_SIZE", "999")
     observer._init_buffer()
     info = get_buffer_info()
-    assert info["buffer_size"] == 10
+    assert info["buffer_size"] == 200
 
 
 def test_buffer_size_clamped_low(monkeypatch):
     monkeypatch.setenv("OBSERVER_BUFFER_SIZE", "0")
     observer._init_buffer()
     info = get_buffer_info()
-    assert info["buffer_size"] == 10
+    assert info["buffer_size"] == 1
 
 
 # ── integration (existing test, updated for new signature) ──────────

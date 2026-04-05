@@ -19,7 +19,7 @@ config:
   ollamaModel: "llama3.2:3b"
   gatewayUrl: "http://brain-gateway:8080"
   observerPollInterval: "2"
-  observerBufferSize: "10"
+  observerBufferSize: "50"
   logLevel: info
 
 secrets:

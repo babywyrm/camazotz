@@ -28,6 +28,9 @@
 .obs-controls{display:flex;align-items:center;gap:1rem;margin-bottom:1rem;flex-wrap:wrap}
 .obs-auto{display:flex;align-items:center;gap:.5rem;font-size:.8rem;color:var(--text2)}
 .obs-auto input{accent-color:var(--accent)}
+.obs-select{background:var(--surface);color:var(--text);border:1px solid var(--border);
+  border-radius:6px;padding:.3rem .5rem;font-size:.75rem;font-family:inherit;cursor:pointer}
+.obs-select:focus{outline:none;border-color:var(--accent)}
 .obs-btn{background:var(--surface);color:var(--text);border:1px solid var(--border);
   border-radius:8px;padding:.4rem 1rem;font-size:.8rem;font-weight:600;cursor:pointer;
   font-family:inherit;transition:all .2s}
@@ -123,8 +126,20 @@
     <div class="obs-controls">
       <label class="obs-auto">
         <input type="checkbox" id="autoVuln" onchange="toggleAuto()">
-        Auto-refresh (3s)
+        Auto-refresh
       </label>
+      <select class="obs-select" id="pollIntervalVuln" onchange="toggleAuto()" title="Poll interval">
+        <option value="1000">1s</option>
+        <option value="2000" selected>2s</option>
+        <option value="3000">3s</option>
+        <option value="5000">5s</option>
+      </select>
+      <select class="obs-select" id="displayLimitVuln" onchange="fetchEvents()" title="Events to show">
+        <option value="10">10 events</option>
+        <option value="50" selected>50 events</option>
+        <option value="100">100 events</option>
+        <option value="200">200 events</option>
+      </select>
     </div>
 
     <div id="vulnContent">
@@ -152,8 +167,20 @@
       </select>
       <label class="obs-auto">
         <input type="checkbox" id="autoEnh" onchange="toggleAuto()">
-        Auto-refresh (3s)
+        Auto-refresh
       </label>
+      <select class="obs-select" id="pollIntervalEnh" onchange="toggleAuto()" title="Poll interval">
+        <option value="1000">1s</option>
+        <option value="2000" selected>2s</option>
+        <option value="3000">3s</option>
+        <option value="5000">5s</option>
+      </select>
+      <select class="obs-select" id="displayLimitEnh" onchange="fetchEvents()" title="Events to show">
+        <option value="10">10 events</option>
+        <option value="50" selected>50 events</option>
+        <option value="100">100 events</option>
+        <option value="200">200 events</option>
+      </select>
       <button class="obs-btn obs-btn-danger" onclick="clearEvents()">Clear</button>
     </div>
 
@@ -321,9 +348,22 @@ function applyFilters() {
   renderEnhanced(allEvents);
 }
 
+function getDisplayLimit() {
+  var v = document.getElementById('displayLimitVuln');
+  var e = document.getElementById('displayLimitEnh');
+  return Math.max(parseInt(v.value) || 50, parseInt(e.value) || 50);
+}
+
+function getPollInterval() {
+  var v = parseInt(document.getElementById('pollIntervalVuln').value) || 2000;
+  var e = parseInt(document.getElementById('pollIntervalEnh').value) || 2000;
+  return Math.min(v, e);
+}
+
 async function fetchEvents() {
   try {
-    const resp = await fetch('/api/observer/events');
+    var limit = getDisplayLimit();
+    const resp = await fetch('/api/observer/events?limit=' + limit);
     const data = await resp.json();
     allEvents = data.events || [];
     renderVulnerable(allEvents);
@@ -336,11 +376,11 @@ async function fetchEvents() {
 function toggleAuto() {
   const vulnChecked = document.getElementById('autoVuln').checked;
   const enhChecked = document.getElementById('autoEnh').checked;
+  clearInterval(autoTimer);
+  autoTimer = null;
   if (vulnChecked || enhChecked) {
-    if (!autoTimer) autoTimer = setInterval(fetchEvents, 3000);
-  } else {
-    clearInterval(autoTimer);
-    autoTimer = null;
+    var interval = getPollInterval();
+    autoTimer = setInterval(fetchEvents, interval);
   }
 }
 
