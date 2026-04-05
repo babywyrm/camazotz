@@ -17,4 +17,5 @@ data:
   CAMAZOTZ_OLLAMA_MODEL: {{ .Values.config.ollamaModel | quote }}
   GATEWAY_URL: {{ .Values.config.gatewayUrl | quote }}
   OBSERVER_POLL_INTERVAL: {{ .Values.config.observerPollInterval | quote }}
+  OBSERVER_BUFFER_SIZE: {{ .Values.config.observerBufferSize | quote }}
   LOG_LEVEL: {{ .Values.config.logLevel | quote }}

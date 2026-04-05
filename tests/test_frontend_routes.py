@@ -108,7 +108,7 @@ def test_observer_page_with_event(frontend_client) -> None:
     with patch.object(httpx, "get", return_value=mock_resp):
         resp = client.get("/observer")
     assert resp.status_code == 200
-    assert b"auth.issue_token" in resp.data
+    assert b"Observer" in resp.data
 
 
 def test_api_tools(frontend_client) -> None:
@@ -168,6 +168,29 @@ def test_observer_gateway_error(frontend_client) -> None:
         resp = client.get("/api/observer")
     assert resp.status_code == 200
     assert resp.get_json() == {}
+
+
+def test_api_observer_events_with_params(frontend_client) -> None:
+    client, _ = frontend_client
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {"events": [], "buffer_size": 10, "total_recorded": 0}
+    mock_resp.raise_for_status = MagicMock()
+    with patch.object(httpx, "get", return_value=mock_resp):
+        resp = client.get("/api/observer/events?limit=5&since=abc-123")
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert "events" in data
+
+
+def test_api_observer_events_gateway_error(frontend_client) -> None:
+    client, _ = frontend_client
+    with patch.object(httpx, "get", side_effect=httpx.ConnectError("refused")):
+        resp = client.get("/api/observer/events")
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data["events"] == []
+    assert data["buffer_size"] == 0
 
 
 def test_api_config_get(frontend_client) -> None:

@@ -116,6 +116,22 @@ def test_operator_run_gateway_error(frontend_client) -> None:
     assert "connection refused" in data["error"]
 
 
+def test_observer_events_proxy(frontend_client):
+    client, _ = frontend_client
+    resp = client.get("/api/observer/events")
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert "events" in data
+
+
+def test_observer_page_has_tabs(frontend_client):
+    client, _ = frontend_client
+    resp = client.get("/observer")
+    html = resp.data.decode()
+    assert "Vulnerable" in html or "vulnerable" in html
+    assert "Enhanced" in html or "enhanced" in html
+
+
 def test_operator_no_nav_link(frontend_client) -> None:
     """The operator page should NOT appear in the main navigation."""
     client, _ = frontend_client
@@ -260,6 +276,13 @@ def test_operator_has_player_controls(frontend_client):
     resp = client.get("/operator")
     html = resp.data.decode()
     assert "step-player" in html or "stepPlayer" in html
+
+
+def test_operator_has_telemetry_strip(frontend_client):
+    client, _ = frontend_client
+    resp = client.get("/operator")
+    html = resp.data.decode()
+    assert "telemetry" in html.lower()
 
 
 def test_resolve_prev_refs_basic(frontend_client):

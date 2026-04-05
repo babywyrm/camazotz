@@ -25,7 +25,7 @@ from brain_gateway.app.mcp_handlers import handle_rpc
 from brain_gateway.app.rate_limit import TokenBucketLimiter
 from brain_gateway.app.models import JsonRpcRequest
 from brain_gateway.app.modules.registry import get_registry
-from brain_gateway.app.observer import get_last_event
+from brain_gateway.app.observer import get_buffer_info, get_events, get_events_since, get_last_event
 from brain_gateway.app.scenarios import ScenarioLoader, generate_flags, verify_flag
 from brain_gateway.app.session import SessionManager
 
@@ -92,6 +92,17 @@ async def mcp_delete_session(request: Request) -> Response:
 def observer_last_event() -> dict[str, object]:
     """Return the most recent observer event for the dashboard."""
     return get_last_event()
+
+
+@app.get("/_observer/events")
+def observer_events(limit: int | None = None, since: str | None = None) -> dict:
+    """Return recent observer events from the ring buffer."""
+    if since:
+        events = get_events_since(since)
+    else:
+        events = get_events(limit=limit)
+    info = get_buffer_info()
+    return {"events": events, **info}
 
 
 @app.get("/health")

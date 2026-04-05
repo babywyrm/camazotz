@@ -133,6 +133,23 @@ def api_observer():
     return jsonify(_observer_last())
 
 
+@app.route("/api/observer/events")
+def api_observer_events():
+    limit = request.args.get("limit", type=int)
+    since = request.args.get("since")
+    params = {}
+    if limit is not None:
+        params["limit"] = limit
+    if since:
+        params["since"] = since
+    try:
+        resp = httpx.get(f"{GATEWAY_URL}/_observer/events", params=params, timeout=5.0)
+        resp.raise_for_status()
+        return jsonify(resp.json())
+    except (httpx.HTTPError, ValueError):
+        return jsonify({"events": [], "buffer_size": 0, "total_recorded": 0})
+
+
 @app.route("/api/config", methods=["GET"])
 def api_config_get():
     try:

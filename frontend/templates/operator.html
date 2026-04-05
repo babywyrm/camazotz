@@ -164,6 +164,28 @@
   text-underline-offset:2px}
 .op-detail-body{display:none}
 .op-detail-body.open{display:block}
+
+.wt-telemetry{margin-top:1rem;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.wt-telemetry-header{display:flex;align-items:center;gap:.5rem;padding:.5rem .75rem;
+  background:var(--bg2);cursor:pointer;font-size:.8rem;font-weight:600;color:var(--text2)}
+.wt-telemetry-header:hover{background:var(--surface)}
+.wt-telemetry-badge{background:var(--accent);color:#fff;font-size:.65rem;padding:.1rem .4rem;
+  border-radius:10px;min-width:18px;text-align:center}
+.wt-telemetry-toggle{margin-left:auto;font-size:.7rem;transition:transform .2s}
+.wt-telemetry-toggle.open{transform:rotate(90deg)}
+.wt-telemetry-body{padding:.5rem .75rem;background:var(--surface)}
+.wt-telemetry-summary{font-size:.75rem;color:var(--muted);margin-bottom:.5rem}
+.wt-tel-row{display:flex;align-items:center;gap:.5rem;padding:.3rem .5rem;font-size:.72rem;
+  font-family:var(--font-mono);border-radius:4px;margin-bottom:.2rem;background:var(--bg2);
+  border-left:3px solid var(--border)}
+.wt-tel-row.ai-denied{border-left-color:var(--red)}
+.wt-tel-row .tel-time{color:var(--muted);min-width:60px}
+.wt-tel-row .tel-tool{color:var(--accent2);flex:1}
+.wt-tel-row .tel-outcome{font-size:.65rem;padding:.1rem .3rem;border-radius:4px;font-weight:600}
+.wt-tel-row .tel-outcome.granted,.wt-tel-row .tel-outcome.leaked{background:rgba(239,68,68,.15);color:var(--red)}
+.wt-tel-row .tel-outcome.denied,.wt-tel-row .tel-outcome.blocked{background:rgba(34,197,94,.15);color:var(--green)}
+.wt-tel-row .tel-verdict{font-size:.65rem;color:var(--muted)}
+.wt-tel-row .tel-verdict.warn{color:var(--red);font-weight:600}
 </style>
 {% endblock %}
 
@@ -211,6 +233,17 @@
         <span class="player-step-counter" id="stepCounter">Step 0 of 0</span>
       </div>
       <div id="stepList"></div>
+      <div class="wt-telemetry" id="wtTelemetry">
+        <div class="wt-telemetry-header" onclick="toggleTelemetry()">
+          <span>Telemetry</span>
+          <span class="wt-telemetry-badge" id="wtTelBadge">0</span>
+          <span class="wt-telemetry-toggle" id="wtTelToggle">&#9654;</span>
+        </div>
+        <div class="wt-telemetry-body" id="wtTelBody" style="display:none">
+          <div class="wt-telemetry-summary" id="wtTelSummary">No telemetry yet.</div>
+          <div class="wt-telemetry-events" id="wtTelEvents"></div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -278,8 +311,77 @@ var _currentStep=-1;
 var _totalSteps=0;
 var _playing=false;
 var _playTimer=null;
+var _telemetryWatermark=null;
+var _telemetryEvents=[];
 
 function _escHtml(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+function initTelemetry(){
+  _telemetryEvents=[];
+  _telemetryWatermark=null;
+  document.getElementById('wtTelBadge').textContent='0';
+  document.getElementById('wtTelSummary').textContent='No telemetry yet.';
+  document.getElementById('wtTelEvents').innerHTML='';
+  fetch('/api/observer').then(function(r){return r.json();}).then(function(data){
+    if(data.request_id)_telemetryWatermark=data.request_id;
+  }).catch(function(){});
+}
+
+function pollTelemetry(){
+  var url='/api/observer/events';
+  if(_telemetryWatermark)url+='?since='+encodeURIComponent(_telemetryWatermark);
+  fetch(url).then(function(r){return r.json();}).then(function(data){
+    if(data.events&&data.events.length>0){
+      data.events.reverse().forEach(function(ev){
+        _telemetryEvents.push(ev);
+        _telemetryWatermark=ev.request_id;
+      });
+      renderTelemetry();
+    }
+  }).catch(function(){});
+}
+
+function renderTelemetry(){
+  var badge=document.getElementById('wtTelBadge');
+  badge.textContent=String(_telemetryEvents.length);
+
+  var deniedCount=_telemetryEvents.filter(function(e){return e.verdict==='ai_denied_tool_allowed';}).length;
+  var summary=_telemetryEvents.length+' events';
+  if(deniedCount>0)summary+=' | '+deniedCount+' verdict'+(deniedCount>1?'s':'')+': ai_denied_tool_allowed';
+  document.getElementById('wtTelSummary').textContent=summary;
+
+  var el=document.getElementById('wtTelEvents');
+  el.innerHTML='';
+  for(var i=_telemetryEvents.length-1;i>=0;i--){
+    var ev=_telemetryEvents[i];
+    var ts='';
+    if(ev.timestamp){
+      var p1=ev.timestamp.split('T')[1];
+      ts=p1?p1.split('.')[0]:'';
+    }
+    var rowClass='wt-tel-row'+(ev.verdict==='ai_denied_tool_allowed'?' ai-denied':'');
+    var outcomeClass='tel-outcome '+(ev.outcome||'unknown');
+    var verdictClass='tel-verdict'+(ev.verdict==='ai_denied_tool_allowed'?' warn':'');
+    el.innerHTML+='<div class="'+rowClass+'">'
+      +'<span class="tel-time">'+_escHtml(ts)+'</span>'
+      +'<span class="tel-tool">'+_escHtml(ev.tool_name)+'</span>'
+      +'<span class="'+outcomeClass+'">'+_escHtml(ev.outcome||'')+'</span>'
+      +'<span class="'+verdictClass+'">'+_escHtml(ev.verdict||'')+'</span>'
+      +'</div>';
+  }
+}
+
+function toggleTelemetry(){
+  var body=document.getElementById('wtTelBody');
+  var toggle=document.getElementById('wtTelToggle');
+  if(body.style.display==='none'){
+    body.style.display='block';
+    toggle.classList.add('open');
+  }else{
+    body.style.display='none';
+    toggle.classList.remove('open');
+  }
+}
 
 function enterLab(labName){
   _currentLab=labName;
@@ -306,6 +408,7 @@ function enterLab(labName){
 
   document.getElementById('labPicker').style.display='none';
   document.getElementById('stepPlayer').classList.add('active');
+  initTelemetry();
   _updateButtons();
 }
 
@@ -391,6 +494,7 @@ async function _executeStep(idx){
     _stepResults[idx]={status:'error',response:{error:err.message}};
   }
   _updateButtons();
+  pollTelemetry();
 }
 
 function toggleStepJson(id){
@@ -432,6 +536,7 @@ async function wtStepNext(){
 function wtReset(){
   _playing=false;
   clearTimeout(_playTimer);
+  initTelemetry();
   exitPlayer();
 }
 

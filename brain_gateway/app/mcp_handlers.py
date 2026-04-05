@@ -10,8 +10,10 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 from typing import Any
 
+from brain_gateway.app.config import get_difficulty
 from brain_gateway.app.models import (
     InitializeResult,
     JsonRpcError,
@@ -108,12 +110,23 @@ def _handle_tools_call(req: JsonRpcRequest) -> dict[str, Any]:
         )
 
     registry = get_registry()
+    t0 = time.monotonic()
     result, module_name = registry.call(name=name, arguments=arguments)
+    duration_ms = int((time.monotonic() - t0) * 1000)
 
     if result is None or module_name is None:
         return _err(req.id, -32602, f"Unknown tool: {name}")
 
-    record_event(tool_name=name, module=module_name)
+    result_dict = result if isinstance(result, dict) else {}
+    record_event(
+        tool_name=name,
+        module=module_name,
+        guardrail=get_difficulty(),
+        arguments=arguments,
+        result=result_dict,
+        ai_analysis=result_dict.get("ai_analysis", ""),
+        duration_ms=duration_ms,
+    )
     logger.info("tools/call %s -> %s", name, module_name)
 
     tool_result = ToolResult(

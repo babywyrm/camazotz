@@ -3,55 +3,93 @@
 
 {% block extra_css %}
 <style>
-.obs-header{padding:3rem 0 2rem;text-align:center}
+.obs-header{padding:3rem 0 1.5rem;text-align:center}
 .obs-header h1{font-size:2.2rem;font-weight:800;letter-spacing:-.03em;margin-bottom:.5rem}
 .obs-header p{color:var(--text2);font-size:1rem;max-width:600px;margin:0 auto}
 
-.obs-layout{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;padding:2rem 0}
+.obs-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:1.5rem}
+.obs-tab{padding:.65rem 1.4rem;font-size:.85rem;font-weight:600;color:var(--muted);
+  background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;
+  font-family:inherit;transition:all .2s;display:inline-flex;align-items:center;gap:.5rem}
+.obs-tab:hover{color:var(--text2)}
+.obs-tab.active{color:var(--text);border-bottom-color:var(--accent)}
+.obs-tab-badge{background:var(--accent-glow);color:var(--accent2);font-size:.65rem;
+  padding:.1rem .45rem;border-radius:8px;font-weight:700;min-width:20px;text-align:center}
 
-.obs-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
-  overflow:hidden}
-.obs-card-header{display:flex;justify-content:space-between;align-items:center;
-  padding:.75rem 1rem;background:var(--bg2);border-bottom:1px solid var(--border)}
-.obs-card-header span{font-size:.75rem;font-weight:600;text-transform:uppercase;
-  letter-spacing:.04em;color:var(--muted)}
-.obs-card-body{padding:1rem}
-.obs-card-body pre{font-family:var(--font-mono);font-size:.8rem;line-height:1.6;
-  color:var(--text);white-space:pre-wrap;word-break:break-word}
-
-.obs-event-empty{padding:2rem;text-align:center;color:var(--muted);font-size:.85rem}
-
-.obs-kv{display:grid;grid-template-columns:140px 1fr;gap:.5rem .75rem;font-size:.85rem}
-.obs-kv dt{font-weight:600;color:var(--muted);font-family:var(--font-mono);font-size:.78rem}
-.obs-kv dd{color:var(--text);font-family:var(--font-mono);font-size:.78rem;word-break:break-all}
-
-.obs-actions{display:flex;gap:1rem;justify-content:center;padding:1rem 0}
-.obs-refresh{background:var(--surface);color:var(--text);border:1px solid var(--border);
-  border-radius:8px;padding:.5rem 1.2rem;font-size:.82rem;font-weight:600;cursor:pointer;
-  transition:all .2s;font-family:inherit}
-.obs-refresh:hover{border-color:var(--border2);background:var(--surface2)}
-.obs-auto{display:flex;align-items:center;gap:.5rem;font-size:.8rem;color:var(--text2)}
-.obs-auto input{accent-color:var(--accent)}
+.obs-panel{display:none}
+.obs-panel.active{display:block}
 
 .obs-warning{background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.12);
-  border-radius:var(--radius);padding:1.25rem;margin:1.5rem 0}
+  border-radius:var(--radius);padding:1.25rem;margin-bottom:1.5rem}
 .obs-warning h3{font-size:.9rem;font-weight:700;color:var(--orange);margin-bottom:.5rem;
   display:flex;align-items:center;gap:.5rem}
 .obs-warning p{font-size:.82rem;color:var(--text2);line-height:1.6}
 
-.obs-event-log{margin-top:1.5rem}
-.obs-event-log h3{font-size:.8rem;font-weight:700;text-transform:uppercase;
-  letter-spacing:.06em;color:var(--muted);margin-bottom:.75rem}
-.event-row{display:flex;align-items:center;gap:1rem;padding:.5rem .75rem;
-  border-radius:8px;font-size:.78rem;font-family:var(--font-mono);margin-bottom:.25rem;
-  background:var(--surface);border:1px solid var(--border)}
-.event-row .event-time{color:var(--muted);min-width:80px}
-.event-row .event-tool{color:var(--accent2);flex:1}
-.event-row .event-module{color:var(--text2)}
+.obs-controls{display:flex;align-items:center;gap:1rem;margin-bottom:1rem;flex-wrap:wrap}
+.obs-auto{display:flex;align-items:center;gap:.5rem;font-size:.8rem;color:var(--text2)}
+.obs-auto input{accent-color:var(--accent)}
+.obs-btn{background:var(--surface);color:var(--text);border:1px solid var(--border);
+  border-radius:8px;padding:.4rem 1rem;font-size:.8rem;font-weight:600;cursor:pointer;
+  font-family:inherit;transition:all .2s}
+.obs-btn:hover{border-color:var(--border2);background:var(--surface2)}
+.obs-btn-danger{color:var(--red);border-color:rgba(239,68,68,.2)}
+.obs-btn-danger:hover{background:rgba(239,68,68,.08);border-color:var(--red)}
 
-@media(max-width:768px){
-  .obs-layout{grid-template-columns:1fr}
-}
+.obs-filter{background:var(--surface);color:var(--text);border:1px solid var(--border);
+  border-radius:8px;padding:.35rem .6rem;font-size:.78rem;font-family:inherit;
+  cursor:pointer;transition:border-color .2s}
+.obs-filter:focus{outline:none;border-color:var(--accent)}
+.obs-filter option{background:var(--bg);color:var(--text)}
+
+.obs-table{width:100%;border-collapse:collapse}
+.obs-table th{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
+  color:var(--muted);text-align:left;padding:.5rem .75rem;border-bottom:1px solid var(--border)}
+.obs-table td{padding:.5rem .75rem;font-size:.8rem;font-family:var(--font-mono);
+  border-bottom:1px solid var(--border);vertical-align:top}
+
+.obs-row{cursor:default;transition:background .15s}
+.obs-row:hover{background:var(--surface2)}
+.obs-row-warn{border-left:4px solid var(--red)}
+
+.obs-empty{padding:2rem;text-align:center;color:var(--muted);font-size:.85rem}
+
+.badge-sm{display:inline-block;padding:.15rem .45rem;border-radius:5px;font-size:.65rem;
+  font-weight:700;text-transform:uppercase;letter-spacing:.03em}
+.badge-ez{background:rgba(16,185,129,.12);color:var(--green)}
+.badge-mod{background:rgba(234,179,8,.12);color:var(--yellow)}
+.badge-max{background:rgba(239,68,68,.12);color:var(--red)}
+
+.badge-granted,.badge-leaked{background:rgba(239,68,68,.12);color:var(--red)}
+.badge-denied,.badge-blocked{background:rgba(16,185,129,.12);color:var(--green)}
+.badge-error{background:rgba(234,179,8,.12);color:var(--yellow)}
+.badge-unknown{background:rgba(107,95,122,.15);color:var(--muted)}
+
+.verdict-danger{color:var(--red);font-weight:700}
+.verdict-safe{color:var(--green)}
+.verdict-neutral{color:var(--muted)}
+
+.obs-detail{display:none;background:var(--bg2);border-bottom:1px solid var(--border)}
+.obs-detail td{padding:.75rem 1rem}
+.obs-detail.open{display:table-row}
+
+.obs-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+@media(max-width:768px){.obs-detail-grid{grid-template-columns:1fr}}
+
+.obs-detail-section{margin-bottom:.75rem}
+.obs-detail-label{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;
+  color:var(--muted);margin-bottom:.35rem}
+.obs-detail-pre{font-family:var(--font-mono);font-size:.75rem;color:var(--text);
+  background:var(--surface);border:1px solid var(--border);border-radius:8px;
+  padding:.75rem;white-space:pre-wrap;word-break:break-word;line-height:1.6;max-height:200px;overflow:auto}
+
+.obs-insight{background:rgba(251,191,36,.1);border-left:3px solid rgba(251,191,36,.6);
+  border-radius:0 8px 8px 0;padding:.75rem 1rem;margin-bottom:.75rem}
+.obs-insight-label{font-weight:700;color:rgba(251,191,36,.85);font-size:.68rem;
+  text-transform:uppercase;letter-spacing:.06em;margin-bottom:.3rem}
+.obs-insight-text{font-size:.8rem;color:var(--text2);line-height:1.6}
+
+.badge-canary{background:rgba(239,68,68,.15);color:var(--red);font-weight:700;
+  font-size:.65rem;padding:.15rem .45rem;border-radius:5px;text-transform:uppercase}
 </style>
 {% endblock %}
 
@@ -59,70 +97,68 @@
 <div class="container">
   <div class="obs-header">
     <h1>Observer</h1>
-    <p>Telemetry and audit trail for MCP tool invocations. This is intentionally
-       weak &mdash; OWASP MCP08 in action.</p>
+    <p>Telemetry and audit trail for MCP tool invocations.</p>
   </div>
 
-  <div class="obs-warning">
-    <h3>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-      MCP08: Lack of Audit and Telemetry
-    </h3>
-    <p>This observer only tracks the <strong>last event</strong> &mdash; there is no persistent log,
-       no request correlation, no user attribution, and no tamper protection.
-       A real deployment would need structured logging, immutable audit trails,
-       and alerting on anomalous tool invocation patterns.</p>
+  <div class="obs-tabs">
+    <button class="obs-tab active" id="tab-vulnerable" onclick="switchTab('vulnerable')">Vulnerable</button>
+    <button class="obs-tab" id="tab-enhanced" onclick="switchTab('enhanced')">
+      Enhanced <span class="obs-tab-badge" id="enhancedCount">0</span>
+    </button>
   </div>
 
-  <div class="obs-actions">
-    <button class="obs-refresh" id="refreshBtn" onclick="refreshEvent()">Refresh</button>
-    <label class="obs-auto">
-      <input type="checkbox" id="autoRefresh" onchange="toggleAuto()">
-      Auto-refresh (3s)
-    </label>
-  </div>
-
-  <div class="obs-layout">
-    <div class="obs-card">
-      <div class="obs-card-header">
-        <span>Last Event</span>
-        <span id="eventAge">—</span>
-      </div>
-      <div class="obs-card-body" id="eventBody">
-        {% if last_event and last_event.get('tool_name') %}
-        <dl class="obs-kv">
-          <dt>request_id</dt>
-          <dd>{{ last_event.get('request_id', '—') }}</dd>
-          <dt>tool_name</dt>
-          <dd>{{ last_event.get('tool_name', '—') }}</dd>
-          <dt>module</dt>
-          <dd>{{ last_event.get('module', '—') }}</dd>
-          <dt>timestamp</dt>
-          <dd>{{ last_event.get('timestamp', '—') }}</dd>
-        </dl>
-        {% else %}
-        <div class="obs-event-empty">No events recorded yet. Use the Playground to invoke a tool.</div>
-        {% endif %}
-      </div>
+  <!-- Vulnerable Tab -->
+  <div class="obs-panel active" id="panel-vulnerable">
+    <div class="obs-warning">
+      <h3>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        MCP08: Lack of Audit and Telemetry
+      </h3>
+      <p>This observer only tracks basic event metadata &mdash; there is no persistent log,
+         no request correlation, no user attribution, and no tamper protection.
+         A real deployment would need structured logging, immutable audit trails,
+         and alerting on anomalous tool invocation patterns.</p>
     </div>
 
-    <div class="obs-card">
-      <div class="obs-card-header">
-        <span>Raw JSON</span>
-        <span>/_observer/last-event</span>
-      </div>
-      <div class="obs-card-body">
-        <pre id="rawJson">{{ last_event | tojson(indent=2) if last_event else '{}' }}</pre>
-      </div>
+    <div class="obs-controls">
+      <label class="obs-auto">
+        <input type="checkbox" id="autoVuln" onchange="toggleAuto()">
+        Auto-refresh (3s)
+      </label>
+    </div>
+
+    <div id="vulnContent">
+      <div class="obs-empty">No events recorded yet. Use the Playground to invoke a tool.</div>
     </div>
   </div>
 
-  <div class="obs-event-log">
-    <h3>Client-Side Event Log</h3>
-    <div id="eventLog">
-      <div class="event-row" style="color:var(--muted);justify-content:center;border:none;background:transparent">
-        Events will appear here as you refresh.
-      </div>
+  <!-- Enhanced Tab -->
+  <div class="obs-panel" id="panel-enhanced">
+    <div class="obs-controls">
+      <select class="obs-filter" id="filterModule" onchange="applyFilters()">
+        <option value="">All Modules</option>
+      </select>
+      <select class="obs-filter" id="filterGuardrail" onchange="applyFilters()">
+        <option value="">All Guardrails</option>
+        <option value="easy">EZ</option>
+        <option value="medium">MOD</option>
+        <option value="hard">MAX</option>
+      </select>
+      <select class="obs-filter" id="filterVerdict" onchange="applyFilters()">
+        <option value="">All Verdicts</option>
+        <option value="ai_agreed">ai_agreed</option>
+        <option value="ai_denied_tool_allowed">ai_denied_tool_allowed</option>
+        <option value="ai_irrelevant">ai_irrelevant</option>
+      </select>
+      <label class="obs-auto">
+        <input type="checkbox" id="autoEnh" onchange="toggleAuto()">
+        Auto-refresh (3s)
+      </label>
+      <button class="obs-btn obs-btn-danger" onclick="clearEvents()">Clear</button>
+    </div>
+
+    <div id="enhContent">
+      <div class="obs-empty">No events recorded yet. Use the Playground to invoke a tool.</div>
     </div>
   </div>
 </div>
@@ -130,67 +166,196 @@
 
 {% block extra_js %}
 <script>
+let allEvents = [];
 let autoTimer = null;
-const eventLog = [];
+let currentTab = 'vulnerable';
 
-async function refreshEvent() {
-  try {
-    const resp = await fetch('/api/observer');
-    const data = await resp.json();
-    document.getElementById('rawJson').textContent = JSON.stringify(data, null, 2);
-
-    const body = document.getElementById('eventBody');
-    if (data.tool_name) {
-      body.innerHTML = '<dl class="obs-kv">' +
-        '<dt>request_id</dt><dd>' + esc(data.request_id || '—') + '</dd>' +
-        '<dt>tool_name</dt><dd>' + esc(data.tool_name || '—') + '</dd>' +
-        '<dt>module</dt><dd>' + esc(data.module || '—') + '</dd>' +
-        '<dt>timestamp</dt><dd>' + esc(data.timestamp || '—') + '</dd>' +
-        '</dl>';
-      document.getElementById('eventAge').textContent = 'just now';
-
-      const last = eventLog[eventLog.length - 1];
-      if (!last || last.request_id !== data.request_id) {
-        eventLog.push(data);
-        renderLog();
-      }
-    } else {
-      body.innerHTML = '<div class="obs-event-empty">No events recorded yet.</div>';
-    }
-  } catch (e) {
-    document.getElementById('rawJson').textContent = 'Error: ' + e.message;
-  }
+function esc(s) {
+  if (s == null) return '';
+  const d = document.createElement('div');
+  d.textContent = String(s);
+  return d.innerHTML;
 }
 
-function renderLog() {
-  const el = document.getElementById('eventLog');
-  el.innerHTML = '';
-  for (let i = eventLog.length - 1; i >= 0; i--) {
-    const ev = eventLog[i];
-    const row = document.createElement('div');
-    row.className = 'event-row';
-    const ts = ev.timestamp ? ev.timestamp.split('T')[1]?.split('.')[0] || '' : '';
-    row.innerHTML =
-      '<span class="event-time">' + esc(ts) + '</span>' +
-      '<span class="event-tool">' + esc(ev.tool_name) + '</span>' +
-      '<span class="event-module">' + esc(ev.module) + '</span>';
-    el.appendChild(row);
+function switchTab(hash) {
+  currentTab = hash;
+  window.location.hash = hash;
+  document.querySelectorAll('.obs-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.obs-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-' + hash).classList.add('active');
+  document.getElementById('panel-' + hash).classList.add('active');
+}
+
+function formatTime(ts) {
+  if (!ts) return '';
+  const parts = ts.split('T');
+  if (parts.length < 2) return ts;
+  return parts[1].split('.')[0] || parts[1].split('Z')[0] || '';
+}
+
+function guardrailBadge(level) {
+  const map = {easy: 'ez', medium: 'mod', hard: 'max'};
+  const label = {easy: 'EZ', medium: 'MOD', hard: 'MAX'};
+  const cls = map[level] || 'unknown';
+  return '<span class="badge-sm badge-' + cls + '">' + esc(label[level] || level || '?') + '</span>';
+}
+
+function outcomeBadge(outcome) {
+  if (!outcome) return '<span class="badge-sm badge-unknown">—</span>';
+  const o = outcome.toLowerCase();
+  let cls = 'unknown';
+  if (o === 'granted' || o === 'leaked') cls = o;
+  else if (o === 'denied' || o === 'blocked') cls = o;
+  else if (o === 'error') cls = 'error';
+  return '<span class="badge-sm badge-' + cls + '">' + esc(outcome) + '</span>';
+}
+
+function verdictLabel(verdict) {
+  if (!verdict) return '<span class="verdict-neutral">—</span>';
+  if (verdict === 'ai_denied_tool_allowed')
+    return '<span class="verdict-danger">⚠ ' + esc(verdict) + '</span>';
+  if (verdict === 'ai_agreed')
+    return '<span class="verdict-safe">' + esc(verdict) + '</span>';
+  return '<span class="verdict-neutral">' + esc(verdict) + '</span>';
+}
+
+function renderVulnerable(events) {
+  const el = document.getElementById('vulnContent');
+  if (!events.length) {
+    el.innerHTML = '<div class="obs-empty">No events recorded yet. Use the Playground to invoke a tool.</div>';
+    return;
+  }
+  let html = '<table class="obs-table"><thead><tr><th>Time</th><th>Tool</th><th>Module</th></tr></thead><tbody>';
+  for (let i = events.length - 1; i >= 0; i--) {
+    const ev = events[i];
+    html += '<tr class="obs-row">' +
+      '<td style="color:var(--muted)">' + esc(formatTime(ev.timestamp)) + '</td>' +
+      '<td style="color:var(--accent2)">' + esc(ev.tool_name) + '</td>' +
+      '<td style="color:var(--text2)">' + esc(ev.module) + '</td>' +
+      '</tr>';
+  }
+  html += '</tbody></table>';
+  el.innerHTML = html;
+}
+
+function renderEnhanced(events) {
+  const el = document.getElementById('enhContent');
+  const filtered = getFilteredEvents(events);
+  document.getElementById('enhancedCount').textContent = String(events.length);
+  populateModuleFilter(events);
+
+  if (!filtered.length) {
+    el.innerHTML = '<div class="obs-empty">No events recorded yet. Use the Playground to invoke a tool.</div>';
+    return;
+  }
+
+  let html = '<table class="obs-table"><thead><tr>' +
+    '<th>Time</th><th>Tool</th><th>Guardrail</th><th>Outcome</th><th>Verdict</th>' +
+    '</tr></thead><tbody>';
+
+  for (let i = filtered.length - 1; i >= 0; i--) {
+    const ev = filtered[i];
+    const idx = events.indexOf(ev);
+    const warnCls = ev.verdict === 'ai_denied_tool_allowed' ? ' obs-row-warn' : '';
+    html += '<tr class="obs-row' + warnCls + '" onclick="toggleDetail(' + idx + ')" style="cursor:pointer">' +
+      '<td style="color:var(--muted)">' + esc(formatTime(ev.timestamp)) + '</td>' +
+      '<td style="color:var(--accent2)">' + esc(ev.tool_name) + '</td>' +
+      '<td>' + guardrailBadge(ev.guardrail_level || ev.difficulty) + '</td>' +
+      '<td>' + outcomeBadge(ev.outcome) + '</td>' +
+      '<td>' + verdictLabel(ev.verdict) + '</td>' +
+      '</tr>';
+
+    html += '<tr class="obs-detail" id="detail-' + idx + '"><td colspan="5">' +
+      '<div class="obs-detail-grid"><div>';
+
+    html += '<div class="obs-detail-section"><div class="obs-detail-label">Arguments</div>' +
+      '<pre class="obs-detail-pre">' + esc(JSON.stringify(ev.arguments || {}, null, 2)) + '</pre></div>';
+
+    if (ev.ai_analysis) {
+      html += '<div class="obs-insight"><div class="obs-insight-label">AI Analysis</div>' +
+        '<div class="obs-insight-text">' + esc(ev.ai_analysis) + '</div></div>';
+    }
+
+    html += '</div><div>';
+
+    html += '<div class="obs-detail-section"><div class="obs-detail-label">Response Summary</div>' +
+      '<pre class="obs-detail-pre">' + esc(JSON.stringify(ev.response_summary || ev.response || {}, null, 2)) + '</pre></div>';
+
+    if (ev.canary_exposed) {
+      html += '<div class="obs-detail-section"><span class="badge-canary">Canary Exposed</span></div>';
+    }
+
+    html += '</div></div></td></tr>';
+  }
+  html += '</tbody></table>';
+  el.innerHTML = html;
+}
+
+function toggleDetail(idx) {
+  const row = document.getElementById('detail-' + idx);
+  if (row) row.classList.toggle('open');
+}
+
+function populateModuleFilter(events) {
+  const sel = document.getElementById('filterModule');
+  const current = sel.value;
+  const modules = [...new Set(events.map(e => e.module).filter(Boolean))].sort();
+  const opts = '<option value="">All Modules</option>' +
+    modules.map(m => '<option value="' + esc(m) + '"' + (m === current ? ' selected' : '') + '>' + esc(m) + '</option>').join('');
+  sel.innerHTML = opts;
+}
+
+function getFilteredEvents(events) {
+  const mod = document.getElementById('filterModule').value;
+  const guard = document.getElementById('filterGuardrail').value;
+  const verd = document.getElementById('filterVerdict').value;
+  return events.filter(ev => {
+    if (mod && ev.module !== mod) return false;
+    if (guard && (ev.guardrail_level || ev.difficulty) !== guard) return false;
+    if (verd && ev.verdict !== verd) return false;
+    return true;
+  });
+}
+
+function applyFilters() {
+  renderEnhanced(allEvents);
+}
+
+async function fetchEvents() {
+  try {
+    const resp = await fetch('/api/observer/events');
+    const data = await resp.json();
+    allEvents = data.events || [];
+    renderVulnerable(allEvents);
+    renderEnhanced(allEvents);
+  } catch (e) {
+    // silently ignore fetch errors during polling
   }
 }
 
 function toggleAuto() {
-  if (document.getElementById('autoRefresh').checked) {
-    autoTimer = setInterval(refreshEvent, 3000);
+  const vulnChecked = document.getElementById('autoVuln').checked;
+  const enhChecked = document.getElementById('autoEnh').checked;
+  if (vulnChecked || enhChecked) {
+    if (!autoTimer) autoTimer = setInterval(fetchEvents, 3000);
   } else {
     clearInterval(autoTimer);
     autoTimer = null;
   }
 }
 
-function esc(s) {
-  const d = document.createElement('div');
-  d.textContent = s;
-  return d.innerHTML;
+async function clearEvents() {
+  try {
+    await fetch('/api/reset', {method: 'POST'});
+    await fetchEvents();
+  } catch (e) {}
 }
+
+(function init() {
+  const hash = window.location.hash.replace('#', '') || 'vulnerable';
+  if (hash === 'enhanced' || hash === 'vulnerable') switchTab(hash);
+  else switchTab('vulnerable');
+  fetchEvents();
+})();
 </script>
 {% endblock %}
