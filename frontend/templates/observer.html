@@ -253,7 +253,7 @@ function renderVulnerable(events) {
     return;
   }
   let html = '<table class="obs-table"><thead><tr><th>Time</th><th>Tool</th><th>Module</th></tr></thead><tbody>';
-  for (let i = events.length - 1; i >= 0; i--) {
+  for (let i = 0; i < events.length; i++) {
     const ev = events[i];
     html += '<tr class="obs-row">' +
       '<td style="color:var(--muted)">' + esc(formatTime(ev.timestamp)) + '</td>' +
@@ -280,7 +280,7 @@ function renderEnhanced(events) {
     '<th>Time</th><th>Tool</th><th>Guardrail</th><th>Outcome</th><th>Verdict</th>' +
     '</tr></thead><tbody>';
 
-  for (let i = filtered.length - 1; i >= 0; i--) {
+  for (let i = 0; i < filtered.length; i++) {
     const ev = filtered[i];
     const idx = events.indexOf(ev);
     const warnCls = ev.verdict === 'ai_denied_tool_allowed' ? ' obs-row-warn' : '';
