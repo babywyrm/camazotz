@@ -130,6 +130,7 @@ def test_observer_page_has_tabs(frontend_client):
     html = resp.data.decode()
     assert "Vulnerable" in html or "vulnerable" in html
     assert "Enhanced" in html or "enhanced" in html
+    assert 'id="filterSignal"' in html
 
 
 def test_operator_no_nav_link(frontend_client) -> None:
@@ -249,6 +250,46 @@ def test_walkthrough_step_gateway_http_errors_step0(frontend_client):
     data = resp.get_json()
     assert data["status"] == "error"
     assert "error" in data["response"]
+
+
+class _OkHttpResp:
+    def raise_for_status(self) -> None:
+        pass
+
+    def json(self) -> dict:
+        return {"result": {"content": [{"text": "{}"}]}}
+
+
+def test_walkthrough_step_step0_config_reset_and_mcp_success(frontend_client):
+    """Cover successful PUT/POST for step 0 and MCP JSON parse path."""
+    client, mod = frontend_client
+
+    with patch.object(mod.httpx, "put", return_value=_OkHttpResp()), patch.object(
+        mod.httpx, "post", return_value=_OkHttpResp()
+    ):
+        resp = client.post("/api/operator/walkthrough/step", json={"lab": "auth_lab", "step": 0})
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data["status"] == "complete"
+    assert "result" in data["response"]
+
+
+def test_walkthrough_step_step0_reset_http_error_swallowed(frontend_client):
+    """Reset POST may fail HTTP; exception is swallowed and MCP continues."""
+    client, mod = frontend_client
+
+    def _post(url, **_kwargs):
+        if "/reset" in str(url):
+            raise httpx.HTTPError("reset failed")
+        return _OkHttpResp()
+
+    with patch.object(mod.httpx, "put", return_value=_OkHttpResp()), patch.object(
+        mod.httpx, "post", side_effect=_post
+    ):
+        resp = client.post("/api/operator/walkthrough/step", json={"lab": "auth_lab", "step": 0})
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data["status"] == "complete"
 
 
 def test_walkthrough_step_invalid_lab(frontend_client):

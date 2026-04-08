@@ -97,6 +97,13 @@ class EgressLab(LabModule):
             blocked = True
             block_reason = "Egress policy: metadata endpoints blocked."
 
+        if is_metadata:
+            target_class = "cloud_metadata"
+        elif is_internal:
+            target_class = "internal_network"
+        else:
+            target_class = "public_internet"
+
         fetched_body: str | None = None
         fetch_status: int | None = None
         if not blocked:
@@ -113,6 +120,7 @@ class EgressLab(LabModule):
             requested_url=url,
             status="blocked" if blocked else "allow",
             egress_filtered=blocked,
+            target_class=target_class,
             ai_analysis=result.text,
             _flags={
                 "metadata_target": is_metadata,

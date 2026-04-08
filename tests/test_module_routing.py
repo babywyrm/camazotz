@@ -107,6 +107,7 @@ def test_gateway_calls_egress_tool_normal_url() -> None:
         result = tool_call(client, "egress.fetch_url", {"url": "http://example.org"}, 13)
     assert result["requested_url"] == "http://example.org"
     assert result["_flags"]["ssrf_risk"] is False
+    assert result.get("target_class") == "public_internet"
 
 
 def test_gateway_egress_flags_metadata_target() -> None:
@@ -114,6 +115,7 @@ def test_gateway_egress_flags_metadata_target() -> None:
     result = tool_call(client, "egress.fetch_url", {"url": "http://169.254.169.254/latest/meta-data/"}, 14)
     assert result["_flags"]["metadata_target"] is True
     assert result["_flags"]["ssrf_risk"] is True
+    assert result.get("target_class") == "cloud_metadata"
 
 
 def test_gateway_egress_flags_internal_target() -> None:
@@ -121,6 +123,7 @@ def test_gateway_egress_flags_internal_target() -> None:
     result = tool_call(client, "egress.fetch_url", {"url": "http://10.0.0.1/admin"}, 15)
     assert result["_flags"]["internal_target"] is True
     assert result["_flags"]["ssrf_risk"] is True
+    assert result.get("target_class") == "internal_network"
 
 
 def test_gateway_returns_error_for_unknown_tool() -> None:
@@ -199,6 +202,8 @@ def test_shadow_register_webhook() -> None:
     assert result["_flags"]["url_validated"] is False
     assert result["_flags"]["external_target"] is True
     assert result["_flags"]["shadow_mcp_risk"] is True
+    assert result.get("attack_pattern") == "oob_callback_exfiltration"
+    assert result.get("callback_scope") == "all_future_tool_calls"
 
 
 def test_shadow_register_internal_webhook() -> None:

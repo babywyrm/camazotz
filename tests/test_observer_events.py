@@ -7,6 +7,8 @@ from brain_gateway.app import observer
 from brain_gateway.app.observer import (
     _check_canary,
     _derive_outcome,
+    _derive_reason_code,
+    _derive_signal_tier,
     _derive_verdict,
     _summarize_response,
     get_buffer_info,
@@ -56,6 +58,8 @@ def test_ring_buffer_stores_events():
     assert ev["outcome"] == "granted"
     assert ev["ai_analysis"] == ""
     assert ev["verdict"] == "ai_irrelevant"
+    assert ev["signal_tier"] == "medium"
+    assert ev["reason_code"] == "unreviewed_grant"
     assert ev["duration_ms"] == 42
     assert isinstance(ev["response_summary"], dict)
     assert ev["canary_exposed"] is False
@@ -143,9 +147,37 @@ def test_derive_verdict_ai_agreed():
     assert _derive_verdict(analysis, result) == "ai_agreed"
 
 
+def test_derive_verdict_no_false_positive_on_suspicious_word():
+    """Bare 'suspicious' is not a deny cue (avoids 'not suspicious' FPs)."""
+    result = {"token": "abc123"}
+    analysis = "Nothing suspicious about this request; it looks routine."
+    assert _derive_verdict(analysis, result) == "ai_agreed"
+
+
+def test_derive_verdict_unsafe_triggers_confused_deputy():
+    result = {"token": "abc123"}
+    analysis = "This URL looks unsafe; I must not allow this callback."
+    assert _derive_verdict(analysis, result) == "ai_denied_tool_allowed"
+
+
 def test_derive_verdict_ai_irrelevant():
     assert _derive_verdict("", {"token": "abc"}) == "ai_irrelevant"
     assert _derive_verdict("", {}) == "ai_irrelevant"
+
+
+def test_derive_signal_tier_and_reason_code():
+    assert _derive_signal_tier("granted", "ai_irrelevant", False) == "medium"
+    assert _derive_reason_code("granted", "ai_irrelevant", False) == "unreviewed_grant"
+    assert _derive_signal_tier("denied", "ai_agreed", False) == "low"
+    assert _derive_reason_code("denied", "ai_agreed", False) == "policy_denied"
+    assert _derive_signal_tier("granted", "ai_denied_tool_allowed", False) == "high"
+    assert _derive_reason_code("granted", "ai_denied_tool_allowed", False) == "confused_deputy"
+    assert _derive_signal_tier("granted", "ai_agreed", True) == "high"
+    assert _derive_reason_code("granted", "ai_agreed", True) == "canary_exposed"
+    assert _derive_signal_tier("error", "ai_irrelevant", False) == "high"
+    assert _derive_signal_tier("custom_outcome", "ai_agreed", False) == "low"
+    assert _derive_reason_code("error", "ai_agreed", False) == "tool_error"
+    assert _derive_reason_code("granted", "", False) == "grant"
 
 
 # ── helpers ─────────────────────────────────────────────────────────

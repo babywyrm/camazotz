@@ -133,6 +133,8 @@ class ShadowLab(LabModule):
             webhook=entry,
             total_registered=total,
             ai_analysis=result.text,
+            attack_pattern="oob_callback_exfiltration",
+            callback_scope="all_future_tool_calls",
             _flags={
                 "url_validated": difficulty == "hard",
                 "external_target": is_external,

@@ -67,6 +67,10 @@
 .badge-error{background:rgba(234,179,8,.12);color:var(--yellow)}
 .badge-unknown{background:rgba(107,95,122,.15);color:var(--muted)}
 
+.badge-sig-high{background:rgba(239,68,68,.14);color:var(--red);font-weight:700}
+.badge-sig-med{background:rgba(234,179,8,.12);color:var(--yellow)}
+.badge-sig-low{background:rgba(107,95,122,.12);color:var(--muted)}
+
 .verdict-danger{color:var(--red);font-weight:700}
 .verdict-safe{color:var(--green)}
 .verdict-neutral{color:var(--muted)}
@@ -165,6 +169,13 @@
         <option value="ai_denied_tool_allowed">ai_denied_tool_allowed</option>
         <option value="ai_irrelevant">ai_irrelevant</option>
       </select>
+      <select class="obs-filter" id="filterSignal" onchange="applyFilters()" title="Signal priority">
+        <option value="">All signals</option>
+        <option value="high">High only</option>
+        <option value="hm">High + medium</option>
+        <option value="medium">Medium only</option>
+        <option value="low">Low only</option>
+      </select>
       <label class="obs-auto">
         <input type="checkbox" id="autoEnh" onchange="toggleAuto()">
         Auto-refresh
@@ -246,6 +257,17 @@ function verdictLabel(verdict) {
   return '<span class="verdict-neutral">' + esc(verdict) + '</span>';
 }
 
+function signalBadge(tier) {
+  const t = (tier || '').toLowerCase();
+  if (t === 'high')
+    return '<span class="badge-sm badge-sig-high">HIGH</span>';
+  if (t === 'medium')
+    return '<span class="badge-sm badge-sig-med">MED</span>';
+  if (t === 'low')
+    return '<span class="badge-sm badge-sig-low">LOW</span>';
+  return '<span class="badge-sm badge-unknown">' + esc(tier || '—') + '</span>';
+}
+
 function renderVulnerable(events) {
   const el = document.getElementById('vulnContent');
   if (!events.length) {
@@ -277,23 +299,28 @@ function renderEnhanced(events) {
   }
 
   let html = '<table class="obs-table"><thead><tr>' +
-    '<th>Time</th><th>Tool</th><th>Guardrail</th><th>Outcome</th><th>Verdict</th>' +
+    '<th>Time</th><th>Tool</th><th>Guardrail</th><th>Signal</th><th>Outcome</th><th>Verdict</th>' +
     '</tr></thead><tbody>';
 
   for (let i = 0; i < filtered.length; i++) {
     const ev = filtered[i];
     const idx = events.indexOf(ev);
-    const warnCls = ev.verdict === 'ai_denied_tool_allowed' ? ' obs-row-warn' : '';
+    const st = (ev.signal_tier || '').toLowerCase();
+    const warnCls = (ev.verdict === 'ai_denied_tool_allowed' || st === 'high') ? ' obs-row-warn' : '';
     html += '<tr class="obs-row' + warnCls + '" onclick="toggleDetail(' + idx + ')" style="cursor:pointer">' +
       '<td style="color:var(--muted)">' + esc(formatTime(ev.timestamp)) + '</td>' +
       '<td style="color:var(--accent2)">' + esc(ev.tool_name) + '</td>' +
       '<td>' + guardrailBadge(ev.guardrail_level || ev.difficulty) + '</td>' +
+      '<td>' + signalBadge(ev.signal_tier) + '</td>' +
       '<td>' + outcomeBadge(ev.outcome) + '</td>' +
       '<td>' + verdictLabel(ev.verdict) + '</td>' +
       '</tr>';
 
-    html += '<tr class="obs-detail" id="detail-' + idx + '"><td colspan="5">' +
+    html += '<tr class="obs-detail" id="detail-' + idx + '"><td colspan="6">' +
       '<div class="obs-detail-grid"><div>';
+
+    html += '<div class="obs-detail-section"><div class="obs-detail-label">Reason</div>' +
+      '<pre class="obs-detail-pre">' + esc(ev.reason_code || '—') + '</pre></div>';
 
     html += '<div class="obs-detail-section"><div class="obs-detail-label">Arguments</div>' +
       '<pre class="obs-detail-pre">' + esc(JSON.stringify(ev.arguments || {}, null, 2)) + '</pre></div>';
@@ -336,10 +363,16 @@ function getFilteredEvents(events) {
   const mod = document.getElementById('filterModule').value;
   const guard = document.getElementById('filterGuardrail').value;
   const verd = document.getElementById('filterVerdict').value;
+  const sig = document.getElementById('filterSignal').value;
   return events.filter(ev => {
     if (mod && ev.module !== mod) return false;
     if (guard && (ev.guardrail_level || ev.difficulty) !== guard) return false;
     if (verd && ev.verdict !== verd) return false;
+    const st = (ev.signal_tier || '').toLowerCase();
+    if (sig === 'high' && st !== 'high') return false;
+    if (sig === 'medium' && st !== 'medium') return false;
+    if (sig === 'low' && st !== 'low') return false;
+    if (sig === 'hm' && st !== 'high' && st !== 'medium') return false;
     return true;
   });
 }

@@ -2,7 +2,7 @@
 
 Each event gets a UUID request_id, ISO-8601 timestamp, and derived
 outcome/verdict fields. Events are stored in a bounded deque whose
-size is controlled by the OBSERVER_BUFFER_SIZE env var (default 10,
+size is controlled by the OBSERVER_BUFFER_SIZE env var (default 50,
 clamped to [1, 200]).
 """
 
@@ -26,8 +26,14 @@ _GRANT_KEYS = frozenset({
     "found", "triggered", "exchanged", "recorded", "billed",
 })
 
+# Strong denial cues only — avoid bare "suspicious" (false positives on
+# phrases like "not suspicious" / "nothing suspicious").
 _DENY_PATTERN = re.compile(
-    r"deny|denied|reject|rejected|refuse|refused|block|blocked|suspicious|not recommend",
+    r"\b(?:"
+    r"deny|denied|reject|rejected|refuse|refused|block|blocked|unsafe|"
+    r"not recommend|must not|should not|do not allow|cannot allow|"
+    r"I (?:would|do) not recommend|recommend against"
+    r")\b",
     re.IGNORECASE,
 )
 
@@ -74,6 +80,52 @@ def _derive_verdict(ai_analysis: str, result: dict) -> str:
     return "ai_agreed"
 
 
+def _derive_signal_tier(
+    outcome: str,
+    verdict: str,
+    canary_exposed: bool,
+) -> str:
+    """Rough priority for triage: high = review first, low = usually benign."""
+    if canary_exposed or outcome == "leaked" or verdict == "ai_denied_tool_allowed":
+        return "high"
+    if outcome == "error":
+        return "high"
+    if outcome == "granted":
+        return "medium"
+    if outcome == "unknown":
+        return "medium"
+    if outcome == "denied":
+        return "low"
+    return "low"
+
+
+def _derive_reason_code(
+    outcome: str,
+    verdict: str,
+    canary_exposed: bool,
+) -> str:
+    """Short machine-readable label for UI and cross-tool correlation."""
+    if canary_exposed:
+        return "canary_exposed"
+    if outcome == "leaked":
+        return "sensitive_disclosure"
+    if outcome == "error":
+        return "tool_error"
+    if verdict == "ai_denied_tool_allowed":
+        return "confused_deputy"
+    if outcome == "denied":
+        return "policy_denied"
+    if outcome == "granted":
+        if verdict == "ai_agreed":
+            return "ai_endorsed_grant"
+        if verdict == "ai_irrelevant":
+            return "unreviewed_grant"
+        return "grant"
+    if verdict == "ai_agreed":
+        return "ai_endorsed"
+    return "inconclusive"
+
+
 def _summarize_response(result: dict) -> dict:
     summary: dict[str, str] = {}
     for key, value in result.items():
@@ -97,6 +149,9 @@ def record_event(
     duration_ms: int,
 ) -> None:
     global _last_event, _total_recorded
+    outcome = _derive_outcome(result)
+    verdict = _derive_verdict(ai_analysis, result)
+    canary = _check_canary(result)
     event = {
         "request_id": str(uuid.uuid4()),
         "timestamp": datetime.now(UTC).isoformat(),
@@ -104,12 +159,14 @@ def record_event(
         "module": module,
         "guardrail": guardrail,
         "arguments": arguments,
-        "outcome": _derive_outcome(result),
+        "outcome": outcome,
         "ai_analysis": ai_analysis[:200] if ai_analysis else "",
-        "verdict": _derive_verdict(ai_analysis, result),
+        "verdict": verdict,
+        "signal_tier": _derive_signal_tier(outcome, verdict, canary),
+        "reason_code": _derive_reason_code(outcome, verdict, canary),
         "duration_ms": duration_ms,
         "response_summary": _summarize_response(result),
-        "canary_exposed": _check_canary(result),
+        "canary_exposed": canary,
     }
     with _lock:
         _buffer.append(event)

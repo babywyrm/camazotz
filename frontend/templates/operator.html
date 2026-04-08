@@ -180,7 +180,8 @@
   border-left:3px solid var(--border)}
 .wt-tel-row.ai-denied{border-left-color:var(--red)}
 .wt-tel-row .tel-time{color:var(--muted);min-width:60px}
-.wt-tel-row .tel-tool{color:var(--accent2);flex:1}
+.wt-tel-row .tel-tool{color:var(--accent2);flex:1;min-width:0}
+.wt-tel-row .tel-sig{font-size:.6rem;color:var(--yellow);font-weight:700;text-transform:uppercase;min-width:36px}
 .wt-tel-row .tel-outcome{font-size:.65rem;padding:.1rem .3rem;border-radius:4px;font-weight:600}
 .wt-tel-row .tel-outcome.granted,.wt-tel-row .tel-outcome.leaked{background:rgba(239,68,68,.15);color:var(--red)}
 .wt-tel-row .tel-outcome.denied,.wt-tel-row .tel-outcome.blocked{background:rgba(34,197,94,.15);color:var(--green)}
@@ -346,8 +347,10 @@ function renderTelemetry(){
   badge.textContent=String(_telemetryEvents.length);
 
   var deniedCount=_telemetryEvents.filter(function(e){return e.verdict==='ai_denied_tool_allowed';}).length;
+  var highCount=_telemetryEvents.filter(function(e){return (e.signal_tier||'').toLowerCase()==='high';}).length;
   var summary=_telemetryEvents.length+' events';
-  if(deniedCount>0)summary+=' | '+deniedCount+' verdict'+(deniedCount>1?'s':'')+': ai_denied_tool_allowed';
+  if(highCount>0)summary+=' | '+highCount+' high signal';
+  if(deniedCount>0)summary+=' | '+deniedCount+' confused deputy';
   document.getElementById('wtTelSummary').textContent=summary;
 
   var el=document.getElementById('wtTelEvents');
@@ -359,12 +362,14 @@ function renderTelemetry(){
       var p1=ev.timestamp.split('T')[1];
       ts=p1?p1.split('.')[0]:'';
     }
-    var rowClass='wt-tel-row'+(ev.verdict==='ai_denied_tool_allowed'?' ai-denied':'');
+    var st=(ev.signal_tier||'').toLowerCase();
+    var rowClass='wt-tel-row'+(ev.verdict==='ai_denied_tool_allowed'||st==='high'?' ai-denied':'');
     var outcomeClass='tel-outcome '+(ev.outcome||'unknown');
     var verdictClass='tel-verdict'+(ev.verdict==='ai_denied_tool_allowed'?' warn':'');
     el.innerHTML+='<div class="'+rowClass+'">'
       +'<span class="tel-time">'+_escHtml(ts)+'</span>'
       +'<span class="tel-tool">'+_escHtml(ev.tool_name)+'</span>'
+      +'<span class="tel-sig">'+_escHtml(ev.signal_tier||'')+'</span>'
       +'<span class="'+outcomeClass+'">'+_escHtml(ev.outcome||'')+'</span>'
       +'<span class="'+verdictClass+'">'+_escHtml(ev.verdict||'')+'</span>'
       +'</div>';
