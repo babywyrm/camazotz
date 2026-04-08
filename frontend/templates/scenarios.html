@@ -166,6 +166,9 @@ tr:hover td{background:var(--surface)}
         <span>Category: <strong><span class="cat-badge cat-{{ s.category }}">{{ s.category }}</span></strong></span>
         <span>Complexity: <strong class="diff-{{ s.difficulty }}">{{ s.difficulty }}</strong></span>
       </div>
+      {% if s.has_walkthrough %}
+      <a href="/operator#walkthrough/{{ s.module_name }}" style="display:inline-flex;align-items:center;gap:.3rem;font-size:.72rem;font-weight:600;color:var(--orange);text-decoration:none;margin-top:.3rem;transition:color .2s">&#9654; Walkthrough</a>
+      {% endif %}
 
       <p class="desc">{{ s.description }}</p>
 

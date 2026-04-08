@@ -100,8 +100,12 @@ def playground() -> str:
 
 @app.route("/scenarios")
 def scenarios() -> str:
+    from threat_map import has_walkthrough
+
     all_scenarios = _fetch_scenarios()
     all_scenarios.sort(key=lambda s: s.get("threat_id", ""))
+    for s in all_scenarios:
+        s["has_walkthrough"] = has_walkthrough(s.get("module_name", ""))
     return render_template("scenarios.html", scenarios=all_scenarios)
 
 
@@ -229,11 +233,19 @@ def challenges():
 
 @app.route("/challenges/<threat_id>")
 def challenge_detail(threat_id: str):
+    from threat_map import has_walkthrough
+
     scenarios = _fetch_scenarios()
     scenario = next((s for s in scenarios if s["threat_id"] == threat_id), None)
     if scenario is None:
         return "Challenge not found", 404
-    return render_template("challenge_detail.html", scenario=scenario)
+    lab_name = scenario.get("module_name", "")
+    return render_template(
+        "challenge_detail.html",
+        scenario=scenario,
+        walkthrough_available=has_walkthrough(lab_name),
+        walkthrough_lab=lab_name,
+    )
 
 
 @app.route("/challenges/<threat_id>/verify", methods=["POST"])

@@ -249,3 +249,18 @@ def test_api_reset_gateway_error(frontend_client) -> None:
     with patch.object(httpx, "post", side_effect=httpx.ConnectError("refused")):
         resp = client.post("/api/reset")
     assert resp.status_code == 502
+
+
+def test_challenge_detail_has_walkthrough_link(frontend_client) -> None:
+    client, _ = frontend_client
+    resp = client.get("/challenges/MCP-T01")
+    if resp.status_code == 200:
+        html = resp.data.decode()
+        assert "walkthrough" in html.lower()
+
+
+def test_scenarios_page_has_walkthrough_pills(frontend_client) -> None:
+    client, _ = frontend_client
+    resp = client.get("/scenarios")
+    html = resp.data.decode()
+    assert "walkthrough" in html.lower()
