@@ -66,6 +66,34 @@ CATEGORY_GROUPS: list[dict] = [
     },
 ]
 
+HEX_ROWS: list[list[str]] = [
+    ["auth_lab", "rbac_lab", "oauth_delegation_lab", "credential_broker_lab", "secrets_lab"],
+    ["context_lab", "egress_lab", "tool_lab", "supply_lab", "pattern_downgrade_lab"],
+    ["relay_lab", "delegation_chain_lab", "attribution_lab", "revocation_lab", "shadow_lab"],
+    ["comms_lab", "audit_lab", "notification_lab", "hallucination_lab", "indirect_lab"],
+    ["config_lab", "cost_exhaustion_lab", "tenant_lab", "error_lab", "temporal_lab"],
+]
+
+CATEGORY_COLORS: dict[str, dict[str, str]] = {
+    "Identity & Access": {"primary": "#7c3aed", "dark": "#4c1d95", "css": "identity"},
+    "Data & Secrets": {"primary": "#2563eb", "dark": "#1e3a8a", "css": "data"},
+    "Tool & Supply Chain": {"primary": "#d97706", "dark": "#92400e", "css": "tool"},
+    "Delegation & Trust": {"primary": "#059669", "dark": "#064e3b", "css": "delegation"},
+    "Observation & Evasion": {"primary": "#dc2626", "dark": "#7f1d1d", "css": "observation"},
+    "AI Behavior": {"primary": "#0891b2", "dark": "#164e63", "css": "ai"},
+    "Isolation": {"primary": "#6b7280", "dark": "#374151", "css": "isolation"},
+}
+
+_LAB_TO_CATEGORY: dict[str, str] = {}
+for _g in CATEGORY_GROUPS:
+    for _lab in _g["labs"]:
+        _LAB_TO_CATEGORY[_lab] = _g["name"]
+
+
+def get_lab_category(lab_name: str) -> str:
+    """Return the display category name for a lab, or empty string if unknown."""
+    return _LAB_TO_CATEGORY.get(lab_name, "")
+
 
 def has_walkthrough(lab_name: str) -> bool:
     """Return True if a guided walkthrough exists for the given lab."""

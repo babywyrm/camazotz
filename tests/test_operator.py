@@ -326,6 +326,21 @@ def test_operator_has_telemetry_strip(frontend_client):
     assert "telemetry" in html.lower()
 
 
+def test_operator_deeplink_hash_parsing(frontend_client):
+    client, _ = frontend_client
+    resp = client.get("/operator")
+    html = resp.data.decode()
+    assert "walkthrough/" in html
+    assert "enterLab(" in html
+
+
+def test_operator_writes_viewed_state(frontend_client):
+    client, _ = frontend_client
+    resp = client.get("/operator")
+    html = resp.data.decode()
+    assert "cztz_viewed_" in html
+
+
 def test_resolve_prev_refs_basic(frontend_client):
     """Test that _resolve_prev_refs replaces {{prev.token}} with extracted value."""
     _, mod = frontend_client

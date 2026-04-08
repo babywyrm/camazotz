@@ -299,8 +299,15 @@ function switchTab(name){
 }
 (function(){
   var hash=location.hash.replace('#','');
-  if(hash==='qa'||hash==='walkthrough') switchTab(hash);
-  else switchTab('walkthrough');
+  if(hash==='qa'){
+    switchTab('qa');
+  } else if(hash.indexOf('walkthrough/')===0){
+    var labName=hash.split('/')[1];
+    switchTab('walkthrough');
+    if(labName) enterLab(labName);
+  } else {
+    switchTab('walkthrough');
+  }
 })();
 
 /* ---- Walkthrough Player ---- */
@@ -392,6 +399,8 @@ function enterLab(labName){
   _currentLab=labName;
   _currentLabData=_walkthroughLabs.find(function(l){return l.lab===labName;});
   if(!_currentLabData)return;
+  var _tid=_currentLabData.threat_id;
+  if(_tid) localStorage.setItem('cztz_viewed_'+_tid,'true');
   _totalSteps=_currentLabData.step_count;
   _stepResults=[];
   _currentStep=-1;

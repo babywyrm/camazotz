@@ -117,33 +117,38 @@ def observer() -> str:
 
 @app.route("/threat-map")
 def threat_map() -> str:
-    from threat_map import CATEGORY_GROUPS, has_walkthrough
+    from threat_map import CATEGORY_COLORS, CATEGORY_GROUPS, HEX_ROWS, get_lab_category, has_walkthrough
     from qa_runner.walkthroughs import WALKTHROUGHS
 
     all_scenarios = _fetch_scenarios()
     scenario_map = {s["module_name"]: s for s in all_scenarios}
 
-    groups = []
-    for group in CATEGORY_GROUPS:
-        labs = []
-        for lab_name in group["labs"]:
+    rows = []
+    for row_idx, row_labs in enumerate(HEX_ROWS):
+        row = []
+        for lab_name in row_labs:
             sc = scenario_map.get(lab_name, {})
-            labs.append({
+            cat_name = get_lab_category(lab_name)
+            cat_css = CATEGORY_COLORS.get(cat_name, {}).get("css", "")
+            row.append({
                 "name": lab_name,
                 "threat_id": sc.get("threat_id", ""),
                 "title": sc.get("title", lab_name.replace("_", " ").title()),
                 "description": sc.get("description", ""),
-                "category": sc.get("category", ""),
+                "category": cat_name,
+                "cat_css": cat_css,
                 "has_walkthrough": has_walkthrough(lab_name),
                 "step_count": len(WALKTHROUGHS.get(lab_name, [])),
             })
-        groups.append({
-            "name": group["name"],
-            "blurb": group["blurb"],
-            "labs": labs,
-        })
+        rows.append({"labs": row, "offset": row_idx % 2 == 1})
 
-    return render_template("threat_map.html", groups=groups, total_labs=25)
+    return render_template(
+        "threat_map.html",
+        rows=rows,
+        groups=CATEGORY_GROUPS,
+        colors=CATEGORY_COLORS,
+        total_labs=25,
+    )
 
 
 @app.route("/api/tools", methods=["GET"])

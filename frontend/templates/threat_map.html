@@ -18,40 +18,64 @@
 .tm-progress-fill{height:100%;background:var(--accent);border-radius:4px;
   transition:width .4s ease}
 
-.tm-chips{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:2rem}
-.tm-chip{background:var(--surface);border:1px solid var(--border);border-radius:8px;
-  padding:.35rem .85rem;font-size:.78rem;font-weight:600;color:var(--text2);
-  cursor:pointer;transition:all .2s;white-space:nowrap}
-.tm-chip:hover{border-color:var(--border2);color:var(--text)}
-.tm-chip .chip-count{color:var(--accent2);margin-left:.3rem}
+.tm-legend{display:flex;align-items:center;gap:1.2rem;flex-wrap:wrap;
+  margin-bottom:2rem;font-size:.78rem;color:var(--text2)}
+.tm-legend-item{display:flex;align-items:center;gap:.35rem}
+.tm-legend-dot{width:10px;height:10px;border-radius:50%}
+.tm-legend-sep{color:var(--muted);margin:0 .3rem}
+.tm-legend-state{display:flex;align-items:center;gap:.25rem;font-size:.82rem}
 
-.tm-group{margin-bottom:2.5rem}
-.tm-group-heading{font-size:1.15rem;font-weight:800;letter-spacing:-.02em;
-  margin-bottom:.3rem;display:flex;align-items:center;gap:.5rem}
-.tm-group-blurb{font-size:.82rem;color:var(--text2);line-height:1.6;
-  max-width:680px;margin-bottom:1rem}
+.hex-grid{display:flex;flex-direction:column;align-items:center;gap:4px;
+  margin-bottom:2rem;padding:1rem 0}
+.hex-row{display:flex;gap:8px;justify-content:center}
+.hex-row.offset{margin-left:40px}
 
-.tm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));
-  gap:1rem}
+.hex{
+  width:72px;height:82px;
+  clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  cursor:pointer;transition:transform .2s,opacity .2s,filter .2s;
+  position:relative;text-align:center;padding:0 4px;
+  user-select:none;
+}
+.hex:hover{transform:scale(1.12);z-index:10;filter:brightness(1.25)}
 
-.tm-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
-  padding:1.2rem 1.3rem;display:flex;flex-direction:column;gap:.55rem;
-  transition:border-color .2s,transform .15s;position:relative}
-.tm-card:hover{border-color:var(--border2);transform:translateY(-2px)}
-.tm-card-header{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
-.tm-card-title{font-weight:600;font-size:.92rem;flex:1;min-width:0}
-.tm-card-desc{color:var(--text2);font-size:.8rem;line-height:1.5;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.tm-card-footer{display:flex;align-items:center;gap:.5rem;margin-top:auto}
-.tm-card .solved-check{position:absolute;top:.75rem;right:.75rem;
-  color:var(--green);font-size:1.1rem;line-height:1;display:none}
-.tm-card .wt-link{font-size:.72rem;font-weight:600;color:var(--accent2);
-  background:var(--accent-glow);border:1px solid rgba(220,38,38,.2);
-  padding:.2rem .55rem;border-radius:5px;text-decoration:none;transition:all .2s;
-  margin-left:auto}
-.tm-card .wt-link:hover{background:rgba(220,38,38,.2);color:#fca5a5}
-.tm-card .step-count{font-size:.65rem;color:var(--muted);background:var(--bg2);
-  padding:.15rem .45rem;border-radius:4px;font-weight:600}
+.hex.identity{background:linear-gradient(135deg,#7c3aed,#4c1d95)}
+.hex.data{background:linear-gradient(135deg,#2563eb,#1e3a8a)}
+.hex.tool{background:linear-gradient(135deg,#d97706,#92400e)}
+.hex.delegation{background:linear-gradient(135deg,#059669,#064e3b)}
+.hex.observation{background:linear-gradient(135deg,#dc2626,#7f1d1d)}
+.hex.ai{background:linear-gradient(135deg,#0891b2,#164e63)}
+.hex.isolation{background:linear-gradient(135deg,#6b7280,#374151)}
+
+.hex.untouched{opacity:0.35}
+.hex.viewed{opacity:0.7;box-shadow:0 0 14px rgba(251,191,36,0.4)}
+.hex.solved{opacity:1.0;box-shadow:0 0 18px rgba(16,185,129,0.5)}
+
+.hex-tid{font-size:.55rem;font-weight:700;color:rgba(255,255,255,.9);
+  letter-spacing:.03em;line-height:1}
+.hex-name{font-size:.48rem;color:rgba(255,255,255,.7);line-height:1.1;
+  margin-top:2px;overflow:hidden;text-overflow:ellipsis;max-width:60px;
+  white-space:nowrap}
+
+.hex-flyout{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);padding:1.2rem 1.4rem;
+  max-width:380px;margin:0 auto 1.5rem;
+  box-shadow:0 8px 32px rgba(0,0,0,.4);
+}
+.hex-flyout h4{font-size:.95rem;font-weight:700;margin-bottom:.3rem}
+.hex-flyout p{font-size:.82rem;color:var(--text2);line-height:1.5;margin-bottom:.6rem}
+.hex-flyout .fly-state{font-size:.75rem;color:var(--muted);margin-bottom:.7rem}
+.hex-flyout .fly-links{display:flex;gap:.6rem}
+.hex-flyout .fly-links a{font-size:.78rem;font-weight:600;padding:.35rem .8rem;
+  border-radius:6px;transition:all .2s}
+.hex-flyout .fly-links .fly-challenge{background:var(--accent-glow);
+  color:var(--accent2);border:1px solid rgba(220,38,38,.2)}
+.hex-flyout .fly-links .fly-challenge:hover{background:rgba(220,38,38,.2);color:#fca5a5}
+.hex-flyout .fly-links .fly-wt{background:rgba(16,185,129,.1);
+  color:var(--green);border:1px solid rgba(16,185,129,.2)}
+.hex-flyout .fly-links .fly-wt:hover{background:rgba(16,185,129,.2);color:#34d399}
 
 .tm-reset{margin:2rem 0;text-align:center}
 .tm-reset button{background:var(--surface);color:var(--text2);border:1px solid var(--border);
@@ -60,8 +84,10 @@
 .tm-reset button:hover{border-color:var(--accent);color:var(--accent2)}
 
 @media(max-width:640px){
-  .tm-grid{grid-template-columns:1fr}
+  .hex-row{flex-wrap:wrap}
+  .hex-row.offset{margin-left:0}
   .tm-summary{flex-direction:column;align-items:stretch}
+  .tm-legend{justify-content:center}
 }
 </style>
 {% endblock %}
@@ -75,47 +101,54 @@
   </div>
 
   <div class="tm-summary">
-    <span class="tm-summary-label"><span class="count" id="solvedCount">0</span> of {{ total_labs }} labs completed</span>
+    <span class="tm-summary-label"><span class="count" id="engagedCount">0</span> engaged</span>
+    <span class="tm-summary-label"><span class="count" id="solvedCount">0</span> of {{ total_labs }} solved</span>
     <div class="tm-progress-track">
       <div class="tm-progress-fill" id="progressBar" style="width:0%"></div>
     </div>
   </div>
 
-  <div class="tm-chips" id="chipBar">
-    {% for g in groups %}
-    <span class="tm-chip" data-group="{{ loop.index0 }}">{{ g.name }} <span class="chip-count" id="chip{{ loop.index0 }}">0/{{ g.labs|length }}</span></span>
+  <div class="tm-legend">
+    {% for name, c in colors.items() %}
+    <span class="tm-legend-item">
+      <span class="tm-legend-dot" style="background:{{ c.primary }}"></span>
+      {{ name }}
+    </span>
     {% endfor %}
+    <span class="tm-legend-sep">|</span>
+    <span class="tm-legend-state">&#9675; untouched</span>
+    <span class="tm-legend-state">&#9684; viewed</span>
+    <span class="tm-legend-state">&#9679; solved</span>
   </div>
 
-  {% for g in groups %}
-  {% set group_idx = loop.index0 %}
-  <div class="tm-group" id="group{{ group_idx }}">
-    <h2 class="tm-group-heading">{{ g.name }}</h2>
-    <p class="tm-group-blurb">{{ g.blurb }}</p>
-    <div class="tm-grid">
-      {% for lab in g.labs %}
-      <div class="tm-card" data-lab="{{ lab.name }}" data-tid="{{ lab.threat_id }}" data-group="{{ group_idx }}">
-        <div class="tm-card-header">
-          {% if lab.threat_id %}
-          <span class="badge badge-accent">{{ lab.threat_id }}</span>
-          {% endif %}
-          <span class="tm-card-title">{{ lab.title }}</span>
-        </div>
-        <div class="tm-card-desc">{{ lab.description }}</div>
-        <div class="tm-card-footer">
-          {% if lab.step_count %}
-          <span class="step-count">{{ lab.step_count }} steps</span>
-          {% endif %}
-          {% if lab.has_walkthrough %}
-          <a class="wt-link" href="/operator#walkthrough/{{ lab.name }}">Walkthrough</a>
-          {% endif %}
-        </div>
-        <span class="solved-check">&#10003;</span>
+  <div class="hex-grid">
+    {% for row in rows %}
+    <div class="hex-row{% if row.offset %} offset{% endif %}">
+      {% for lab in row.labs %}
+      <div class="hex {{ lab.cat_css }} untouched"
+           data-lab="{{ lab.name }}"
+           data-tid="{{ lab.threat_id }}"
+           data-title="{{ lab.title }}"
+           data-desc="{{ lab.description }}"
+           data-wt="{% if lab.has_walkthrough %}1{% endif %}"
+           onclick="toggleFlyout(this)">
+        <span class="hex-tid">{{ lab.threat_id }}</span>
+        <span class="hex-name">{{ lab.title|truncate(12) }}</span>
       </div>
       {% endfor %}
     </div>
+    {% endfor %}
   </div>
-  {% endfor %}
+
+  <div class="hex-flyout" id="hexFlyout" style="display:none">
+    <h4 id="flyTitle"></h4>
+    <p id="flyDesc"></p>
+    <div class="fly-state" id="flyState"></div>
+    <div class="fly-links">
+      <a class="fly-challenge" id="flyChallenge" href="#">Challenge</a>
+      <a class="fly-wt" id="flyWalkthrough" href="#" style="display:none">Walkthrough</a>
+    </div>
+  </div>
 
   <div class="tm-reset">
     <button onclick="resetProgress()">Reset Progress</button>
@@ -126,48 +159,100 @@
 {% block extra_js %}
 <script>
 (function(){
-  var cards = document.querySelectorAll('.tm-card');
+  var hexes = document.querySelectorAll('.hex');
   var totalLabs = {{ total_labs }};
-  var groupCounts = {};
-  var solved = 0;
+  var engaged = 0, solved = 0;
 
-  cards.forEach(function(c){
-    var tid = c.dataset.tid;
-    var gid = c.dataset.group;
-    if (!groupCounts[gid]) groupCounts[gid] = {total:0, solved:0};
-    groupCounts[gid].total++;
-    if (tid && localStorage.getItem('cztz_solved_' + tid) === 'true') {
-      c.querySelector('.solved-check').style.display = '';
+  hexes.forEach(function(h){
+    var tid = h.dataset.tid;
+    if (!tid) return;
+    if (localStorage.getItem('cztz_solved_' + tid) === 'true') {
+      h.classList.remove('untouched','viewed');
+      h.classList.add('solved');
       solved++;
-      groupCounts[gid].solved++;
+      engaged++;
+    } else if (localStorage.getItem('cztz_viewed_' + tid) === 'true') {
+      h.classList.remove('untouched');
+      h.classList.add('viewed');
+      engaged++;
     }
   });
 
-  document.getElementById('solvedCount').textContent = solved;
-  var pct = totalLabs > 0 ? Math.round((solved / totalLabs) * 100) : 0;
-  document.getElementById('progressBar').style.width = pct + '%';
+  updateSummary(engaged, solved);
 
-  Object.keys(groupCounts).forEach(function(gid){
-    var el = document.getElementById('chip' + gid);
-    if (el) el.textContent = groupCounts[gid].solved + '/' + groupCounts[gid].total;
-  });
-})();
-
-function resetProgress(){
-  var keys = [];
-  for (var i = 0; i < localStorage.length; i++) {
-    var k = localStorage.key(i);
-    if (k && k.indexOf('cztz_solved_') === 0) keys.push(k);
+  function updateSummary(eng, sol) {
+    document.getElementById('engagedCount').textContent = eng;
+    document.getElementById('solvedCount').textContent = sol;
+    var pct = totalLabs > 0 ? Math.round((sol / totalLabs) * 100) : 0;
+    document.getElementById('progressBar').style.width = pct + '%';
   }
-  keys.forEach(function(k){ localStorage.removeItem(k); });
-  fetch('/api/reset', {method:'POST'}).catch(function(){});
-  document.querySelectorAll('.solved-check').forEach(function(el){ el.style.display = 'none'; });
-  document.getElementById('solvedCount').textContent = '0';
-  document.getElementById('progressBar').style.width = '0%';
-  document.querySelectorAll('.chip-count').forEach(function(el){
-    var parts = el.textContent.split('/');
-    el.textContent = '0/' + parts[1];
+
+  var _activeHex = null;
+  window.toggleFlyout = function(hexEl) {
+    var flyout = document.getElementById('hexFlyout');
+    if (_activeHex === hexEl) {
+      flyout.style.display = 'none';
+      _activeHex = null;
+      return;
+    }
+    _activeHex = hexEl;
+
+    document.getElementById('flyTitle').textContent =
+      (hexEl.dataset.tid ? hexEl.dataset.tid + ' — ' : '') + hexEl.dataset.title;
+    document.getElementById('flyDesc').textContent = hexEl.dataset.desc || 'No description available.';
+
+    var tid = hexEl.dataset.tid;
+    var state = 'untouched';
+    if (tid && localStorage.getItem('cztz_solved_' + tid) === 'true') state = 'solved';
+    else if (tid && localStorage.getItem('cztz_viewed_' + tid) === 'true') state = 'viewed';
+    document.getElementById('flyState').textContent = 'Status: ' + state;
+
+    var challengeLink = document.getElementById('flyChallenge');
+    challengeLink.href = tid ? '/challenges/' + tid : '#';
+
+    var wtLink = document.getElementById('flyWalkthrough');
+    if (hexEl.dataset.wt === '1') {
+      wtLink.style.display = '';
+      wtLink.href = '/operator#walkthrough/' + hexEl.dataset.lab;
+    } else {
+      wtLink.style.display = 'none';
+    }
+
+    flyout.style.display = '';
+  };
+
+  document.addEventListener('click', function(e) {
+    var flyout = document.getElementById('hexFlyout');
+    if (flyout.style.display === 'none') return;
+    if (flyout.contains(e.target)) return;
+    if (e.target.closest && e.target.closest('.hex')) return;
+    flyout.style.display = 'none';
+    _activeHex = null;
   });
-}
+
+  window.resetProgress = function() {
+    var keys = [];
+    for (var i = 0; i < localStorage.length; i++) {
+      var k = localStorage.key(i);
+      if (k && (k.indexOf('cztz_solved_') === 0 || k.indexOf('cztz_viewed_') === 0)) {
+        keys.push(k);
+      }
+    }
+    keys.forEach(function(k){ localStorage.removeItem(k); });
+
+    hexes.forEach(function(h){
+      h.classList.remove('solved','viewed');
+      h.classList.add('untouched');
+    });
+
+    updateSummary(0, 0);
+
+    var flyout = document.getElementById('hexFlyout');
+    flyout.style.display = 'none';
+    _activeHex = null;
+
+    fetch('/api/reset', {method:'POST'}).catch(function(){});
+  };
+})();
 </script>
 {% endblock %}
