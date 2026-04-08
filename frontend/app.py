@@ -111,6 +111,37 @@ def observer() -> str:
     return render_template("observer.html", last_event=event)
 
 
+@app.route("/threat-map")
+def threat_map() -> str:
+    from threat_map import CATEGORY_GROUPS, has_walkthrough
+    from qa_runner.walkthroughs import WALKTHROUGHS
+
+    all_scenarios = _fetch_scenarios()
+    scenario_map = {s["module_name"]: s for s in all_scenarios}
+
+    groups = []
+    for group in CATEGORY_GROUPS:
+        labs = []
+        for lab_name in group["labs"]:
+            sc = scenario_map.get(lab_name, {})
+            labs.append({
+                "name": lab_name,
+                "threat_id": sc.get("threat_id", ""),
+                "title": sc.get("title", lab_name.replace("_", " ").title()),
+                "description": sc.get("description", ""),
+                "category": sc.get("category", ""),
+                "has_walkthrough": has_walkthrough(lab_name),
+                "step_count": len(WALKTHROUGHS.get(lab_name, [])),
+            })
+        groups.append({
+            "name": group["name"],
+            "blurb": group["blurb"],
+            "labs": labs,
+        })
+
+    return render_template("threat_map.html", groups=groups, total_labs=25)
+
+
 @app.route("/api/tools", methods=["GET"])
 def api_tools():
     data = _mcp_call("tools/list")
