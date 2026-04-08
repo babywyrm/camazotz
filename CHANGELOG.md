@@ -5,6 +5,58 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## Threat Map, Walkthrough Links & Observer Improvements (2026-04-08)
+
+### Threat Map
+
+- **`/threat-map` page** — visual grid of all 25 labs organized into 7
+  threat categories (Identity & Access, Data & Secrets, Tool & Supply
+  Chain, Delegation & Trust, Observation & Evasion, AI Behavior,
+  Isolation). Each category has a teaching blurb.
+- **Progress tracking** — localStorage-based solve badges per lab card
+  with summary bar ("X of 25 completed") and per-category chip counts.
+- **Reset Progress** button clears solve state and gateway state.
+- **Added to main nav** between Challenges and Observer.
+
+### Contextual Walkthrough Links
+
+- **Challenge detail pages** — "Stuck? Watch the walkthrough" callout
+  card appears below hints when a walkthrough exists for the lab.
+- **Scenario cards** — walkthrough pill link ("▶ Walkthrough") appears
+  on scenarios that have walkthroughs.
+- **Threat Map cards** — each lab card links to its walkthrough.
+- **Operator stays hidden from nav** — only reachable through contextual
+  bridges or direct URL.
+
+### Observer Signal Tiers
+
+- **`signal_tier`** field on every observer event: `high` (confused
+  deputy, canary, leak, error), `medium` (grants, unknown), `low`
+  (clean denials).
+- **`reason_code`** field: machine-readable labels like
+  `confused_deputy`, `unreviewed_grant`, `policy_denied`, `tool_error`,
+  `canary_exposed`, `sensitive_disclosure`.
+- **Tighter verdict regex** — removed bare "suspicious" matching to
+  reduce false positives on phrases like "nothing suspicious."
+- **Signal column** and **filter** in Enhanced observer tab.
+- **Telemetry strip** in walkthrough player shows high-signal counts.
+
+### Lab Realism (mcpnuke alignment)
+
+- **shadow_lab** — `attack_pattern` and `callback_scope` fields on
+  successful webhook registration.
+- **egress_lab** — `target_class` field (`cloud_metadata`,
+  `internal_network`, `public_internet`).
+
+### Infrastructure
+
+- **Test isolation fix** — `conftest.py` now resets the brain provider
+  and strips API keys so `pytest` never calls real LLM APIs.
+- **Portal Dockerfile** — includes `threat_map.py`.
+- **594 tests** at **100% coverage** (up from 582).
+
+---
+
 ## Operator Console Walkthrough & Smoke Tests (2026-04-04)
 
 ### Operator Console Redesign

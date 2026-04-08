@@ -3,7 +3,7 @@
 
 <p align="center">
 <img src="https://img.shields.io/badge/python-3.12%2B-3776ab?style=flat-square&logo=python&logoColor=white" alt="Python 3.12+">
-<img src="https://img.shields.io/badge/tests-550_passing-10b981?style=flat-square" alt="550 tests">
+<img src="https://img.shields.io/badge/tests-594_passing-10b981?style=flat-square" alt="594 tests">
 <img src="https://img.shields.io/badge/coverage-100%25-10b981?style=flat-square" alt="100% coverage">
 <img src="https://img.shields.io/badge/modules-25_labs-dc2626?style=flat-square" alt="25 labs">
 <img src="https://img.shields.io/badge/Red_Team_Playbook-14%2F14-10b981?style=flat-square" alt="Playbook 14/14">
@@ -54,7 +54,8 @@ For Kubernetes deployment: `make helm-deploy` (see [deploy/README.md](deploy/REA
 ┌─────────────────────────────────────────────────────────────────┐
 │  Portal :3000                                                   │
 │  ┌──────────┐ ┌──────────────┐ ┌───────────┐ ┌──────────────┐   │
-│  │  Web UI  │ │  Playground  │ │ Scenarios │ │   Observer   │   │
+│  │  Web UI  │ │  Playground  │ │ Scenarios │ │ Threat Map   │   │
+│  │  + Chall │ │              │ │ + Chall   │ │ + Observer   │   │
 │  └────┬─────┘ └──────┬───────┘ └───────────┘ └──────▲───────┘   │
 └───────┼──────────────┼───────────────────────────────┼──────────┘
         │              │                               │
@@ -342,12 +343,12 @@ Navigate to **http://localhost:3000/operator** (hidden — no nav link) for:
      │                           │                           │    aws_region=...)      │
      │                           │                           │                         │
      │  Option 2: IAM role       │                           │                         │
-     │  (EC2/ECS/EKS)           │  (no keys in .env)        │                         │
+     │  (EC2/ECS/EKS)            │  (no keys in .env)        │                         │
      │                           │                           │  boto3 auto-discovers   │
      │                           │                           │──────────────────────────▶
      │                           │                           │                         │
      │  Option 3: Stub mode      │                           │                         │
-     │  CAMAZOTZ_BEDROCK_STUB=1 │                           │  returns [bedrock-stub] │
+     │  CAMAZOTZ_BEDROCK_STUB=1  │                           │  returns [bedrock-stub] │
      │                           │                           │  (no AWS calls)         │
 ```
 
@@ -415,7 +416,7 @@ camazotz/
 ├── scripts/
 │   ├── qa_harness.py        # CLI entry point for E2E QA
 │   └── qa_runner/            # Reusable QA engine (shared by CLI + operator panel)
-├── tests/                   # 550 tests, 100% coverage
+├── tests/                   # 594 tests, 100% coverage
 └── Makefile                 # Cross-platform dev/deploy targets
 ```
 
@@ -425,7 +426,7 @@ camazotz/
 make up             # start with Claude
 make up-local       # start with Ollama
 make down           # stop all services
-make test           # run 550 tests (100% coverage)
+make test           # run 594 tests (100% coverage)
 make qa             # E2E QA harness against live gateway
 make qa-json        # QA harness with machine-readable JSON output
 make smoke-local    # smoke test local Docker Compose target
@@ -457,11 +458,9 @@ make help           # show all targets
 
 - **CI/CD pipeline** — GitHub Actions running `pytest` + `make smoke-local`
   on every PR; nightly `smoke-local-llm` with Claude key as secret
-- **QA checks for all 25 labs** — 14 of 25 labs have QA check functions
-  in the operator dashboard; remaining 11 need coverage
 - **EZ/MAX walkthrough guardrails** — extend guided walkthroughs beyond
   medium to show how the same exploit changes across all three levels
-- **Operator Console public release** — unhide from nav, add to landing page
+- **Progress dashboard** — server-side solve tracking with per-user state
 
 ### Medium-term
 
@@ -479,6 +478,17 @@ make help           # show all targets
 - **Scoring engine** — track which vulnerabilities each participant
   discovers, time-to-exploit metrics
 - **Additional LLM providers** — OpenAI, Gemini, local GGUF models
+
+### Completed (recent)
+
+- **Threat Map** — `/threat-map` page with 7 category groups, 25 lab
+  cards, localStorage-based progress tracking, and contextual walkthrough
+  links from challenges and scenarios
+- **Observer signal tiers** — `signal_tier`, `reason_code`, tighter
+  confused-deputy detection, signal filter in Enhanced tab
+- **QA checks for all 25 labs** — 25/25 labs covered in QA harness
+- **Operator Console** — guided walkthroughs for all 25 labs at medium
+  guardrails with telemetry strip
 
 ---
 

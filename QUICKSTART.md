@@ -133,6 +133,10 @@ The tool payload is JSON-encoded inside `result.content[0].text`.
 Then open http://localhost:3000 in your browser. Use the difficulty
 dropdown in the nav bar to switch between easy/medium/hard in real-time.
 
+Start with the **Threat Map** (`/threat-map`) for a birds-eye view of all
+25 labs organized by threat category, then dive into individual challenges.
+If you get stuck, each challenge offers a link to its guided walkthrough.
+
 ## Smoke Tests
 
 After deploying, verify the stack is healthy:
