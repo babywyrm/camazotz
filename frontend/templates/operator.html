@@ -291,6 +291,7 @@
     </div>
 
     <div class="op-summary" id="opSummary">
+      <div class="op-stat" id="opStatIdp"><span class="val">&mdash;</span><span class="lbl">IDP</span></div>
       <div class="op-stat" id="opStatModules"><span class="val">&mdash;</span><span class="lbl">Modules</span></div>
       <div class="op-stat" id="opStatChecks"><span class="val">&mdash;</span><span class="lbl">Checks</span></div>
       <div class="op-stat" id="opStatIssues"><span class="val">&mdash;</span><span class="lbl">Issues</span></div>
@@ -653,6 +654,24 @@ function updateProgress(done,total,currentMod){
 }
 
 function updateSummary(report){
+  var idpEl=document.getElementById('opStatIdp');
+  if(report.idp_status){
+    var prov=report.idp_status.idp_provider||'unknown';
+    var deg=report.idp_status.idp_degraded;
+    idpEl.querySelector('.val').textContent=prov;
+    if(deg){
+      idpEl.className='op-stat issues';
+      idpEl.querySelector('.lbl').textContent='IDP (degraded)';
+    }else if(prov==='zitadel'){
+      idpEl.className='op-stat clean';
+      idpEl.querySelector('.lbl').textContent='IDP';
+    }else{
+      idpEl.className='op-stat';
+      idpEl.querySelector('.lbl').textContent='IDP';
+    }
+  }else{
+    idpEl.querySelector('.val').textContent='?';
+  }
   var issueEl=document.getElementById('opStatIssues');
   issueEl.querySelector('.val').textContent=report.total_issues;
   issueEl.className='op-stat '+(report.total_issues?'issues':'clean');
@@ -684,7 +703,7 @@ async function runQA(){
   progress.classList.add('show');
   updateProgress(0,modules.length,modules[0]);
 
-  var aggregated={total_modules:0,total_test_points:0,total_checks:0,total_issues:0,modules:[],elapsed_seconds:0};
+  var aggregated={total_modules:0,total_test_points:0,total_checks:0,total_issues:0,modules:[],elapsed_seconds:0,idp_status:null};
   var t0=performance.now();
 
   for(var i=0;i<modules.length;i++){
@@ -707,6 +726,9 @@ async function runQA(){
           if(cell){cell.className='op-cell fail';cell.textContent='error';}
         });
         continue;
+      }
+      if(d.idp_status&&!aggregated.idp_status){
+        aggregated.idp_status=d.idp_status;
       }
       if(d.modules&&d.modules[0]){
         var mr=d.modules[0];

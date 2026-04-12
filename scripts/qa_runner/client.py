@@ -98,6 +98,20 @@ class GatewayClient:
                 else:
                     self._log(f"reset failed: {exc}")
 
+    def get_config(self) -> dict[str, Any]:
+        for attempt in range(_MAX_RETRIES + 1):
+            try:
+                r = httpx.get(f"{self._base}/config", timeout=5)
+                return r.json()
+            except (httpx.HTTPError, ValueError) as exc:
+                if attempt < _MAX_RETRIES:
+                    self._log(f"get_config attempt {attempt + 1} failed: {exc}")
+                    time.sleep(_RETRY_DELAY)
+                else:
+                    self._log(f"get_config failed: {exc}")
+                    return {}
+        return {}  # pragma: no cover
+
     def list_tools(self) -> list[str]:
         resp = self._rpc("tools/list", {})
         return sorted(t["name"] for t in resp.get("result", {}).get("tools", []))

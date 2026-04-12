@@ -988,7 +988,10 @@ WALKTHROUGHS: dict[str, list[WalkthroughStep]] = {
             insight=(
                 "Token exchange endpoints must bind refresh tokens to the "
                 "authenticated caller. Without sender-constraint, any party "
-                "with the refresh token can impersonate the user."
+                "with the refresh token can impersonate the user. "
+                "In zitadel mode, this calls the real ZITADEL token endpoint "
+                "using RFC 8693 token exchange — the returned access token has "
+                "actual cryptographic properties from the IdP."
             ),
         ),
         WalkthroughStep(
@@ -1269,7 +1272,10 @@ WALKTHROUGHS: dict[str, list[WalkthroughStep]] = {
             insight=(
                 "Revocation must be comprehensive — revoking only refresh "
                 "tokens while leaving access tokens valid creates a gap that "
-                "persists until the access token's natural expiry."
+                "persists until the access token's natural expiry. "
+                "In zitadel mode, this sends a real HTTP POST to the ZITADEL "
+                "revocation endpoint for each token, making propagation "
+                "timing observable."
             ),
         ),
         WalkthroughStep(
@@ -1286,7 +1292,9 @@ WALKTHROUGHS: dict[str, list[WalkthroughStep]] = {
             insight=(
                 "Short-lived access tokens and real-time revocation lists "
                 "(or introspection) are the only defence against revocation "
-                "gaps. Stateless JWT validation alone is insufficient."
+                "gaps. Stateless JWT validation alone is insufficient. "
+                "In zitadel mode, this calls the real ZITADEL introspection "
+                "endpoint to check whether the token is still active."
             ),
         ),
     ],

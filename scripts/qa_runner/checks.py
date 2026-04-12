@@ -323,6 +323,46 @@ def test_oauth_delegation_lab(gw: GatewayClient, level: str) -> list[CheckResult
     return results
 
 
+# ── IDP-aware checks (only active when zitadel is live + healthy) ─────────
+
+IDP_BACKED_MODULES = frozenset({"oauth_delegation_lab", "revocation_lab"})
+
+
+def idp_checks_oauth(gw: GatewayClient, level: str) -> list[CheckResult]:
+    """Assert IDP tags appear in oauth_delegation_lab responses."""
+    r = gw.call_tool("oauth.exchange_token", {
+        "principal": "qa_user", "service": "github", "refresh_token": "rt_qa_idp",
+    })
+    return [
+        check("exchange.has_idp_backed_tag", lambda: r.get("_idp_backed") is True),
+        check("exchange.has_idp_provider", lambda: r.get("_idp_provider") == "zitadel"),
+    ]
+
+
+def idp_checks_revocation(gw: GatewayClient, level: str) -> list[CheckResult]:
+    """Assert IDP tags appear in revocation_lab responses."""
+    results: list[CheckResult] = []
+
+    r1 = gw.call_tool("revocation.issue_token", {"principal": "qa_idp_user", "service": "idp_svc"})
+    token_id = r1.get("token_id", "tok_idp_001")
+
+    r2 = gw.call_tool("revocation.revoke_principal", {"principal": "qa_idp_user"})
+    results.append(check("revoke.has_idp_revocation_hook",
+                         lambda: has_key(r2, "_idp_revocation_hook")))
+
+    r3 = gw.call_tool("revocation.use_token", {"token_id": token_id})
+    results.append(check("use_token.has_idp_token_status",
+                         lambda: has_key(r3, "_idp_token_status")))
+
+    return results
+
+
+IDP_MODULE_CHECKS: dict[str, Callable[[GatewayClient, str], list[CheckResult]]] = {
+    "oauth_delegation_lab": idp_checks_oauth,
+    "revocation_lab": idp_checks_revocation,
+}
+
+
 def test_attribution_lab(gw: GatewayClient, level: str) -> list[CheckResult]:
     results: list[CheckResult] = []
 

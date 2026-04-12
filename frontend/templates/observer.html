@@ -97,6 +97,10 @@
 
 .badge-canary{background:rgba(239,68,68,.15);color:var(--red);font-weight:700;
   font-size:.65rem;padding:.15rem .45rem;border-radius:5px;text-transform:uppercase}
+.badge-idp{background:rgba(16,185,129,.12);color:var(--green);font-weight:700;
+  font-size:.65rem;padding:.15rem .45rem;border-radius:5px;text-transform:uppercase}
+.badge-idp-degraded{background:rgba(234,179,8,.12);color:var(--yellow);font-weight:700;
+  font-size:.65rem;padding:.15rem .45rem;border-radius:5px;text-transform:uppercase}
 </style>
 {% endblock %}
 
@@ -168,6 +172,11 @@
         <option value="ai_agreed">ai_agreed</option>
         <option value="ai_denied_tool_allowed">ai_denied_tool_allowed</option>
         <option value="ai_irrelevant">ai_irrelevant</option>
+      </select>
+      <select class="obs-filter" id="filterIdp" onchange="applyFilters()" title="IDP status">
+        <option value="">All IDP</option>
+        <option value="backed">IDP-backed only</option>
+        <option value="degraded">Degraded only</option>
       </select>
       <select class="obs-filter" id="filterSignal" onchange="applyFilters()" title="Signal priority">
         <option value="">All signals</option>
@@ -257,6 +266,15 @@ function verdictLabel(verdict) {
   return '<span class="verdict-neutral">' + esc(verdict) + '</span>';
 }
 
+function idpBadge(ev) {
+  if (ev.idp_degraded) {
+    var reason = ev.idp_reason || 'fallback';
+    return '<span class="badge-idp-degraded" title="' + esc(reason) + '">DEGRADED</span>';
+  }
+  if (ev.idp_backed) return '<span class="badge-idp">IDP</span>';
+  return '';
+}
+
 function signalBadge(tier) {
   const t = (tier || '').toLowerCase();
   if (t === 'high')
@@ -299,7 +317,7 @@ function renderEnhanced(events) {
   }
 
   let html = '<table class="obs-table"><thead><tr>' +
-    '<th>Time</th><th>Tool</th><th>Guardrail</th><th>Signal</th><th>Outcome</th><th>Verdict</th>' +
+    '<th>Time</th><th>Tool</th><th>IDP</th><th>Guardrail</th><th>Signal</th><th>Outcome</th><th>Verdict</th>' +
     '</tr></thead><tbody>';
 
   for (let i = 0; i < filtered.length; i++) {
@@ -310,13 +328,14 @@ function renderEnhanced(events) {
     html += '<tr class="obs-row' + warnCls + '" onclick="toggleDetail(' + idx + ')" style="cursor:pointer">' +
       '<td style="color:var(--muted)">' + esc(formatTime(ev.timestamp)) + '</td>' +
       '<td style="color:var(--accent2)">' + esc(ev.tool_name) + '</td>' +
+      '<td>' + idpBadge(ev) + '</td>' +
       '<td>' + guardrailBadge(ev.guardrail_level || ev.difficulty) + '</td>' +
       '<td>' + signalBadge(ev.signal_tier) + '</td>' +
       '<td>' + outcomeBadge(ev.outcome) + '</td>' +
       '<td>' + verdictLabel(ev.verdict) + '</td>' +
       '</tr>';
 
-    html += '<tr class="obs-detail" id="detail-' + idx + '"><td colspan="6">' +
+    html += '<tr class="obs-detail" id="detail-' + idx + '"><td colspan="7">' +
       '<div class="obs-detail-grid"><div>';
 
     html += '<div class="obs-detail-section"><div class="obs-detail-label">Reason</div>' +
@@ -364,10 +383,13 @@ function getFilteredEvents(events) {
   const guard = document.getElementById('filterGuardrail').value;
   const verd = document.getElementById('filterVerdict').value;
   const sig = document.getElementById('filterSignal').value;
+  const idp = document.getElementById('filterIdp').value;
   return events.filter(ev => {
     if (mod && ev.module !== mod) return false;
     if (guard && (ev.guardrail_level || ev.difficulty) !== guard) return false;
     if (verd && ev.verdict !== verd) return false;
+    if (idp === 'backed' && !ev.idp_backed) return false;
+    if (idp === 'degraded' && !ev.idp_degraded) return false;
     const st = (ev.signal_tier || '').toLowerCase();
     if (sig === 'high' && st !== 'high') return false;
     if (sig === 'medium' && st !== 'medium') return false;

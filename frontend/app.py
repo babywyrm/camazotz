@@ -344,12 +344,12 @@ def api_operator_run():
 
     t0 = time.monotonic()
     try:
-        results = run_qa(gw, levels=levels, modules=modules)
+        results, idp_status = run_qa(gw, levels=levels, modules=modules)
     except Exception as exc:
         return jsonify({"error": f"QA run failed: {exc}"}), 502
     elapsed = round(time.monotonic() - t0, 1)
 
-    report = results_to_dict(results)
+    report = results_to_dict(results, idp_status)
     report["elapsed_seconds"] = elapsed
     return jsonify(report)
 

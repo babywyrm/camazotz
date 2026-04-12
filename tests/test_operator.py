@@ -25,9 +25,10 @@ def frontend_client():
 
 
 def _make_mock_results():
-    """Build a minimal qa_runner result set for mocking."""
+    """Build a minimal qa_runner result set for mocking (results, idp_status)."""
     from qa_runner.types import CheckResult, LevelResult, ModuleResult
 
+    idp_status = {"idp_provider": "mock", "idp_degraded": False, "idp_reason": "ok"}
     return [
         ModuleResult(
             module="auth_lab",
@@ -42,7 +43,7 @@ def _make_mock_results():
                 ]),
             ],
         ),
-    ]
+    ], idp_status
 
 
 def test_operator_page_200(frontend_client) -> None:
@@ -112,6 +113,8 @@ def test_operator_run_returns_report(frontend_client) -> None:
     assert data["total_modules"] == 1
     assert data["total_checks"] == 4
     assert data["total_issues"] == 1
+    assert "idp_status" in data
+    assert data["idp_status"]["idp_provider"] == "mock"
 
 
 def test_operator_run_with_module_filter(frontend_client) -> None:

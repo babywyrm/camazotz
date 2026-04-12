@@ -92,8 +92,8 @@ def main() -> None:
     if not args.json:
         print(f"Running {len(modules)} modules × {len(levels)} levels...", flush=True)
 
-    results = run_qa(gw, levels=levels, modules=modules, verbose=not args.json)
-    rd = results_to_dict(results)
+    results, idp_status = run_qa(gw, levels=levels, modules=modules, verbose=not args.json)
+    rd = results_to_dict(results, idp_status)
 
     if args.json:
         print(json.dumps(rd, indent=2))

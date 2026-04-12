@@ -167,6 +167,10 @@ def record_event(
         "duration_ms": duration_ms,
         "response_summary": _summarize_response(result),
         "canary_exposed": canary,
+        "idp_backed": bool(result.get("_idp_backed")),
+        "idp_degraded": bool(result.get("_idp_degraded")),
+        "idp_provider": result.get("_idp_provider") or None,
+        "idp_reason": result.get("_idp_reason") or None,
     }
     with _lock:
         _buffer.append(event)
