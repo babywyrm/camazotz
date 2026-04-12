@@ -65,3 +65,20 @@ def test_normalize_claims_defaults_for_missing_optional_raw_claims() -> None:
     assert normalized["act"] is None
     assert normalized["team"] == ""
     assert normalized["groups"] == []
+
+
+def test_normalize_claims_coerces_invalid_shapes_to_safe_defaults() -> None:
+    raw = {
+        "sub": "u1",
+        "aud": None,
+        "scope": None,
+        "groups": "platform-eng",
+        "exp": "1700",
+        "iat": None,
+    }
+    normalized = normalize_claims(raw, env="local", tenant_id="t1")
+    assert normalized["aud"] == []
+    assert normalized["scope"] == ""
+    assert normalized["groups"] == []
+    assert normalized["exp"] == 0
+    assert normalized["iat"] == 0

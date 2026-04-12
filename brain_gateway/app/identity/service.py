@@ -14,16 +14,31 @@ def get_identity_provider() -> IdentityProvider:
 
 
 def normalize_claims(raw: dict, *, env: str, tenant_id: str) -> NormalizedClaimsEnvelope:
-    aud = raw.get("aud", [])
-    if isinstance(aud, str):
-        aud = [aud]
-    scope = raw.get("scope", "")
+    aud_raw = raw.get("aud", [])
+    if isinstance(aud_raw, str):
+        aud: list[str] = [aud_raw]
+    elif isinstance(aud_raw, list):
+        aud = [item for item in aud_raw if isinstance(item, str)]
+    else:
+        aud = []
+
+    scope_raw = raw.get("scope", "")
+    scope = scope_raw if isinstance(scope_raw, str) else ""
+
+    groups_raw = raw.get("groups", [])
+    groups = groups_raw if isinstance(groups_raw, list) else []
+
+    exp_raw = raw.get("exp", 0)
+    exp = exp_raw if isinstance(exp_raw, int) else 0
+
+    iat_raw = raw.get("iat", 0)
+    iat = iat_raw if isinstance(iat_raw, int) else 0
     return {
         "sub": raw.get("sub", ""),
         "iss": raw.get("iss", ""),
         "aud": aud,
-        "exp": raw.get("exp", 0),
-        "iat": raw.get("iat", 0),
+        "exp": exp,
+        "iat": iat,
         "scope": scope,
         "client_id": raw.get("client_id", raw.get("azp", "")),
         "act": raw.get("act"),
@@ -32,7 +47,7 @@ def normalize_claims(raw: dict, *, env: str, tenant_id: str) -> NormalizedClaims
         "tenant_id": tenant_id,
         "env": env,
         "team": raw.get("team", ""),
-        "groups": raw.get("groups", []),
+        "groups": groups,
     }
 
 
