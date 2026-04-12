@@ -67,3 +67,27 @@ def get_idp_provider() -> Literal["mock", "zitadel"]:
     """Active identity provider: ``mock`` (default) or ``zitadel``."""
     value = os.getenv("CAMAZOTZ_IDP_PROVIDER", "mock").lower().strip()
     return value if value in {"mock", "zitadel"} else "mock"
+
+
+def get_idp_issuer_url() -> str:
+    return os.getenv("CAMAZOTZ_IDP_ISSUER_URL", "").strip()
+
+
+def get_idp_token_endpoint() -> str:
+    return os.getenv("CAMAZOTZ_IDP_TOKEN_ENDPOINT", "").strip()
+
+
+def get_idp_introspection_endpoint() -> str:
+    return os.getenv("CAMAZOTZ_IDP_INTROSPECTION_ENDPOINT", "").strip()
+
+
+def get_idp_revocation_endpoint() -> str:
+    return os.getenv("CAMAZOTZ_IDP_REVOCATION_ENDPOINT", "").strip()
+
+
+def get_idp_client_id() -> str:
+    return os.getenv("CAMAZOTZ_IDP_CLIENT_ID", "").strip()
+
+
+def get_idp_client_secret() -> str:
+    return os.getenv("CAMAZOTZ_IDP_CLIENT_SECRET", "").strip()
