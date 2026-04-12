@@ -49,6 +49,7 @@ code,pre{font-family:var(--font-mono)}
 .nav-links{display:flex;gap:2rem;align-items:center}
 .nav-links a{color:var(--text2);font-size:.875rem;font-weight:500;transition:color .2s}
 .nav-links a:hover,.nav-links a.active{color:var(--text)}
+.nav-idp-link{color:var(--green) !important;font-size:.78rem;font-weight:600;letter-spacing:.02em}
 .diff-switcher{display:flex;align-items:center;gap:.4rem;margin-left:.5rem}
 .diff-switcher label{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;font-weight:600}
 .diff-switcher select{background:var(--surface);color:var(--text);border:1px solid var(--border);
@@ -178,6 +179,7 @@ code,pre{font-family:var(--font-mono)}
       <a href="/challenges" class="{% if request.path.startswith('/challenges') %}active{% endif %}">Challenges</a>
       <a href="/threat-map" class="{% if request.path == '/threat-map' %}active{% endif %}">Threat Map</a>
       <a href="/observer" class="{% if request.path == '/observer' %}active{% endif %}">Observer</a>
+      <a href="{{ zitadel_console_url }}" target="_blank" rel="noopener" class="nav-idp-link" title="ZITADEL Identity Console">Identity</a>
       <div class="diff-switcher">
         <label>Guardrails</label>
         <span class="diff-dot medium" id="diffDot"></span>

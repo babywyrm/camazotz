@@ -39,6 +39,7 @@ Today, step 1 is **not** wired inside Camazotz: there is no built-in browser OAu
 
 ## Further reading
 
+- [Identity Guide](guide.md) — comprehensive teaching + operations reference (start here).
 - [Configuration](configuration.md) — environment variables and secrets.
 - [Local runbook](local-runbook.md) — Docker Compose and troubleshooting.
 - [NUC / Kubernetes runbook](nuc-runbook.md) — Helm values and cluster checks.

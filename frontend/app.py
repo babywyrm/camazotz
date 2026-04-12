@@ -23,6 +23,12 @@ app = Flask(__name__)
 app.config["SECRET_KEY"] = os.getenv("FLASK_SECRET", "cztz-dev-key")
 
 GATEWAY_URL = os.getenv("GATEWAY_URL", "http://localhost:8080")
+ZITADEL_CONSOLE_URL = os.getenv("ZITADEL_CONSOLE_URL", "http://localhost:8180/ui/console")
+
+
+@app.context_processor
+def _inject_identity_globals():
+    return {"zitadel_console_url": ZITADEL_CONSOLE_URL}
 
 
 def _resolve_prev_refs(arguments: dict, prev_response: dict | None) -> dict:

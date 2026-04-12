@@ -448,6 +448,7 @@ make help           # show all targets
 
 | Document | Covers |
 |----------|--------|
+| [docs/identity/guide.md](docs/identity/guide.md) | **Start here** -- comprehensive identity teaching + operations reference |
 | [docs/identity/overview.md](docs/identity/overview.md) | Identity architecture: mock vs `zitadel` realism, trust boundaries, smoke probes |
 | [docs/identity/configuration.md](docs/identity/configuration.md) | `CAMAZOTZ_IDP_*` env vars, Helm values, lab injection helpers |
 | [docs/identity/local-runbook.md](docs/identity/local-runbook.md) | Docker Compose identity mode, commands, troubleshooting |

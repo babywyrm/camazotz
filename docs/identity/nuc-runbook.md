@@ -36,6 +36,10 @@ make smoke-k8s-llm K8S_HOST=10.0.0.5
 
 ## ZITADEL realism mode (cluster)
 
+**ZITADEL Console** (from cluster node): `http://localhost:8080/ui/console` or via NodePort if exposed.
+
+For the full identity guide, see [guide.md](guide.md).
+
 1. Edit **`deploy/helm/camazotz/values.yaml`** (or use `--set` / a values overlay):
 
    ```yaml

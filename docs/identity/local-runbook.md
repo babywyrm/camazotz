@@ -36,9 +36,20 @@ make smoke-local-llm
 
 ## ZITADEL realism mode (local)
 
-**Expectation:** This turns on **`zitadel` provider selection** and **lab realism branches**. Compose now deploys `zitadel` and `zitadel-postgres` services by default; full Authorization Code + PKCE portal login wiring remains future work.
+**Expectation:** This turns on **`zitadel` provider selection** and **IDP-backed trio labs** (oauth_delegation, revocation, rbac). Compose deploys `zitadel` and `zitadel-postgres` services by default.
 
-1. Edit **`compose/.env`**:
+**Quick bootstrap** (recommended):
+
+```bash
+make zitadel-bootstrap    # creates service user, writes credentials to .env
+make up                   # restart to apply
+```
+
+**ZITADEL Console:** `http://localhost:8180/ui/console` (default login: `zitadel-admin@zitadel.localhost` / `Password1!`)
+
+For the full identity guide, see [guide.md](guide.md).
+
+**Manual setup** — edit **`compose/.env`**:
 
    ```bash
    CAMAZOTZ_IDP_PROVIDER=zitadel

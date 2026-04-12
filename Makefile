@@ -101,6 +101,10 @@ smoke-local-identity-llm: ## Smoke local target including identity and LLM probe
 smoke-k8s-identity-llm: ## Smoke k8s target including identity and LLM probe
 	uv run python scripts/smoke_test.py --target k8s --k8s-host $${K8S_HOST:-192.168.1.114} --require-identity --require-llm
 
+zitadel-bootstrap: ## Bootstrap ZITADEL service user for non-degraded IDP operation
+	uv run python scripts/zitadel_bootstrap.py --write-env
+	@echo "Restart brain-gateway to apply: make up"
+
 compose-gen: ## Regenerate docker-compose.yml from Helm values
 	uv run python deploy/generate-compose.py
 	@echo "compose/docker-compose.yml regenerated from deploy/helm/camazotz/values.yaml"
