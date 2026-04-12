@@ -87,10 +87,10 @@ smoke-k8s-llm: ## Smoke test k8s target including LLM-backed probe
 	uv run python scripts/smoke_test.py --target k8s --k8s-host $${K8S_HOST:-192.168.1.114} --require-llm
 
 smoke-local-identity: ## Smoke test local target including identity (/config) probe
-	uv run python scripts/smoke_test.py --target local --require-llm --require-identity
+	uv run python scripts/smoke_test.py --target local --require-identity
 
 smoke-k8s-identity: ## Smoke test k8s target including identity (/config) probe
-	uv run python scripts/smoke_test.py --target k8s --k8s-host $${K8S_HOST:-192.168.1.114} --require-llm --require-identity
+	uv run python scripts/smoke_test.py --target k8s --k8s-host $${K8S_HOST:-192.168.1.114} --require-identity
 
 compose-gen: ## Regenerate docker-compose.yml from Helm values
 	uv run python deploy/generate-compose.py

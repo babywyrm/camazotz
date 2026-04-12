@@ -45,6 +45,12 @@ def build_compose(v: dict) -> dict:
         env_line("CAMAZOTZ_SHOW_TOKENS", cfg["showTokens"], "CAMAZOTZ_SHOW_TOKENS"),
         env_line("OLLAMA_HOST", cfg["ollamaHost"], "OLLAMA_HOST"),
         env_line("CAMAZOTZ_OLLAMA_MODEL", cfg["ollamaModel"], "CAMAZOTZ_OLLAMA_MODEL"),
+        env_line("CAMAZOTZ_FLAGS_DIR", gw.get("flagsDir", "/opt/camazotz/flags"), "CAMAZOTZ_FLAGS_DIR"),
+        env_line(
+            "CAMAZOTZ_MODULES_DIR",
+            gw.get("modulesDir", "/workspace/camazotz_modules"),
+            "CAMAZOTZ_MODULES_DIR",
+        ),
         env_line("CAMAZOTZ_IDP_PROVIDER", cfg.get("idpProvider", "mock"), "CAMAZOTZ_IDP_PROVIDER"),
         env_line("CAMAZOTZ_IDP_ISSUER_URL", cfg.get("idpIssuerUrl", ""), "CAMAZOTZ_IDP_ISSUER_URL"),
         env_line("CAMAZOTZ_IDP_TOKEN_ENDPOINT", cfg.get("idpTokenEndpoint", ""), "CAMAZOTZ_IDP_TOKEN_ENDPOINT"),
@@ -101,6 +107,7 @@ def build_compose(v: dict) -> dict:
     services["brain-gateway"] = {
         "build": {"context": gw["build"]["context"], "dockerfile": gw["build"]["dockerfile"]},
         "environment": gateway_env,
+        "volumes": [f"camazotz-flags:{gw.get('flagsDir', '/opt/camazotz/flags')}"],
         "ports": [f"{gw['port']}:{gw['port']}"],
         "depends_on": {"ollama": {"condition": "service_started", "required": False}},
         "restart": "unless-stopped",
@@ -145,7 +152,7 @@ def build_compose(v: dict) -> dict:
     return {
         "services": services,
         "networks": {v["namespace"]: {"name": v["namespace"]}},
-        "volumes": {"ollama-models": None},
+        "volumes": {"ollama-models": None, "camazotz-flags": None},
     }
 
 
