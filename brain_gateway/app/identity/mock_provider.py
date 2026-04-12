@@ -1,8 +1,17 @@
 from __future__ import annotations
 
+from brain_gateway.app.identity.types import (
+    ClientCredentialsTokenResponse,
+    ExchangeTokenResponse,
+    IntrospectTokenResponse,
+    RevokeTokenResponse,
+)
+
 
 class MockIdentityProvider:
-    def client_credentials_token(self, *, audience: str, scope: str) -> dict:
+    def client_credentials_token(
+        self, *, audience: str, scope: str
+    ) -> ClientCredentialsTokenResponse:
         return {"access_token": "mock-access", "aud": audience, "scope": scope}
 
     def exchange_token(
@@ -12,7 +21,7 @@ class MockIdentityProvider:
         actor_token: str | None,
         audience: str,
         scope: str,
-    ) -> dict:
+    ) -> ExchangeTokenResponse:
         return {
             "access_token": "mock-exchanged",
             "aud": audience,
@@ -21,8 +30,8 @@ class MockIdentityProvider:
             "sub": subject_token,
         }
 
-    def introspect_token(self, *, token: str) -> dict:
+    def introspect_token(self, *, token: str) -> IntrospectTokenResponse:
         return {"active": token.startswith("mock"), "sub": "mock-user"}
 
-    def revoke_token(self, *, token: str) -> dict:
+    def revoke_token(self, *, token: str) -> RevokeTokenResponse:
         return {"revoked": True, "token_hint": token[:8]}

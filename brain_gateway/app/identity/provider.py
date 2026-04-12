@@ -2,9 +2,18 @@ from __future__ import annotations
 
 from typing import Protocol
 
+from brain_gateway.app.identity.types import (
+    ClientCredentialsTokenResponse,
+    ExchangeTokenResponse,
+    IntrospectTokenResponse,
+    RevokeTokenResponse,
+)
+
 
 class IdentityProvider(Protocol):
-    def client_credentials_token(self, *, audience: str, scope: str) -> dict: ...
+    def client_credentials_token(
+        self, *, audience: str, scope: str
+    ) -> ClientCredentialsTokenResponse: ...
 
     def exchange_token(
         self,
@@ -13,8 +22,8 @@ class IdentityProvider(Protocol):
         actor_token: str | None,
         audience: str,
         scope: str,
-    ) -> dict: ...
+    ) -> ExchangeTokenResponse: ...
 
-    def introspect_token(self, *, token: str) -> dict: ...
+    def introspect_token(self, *, token: str) -> IntrospectTokenResponse: ...
 
-    def revoke_token(self, *, token: str) -> dict: ...
+    def revoke_token(self, *, token: str) -> RevokeTokenResponse: ...

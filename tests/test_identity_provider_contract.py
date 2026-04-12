@@ -1,7 +1,15 @@
+from typing import Literal, get_type_hints
+
 from brain_gateway.app.config import get_idp_provider
 from brain_gateway.app.identity import IdentityProvider, MockIdentityProvider
 from brain_gateway.app.identity.mock_provider import MockIdentityProvider as MockIdentityProviderDirect
-from brain_gateway.app.identity.types import IdentityClaimsDict
+from brain_gateway.app.identity.types import (
+    ClientCredentialsTokenResponse,
+    ExchangeTokenResponse,
+    IdentityClaimsDict,
+    IntrospectTokenResponse,
+    RevokeTokenResponse,
+)
 
 
 def test_mock_provider_exposes_required_methods() -> None:
@@ -30,6 +38,25 @@ def test_get_idp_provider_accepts_zitadel(monkeypatch) -> None:
 def test_get_idp_provider_invalid_falls_back_to_mock(monkeypatch) -> None:
     monkeypatch.setenv("CAMAZOTZ_IDP_PROVIDER", "unknown")
     assert get_idp_provider() == "mock"
+
+
+def test_get_idp_provider_return_type_is_idp_literal() -> None:
+    ret = get_type_hints(get_idp_provider)["return"]
+    assert ret == Literal["mock", "zitadel"]
+    assert getattr(ret, "__args__", ()) == ("mock", "zitadel")
+
+
+def test_mock_provider_methods_use_response_typed_dicts() -> None:
+    assert (
+        get_type_hints(MockIdentityProviderDirect.client_credentials_token)["return"]
+        is ClientCredentialsTokenResponse
+    )
+    assert get_type_hints(MockIdentityProviderDirect.exchange_token)["return"] is ExchangeTokenResponse
+    assert (
+        get_type_hints(MockIdentityProviderDirect.introspect_token)["return"]
+        is IntrospectTokenResponse
+    )
+    assert get_type_hints(MockIdentityProviderDirect.revoke_token)["return"] is RevokeTokenResponse
 
 
 def test_mock_provider_methods_return_dicts() -> None:
