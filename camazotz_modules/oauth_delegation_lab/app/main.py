@@ -12,9 +12,12 @@ from __future__ import annotations
 
 import base64
 import json
+import os
 import threading
 import uuid
 
+from brain_gateway.app.config import get_idp_provider
+from brain_gateway.app.identity.service import normalize_claims
 from camazotz_modules.base import LabModule
 
 TOKEN_STORE: dict[str, dict[str, dict]] = {
@@ -83,6 +86,51 @@ class OAuthDelegationLab(LabModule):
     def reset(self) -> None:
         with self._lock:
             self._reset_state()
+
+    def _zitadel_exchange_extras(self) -> dict:
+        if get_idp_provider() != "zitadel":
+            return {}
+        raw_json = os.getenv("CAMAZOTZ_LAB_IDENTITY_CLAIMS_JSON", "").strip()
+        out: dict = {"_idp_provider": "zitadel"}
+        if not raw_json:
+            return out
+        try:
+            raw = json.loads(raw_json)
+        except json.JSONDecodeError:
+            return out
+        if isinstance(raw, dict):
+            out["_normalized_identity"] = normalize_claims(
+                raw,
+                env=os.getenv("CAMAZOTZ_LAB_IDENTITY_ENV", "local"),
+                tenant_id=os.getenv(
+                    "CAMAZOTZ_LAB_TENANT_ID", "camazotz-local"
+                ),
+            )
+        return out
+
+    def _mint_exchanged_access(self, service: str) -> str:
+        if get_idp_provider() == "zitadel":
+            return f"zitadel-at-{uuid.uuid4().hex[:12]}"
+        return f"cztz-{service}-new-{uuid.uuid4().hex[:8]}"
+
+    def _exchange_ok(
+        self,
+        principal: str,
+        service: str,
+        tok: dict,
+        difficulty: str,
+        new_access: str,
+    ) -> dict:
+        with self._lock:
+            self._store[principal][service]["access_token"] = new_access
+        out: dict = {
+            "exchanged": True,
+            "access_token": new_access,
+            "scope": tok["scope"],
+            "_difficulty": difficulty,
+        }
+        out.update(self._zitadel_exchange_extras())
+        return out
 
     # -- MCP resources --------------------------------------------------------
 
@@ -272,15 +320,10 @@ class OAuthDelegationLab(LabModule):
             }
 
         if difficulty == "easy":
-            new_access = f"cztz-{service}-new-{uuid.uuid4().hex[:8]}"
-            with self._lock:
-                self._store[principal][service]["access_token"] = new_access
-            return {
-                "exchanged": True,
-                "access_token": new_access,
-                "scope": tok["scope"],
-                "_difficulty": difficulty,
-            }
+            new_access = self._mint_exchanged_access(service)
+            return self._exchange_ok(
+                principal, service, tok, difficulty, new_access
+            )
 
         if difficulty == "medium":
             if refresh_token != tok["refresh_token"]:
@@ -295,15 +338,10 @@ class OAuthDelegationLab(LabModule):
                         "reason": "Invalid refresh token.",
                         "_difficulty": difficulty,
                     }
-            new_access = f"cztz-{service}-new-{uuid.uuid4().hex[:8]}"
-            with self._lock:
-                self._store[principal][service]["access_token"] = new_access
-            return {
-                "exchanged": True,
-                "access_token": new_access,
-                "scope": tok["scope"],
-                "_difficulty": difficulty,
-            }
+            new_access = self._mint_exchanged_access(service)
+            return self._exchange_ok(
+                principal, service, tok, difficulty, new_access
+            )
 
         if refresh_token != tok["refresh_token"]:
             return {
@@ -311,15 +349,10 @@ class OAuthDelegationLab(LabModule):
                 "reason": "Invalid refresh token.",
                 "_difficulty": difficulty,
             }
-        new_access = f"cztz-{service}-new-{uuid.uuid4().hex[:8]}"
-        with self._lock:
-            self._store[principal][service]["access_token"] = new_access
-        return {
-            "exchanged": True,
-            "access_token": new_access,
-            "scope": tok["scope"],
-            "_difficulty": difficulty,
-        }
+        new_access = self._mint_exchanged_access(service)
+        return self._exchange_ok(
+            principal, service, tok, difficulty, new_access
+        )
 
     def _call_downstream(self, arguments: dict) -> dict:
         service = arguments.get("service", "")

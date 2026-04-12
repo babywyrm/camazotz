@@ -255,6 +255,84 @@ def test_rbac_read_resource_wrong_prefix_ignored() -> None:
 # -- reset --------------------------------------------------------------------
 
 
+def test_rbac_lab_mock_mode_hard_filter_unchanged(monkeypatch) -> None:
+    monkeypatch.setenv("CAMAZOTZ_IDP_PROVIDER", "mock")
+    set_difficulty("hard")
+    client = TestClient(app)
+    result = tool_call(
+        client, "rbac.list_agents", {"principal": "alice@example.com"}
+    )
+    agent_names = {a["name"] for a in result["agents"]}
+    assert "agent-deployer-v2" not in agent_names
+    assert "_idp_group_merge" not in result
+
+
+def test_rbac_lab_realism_no_merge_when_groups_env_unset(monkeypatch) -> None:
+    monkeypatch.setenv("CAMAZOTZ_IDP_PROVIDER", "zitadel")
+    monkeypatch.delenv("CAMAZOTZ_LAB_IDENTITY_GROUPS", raising=False)
+    set_difficulty("hard")
+    client = TestClient(app)
+    result = tool_call(
+        client, "rbac.list_agents", {"principal": "alice@example.com"}
+    )
+    assert "_idp_group_merge" not in result
+    assert "agent-deployer-v2" not in {a["name"] for a in result["agents"]}
+
+
+def test_rbac_lab_realism_merge_skipped_when_sub_mismatch(monkeypatch) -> None:
+    monkeypatch.setenv("CAMAZOTZ_IDP_PROVIDER", "zitadel")
+    monkeypatch.setenv("CAMAZOTZ_LAB_IDENTITY_SUB", "bob@example.com")
+    monkeypatch.setenv("CAMAZOTZ_LAB_IDENTITY_GROUPS", "sre-oncall")
+    set_difficulty("hard")
+    client = TestClient(app)
+    result = tool_call(
+        client, "rbac.list_agents", {"principal": "alice@example.com"}
+    )
+    assert "sre-oncall" not in result["groups"]
+    assert "_idp_group_merge" not in result
+
+
+def test_rbac_lab_realism_merge_skipped_when_groups_only_separators(
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("CAMAZOTZ_IDP_PROVIDER", "zitadel")
+    monkeypatch.setenv("CAMAZOTZ_LAB_IDENTITY_SUB", "alice@example.com")
+    monkeypatch.setenv("CAMAZOTZ_LAB_IDENTITY_GROUPS", "  , ,  ")
+    set_difficulty("hard")
+    client = TestClient(app)
+    result = tool_call(
+        client, "rbac.list_agents", {"principal": "alice@example.com"}
+    )
+    assert "_idp_group_merge" not in result
+
+
+def test_rbac_lab_realism_check_membership_merges_groups(monkeypatch) -> None:
+    monkeypatch.setenv("CAMAZOTZ_IDP_PROVIDER", "zitadel")
+    monkeypatch.setenv("CAMAZOTZ_LAB_IDENTITY_SUB", "alice@example.com")
+    monkeypatch.setenv("CAMAZOTZ_LAB_IDENTITY_GROUPS", "sre-oncall")
+    client = TestClient(app)
+    result = tool_call(
+        client, "rbac.check_membership", {"principal": "alice@example.com"}
+    )
+    assert "sre-oncall" in result["groups"]
+    assert result["_idp_group_merge"] is True
+
+
+def test_rbac_lab_realism_mode_merges_claim_groups_for_principal(monkeypatch) -> None:
+    monkeypatch.setenv("CAMAZOTZ_IDP_PROVIDER", "zitadel")
+    monkeypatch.setenv("CAMAZOTZ_LAB_IDENTITY_SUB", "alice@example.com")
+    monkeypatch.setenv("CAMAZOTZ_LAB_IDENTITY_GROUPS", "sre-oncall")
+    set_difficulty("hard")
+    client = TestClient(app)
+    result = tool_call(
+        client, "rbac.list_agents", {"principal": "alice@example.com"}
+    )
+    assert "sre-oncall" in result["groups"]
+    agent_names = {a["name"] for a in result["agents"]}
+    assert "agent-deployer-v2" in agent_names
+    assert result["_idp_group_merge"] is True
+
+
 def test_rbac_reset_clears_access_log() -> None:
     client = TestClient(app)
     tool_call(

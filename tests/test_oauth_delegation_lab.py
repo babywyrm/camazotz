@@ -274,6 +274,111 @@ def test_oauth_read_resource_wrong_prefix() -> None:
 # -- reset --------------------------------------------------------------------
 
 
+def test_oauth_lab_mock_mode_exchange_token_format_unchanged(monkeypatch) -> None:
+    monkeypatch.setenv("CAMAZOTZ_IDP_PROVIDER", "mock")
+    client = TestClient(app)
+    result = tool_call(
+        client,
+        "oauth.exchange_token",
+        {
+            "principal": "alice@example.com",
+            "service": "github",
+            "refresh_token": "anything",
+        },
+    )
+    assert result["exchanged"] is True
+    assert result["access_token"].startswith("cztz-github-new-")
+    assert "_idp_provider" not in result
+
+
+def test_oauth_lab_realism_mode_exchange_without_claims_json(monkeypatch) -> None:
+    monkeypatch.setenv("CAMAZOTZ_IDP_PROVIDER", "zitadel")
+    monkeypatch.delenv("CAMAZOTZ_LAB_IDENTITY_CLAIMS_JSON", raising=False)
+    client = TestClient(app)
+    result = tool_call(
+        client,
+        "oauth.exchange_token",
+        {
+            "principal": "alice@example.com",
+            "service": "github",
+            "refresh_token": "anything",
+        },
+    )
+    assert result["exchanged"] is True
+    assert result["_idp_provider"] == "zitadel"
+    assert "_normalized_identity" not in result
+
+
+def test_oauth_lab_realism_mode_non_object_claims_json_skips_normalization(
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("CAMAZOTZ_IDP_PROVIDER", "zitadel")
+    monkeypatch.setenv("CAMAZOTZ_LAB_IDENTITY_CLAIMS_JSON", "[1, 2]")
+    client = TestClient(app)
+    result = tool_call(
+        client,
+        "oauth.exchange_token",
+        {
+            "principal": "alice@example.com",
+            "service": "github",
+            "refresh_token": "anything",
+        },
+    )
+    assert result["exchanged"] is True
+    assert "_normalized_identity" not in result
+
+
+def test_oauth_lab_realism_mode_invalid_claims_json_skips_normalization(
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("CAMAZOTZ_IDP_PROVIDER", "zitadel")
+    monkeypatch.setenv("CAMAZOTZ_LAB_IDENTITY_CLAIMS_JSON", "not-json")
+    client = TestClient(app)
+    result = tool_call(
+        client,
+        "oauth.exchange_token",
+        {
+            "principal": "alice@example.com",
+            "service": "github",
+            "refresh_token": "anything",
+        },
+    )
+    assert result["exchanged"] is True
+    assert result["_idp_provider"] == "zitadel"
+    assert "_normalized_identity" not in result
+
+
+def test_oauth_lab_realism_mode_exchange_uses_normalized_identity(monkeypatch) -> None:
+    monkeypatch.setenv("CAMAZOTZ_IDP_PROVIDER", "zitadel")
+    monkeypatch.setenv(
+        "CAMAZOTZ_LAB_IDENTITY_CLAIMS_JSON",
+        (
+            '{"sub": "alice@example.com", "scope": "openid repo", '
+            '"groups": ["platform-eng"]}'
+        ),
+    )
+    monkeypatch.setenv("CAMAZOTZ_LAB_IDENTITY_ENV", "nuc")
+    monkeypatch.setenv("CAMAZOTZ_LAB_TENANT_ID", "tenant-z")
+    client = TestClient(app)
+    result = tool_call(
+        client,
+        "oauth.exchange_token",
+        {
+            "principal": "alice@example.com",
+            "service": "github",
+            "refresh_token": "anything",
+        },
+    )
+    assert result["exchanged"] is True
+    assert result["_idp_provider"] == "zitadel"
+    assert result["access_token"].startswith("zitadel-at-")
+    norm = result["_normalized_identity"]
+    assert norm["sub"] == "alice@example.com"
+    assert norm["env"] == "nuc"
+    assert norm["tenant_id"] == "tenant-z"
+    assert "repo" in norm["scope"].split()
+
+
 def test_oauth_reset_restores_tokens() -> None:
     client = TestClient(app)
     tool_call(

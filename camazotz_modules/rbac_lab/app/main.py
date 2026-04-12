@@ -11,9 +11,11 @@ All principals, teams, and agent names are synthetic placeholders.
 from __future__ import annotations
 
 import json
+import os
 import threading
 import uuid
 
+from brain_gateway.app.config import get_idp_provider
 from camazotz_modules.base import LabModule
 
 AGENT_REGISTRY: dict[str, dict] = {
@@ -95,6 +97,23 @@ class RbacLab(LabModule):
     def reset(self) -> None:
         with self._lock:
             self._reset_state()
+
+    def _effective_groups(self, principal: str) -> tuple[list[str], bool]:
+        with self._lock:
+            base = list(self._group_cache.get(principal, []))
+        if get_idp_provider() != "zitadel":
+            return base, False
+        sub = os.getenv("CAMAZOTZ_LAB_IDENTITY_SUB", "").strip()
+        extra_raw = os.getenv("CAMAZOTZ_LAB_IDENTITY_GROUPS", "").strip()
+        if not extra_raw:
+            return base, False
+        if sub and principal != sub:
+            return base, False
+        extras = [g.strip() for g in extra_raw.split(",") if g.strip()]
+        if not extras:
+            return base, False
+        merged = sorted(set(base) | set(extras))
+        return merged, True
 
     # -- MCP resources --------------------------------------------------------
 
@@ -225,8 +244,7 @@ class RbacLab(LabModule):
         principal = arguments.get("principal", "")
         difficulty = self.difficulty
 
-        with self._lock:
-            user_groups = list(self._group_cache.get(principal, []))
+        user_groups, idp_merge = self._effective_groups(principal)
 
         if difficulty == "easy":
             agents = list(AGENT_REGISTRY.values())
@@ -245,13 +263,16 @@ class RbacLab(LabModule):
                 if set(user_groups) & set(agent["allowed_groups"]):
                     agents.append(agent)
 
-        return {
+        out: dict = {
             "agents": agents,
             "count": len(agents),
             "principal": principal,
             "groups": user_groups,
             "_difficulty": difficulty,
         }
+        if idp_merge:
+            out["_idp_group_merge"] = True
+        return out
 
     def _trigger_agent(self, arguments: dict) -> dict:
         principal = arguments.get("principal", "")
@@ -268,8 +289,7 @@ class RbacLab(LabModule):
                 "_difficulty": difficulty,
             }
 
-        with self._lock:
-            user_groups = list(self._group_cache.get(principal, []))
+        user_groups, _ = self._effective_groups(principal)
 
         if difficulty == "easy":
             if group_override:
@@ -324,11 +344,13 @@ class RbacLab(LabModule):
 
     def _check_membership(self, arguments: dict) -> dict:
         principal = arguments.get("principal", "")
-        with self._lock:
-            groups = list(self._group_cache.get(principal, []))
-        return {
+        groups, idp_merge = self._effective_groups(principal)
+        out: dict = {
             "principal": principal,
             "groups": groups,
             "group_count": len(groups),
             "_difficulty": self.difficulty,
         }
+        if idp_merge:
+            out["_idp_group_merge"] = True
+        return out

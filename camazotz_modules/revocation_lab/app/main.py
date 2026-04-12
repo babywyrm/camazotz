@@ -15,6 +15,7 @@ import threading
 import time
 import uuid
 
+from brain_gateway.app.config import get_idp_provider
 from camazotz_modules.base import LabModule
 
 
@@ -49,6 +50,16 @@ class RevocationLab(LabModule):
         with self._lock:
             self._tokens = {}
             self._revoked = set()
+
+    def _idp_issue_tags(self) -> dict:
+        if get_idp_provider() != "zitadel":
+            return {}
+        return {"_idp_provider": "zitadel"}
+
+    def _idp_use_tags(self) -> dict:
+        if get_idp_provider() != "zitadel":
+            return {}
+        return {"_idp_token_status": "local_store_only"}
 
     # -- MCP resources --------------------------------------------------------
 
@@ -177,7 +188,7 @@ class RevocationLab(LabModule):
         with self._lock:
             self._tokens[token_id] = entry
 
-        return {
+        out = {
             "issued": True,
             "token_id": token_id,
             "access_token": access_token,
@@ -186,6 +197,8 @@ class RevocationLab(LabModule):
             "service": service,
             "_difficulty": self.difficulty,
         }
+        out.update(self._idp_issue_tags())
+        return out
 
     def _revoke_principal(self, arguments: dict) -> dict:
         principal = arguments.get("principal", "")
@@ -206,12 +219,16 @@ class RevocationLab(LabModule):
                     tok["refresh_revoked"] = True
                 self._revoked.add(tid)
 
-        return {
+        out = {
             "revoked_count": len(revoked_ids),
             "revoked_ids": revoked_ids,
             "principal": principal,
             "_difficulty": difficulty,
         }
+        if get_idp_provider() == "zitadel":
+            out["_idp_provider"] = "zitadel"
+            out["_idp_revocation_hook"] = "revocation_endpoint"
+        return out
 
     def _use_token(self, arguments: dict) -> dict:
         token_id = arguments.get("token_id", "")
@@ -221,16 +238,18 @@ class RevocationLab(LabModule):
             tok = self._tokens.get(token_id)
 
         if tok is None:
-            return {
+            out = {
                 "valid": False,
                 "reason": "Token not found.",
                 "token_id": token_id,
                 "_difficulty": difficulty,
             }
+            out.update(self._idp_use_tags())
+            return out
 
         if difficulty == "easy":
             if tok["revoked"]:
-                return {
+                out = {
                     "valid": True,
                     "token_id": token_id,
                     "principal": tok["principal"],
@@ -240,23 +259,29 @@ class RevocationLab(LabModule):
                     ),
                     "_difficulty": difficulty,
                 }
-            return {
+                out.update(self._idp_use_tags())
+                return out
+            out = {
                 "valid": True,
                 "token_id": token_id,
                 "principal": tok["principal"],
                 "_difficulty": difficulty,
             }
+            out.update(self._idp_use_tags())
+            return out
 
         if difficulty == "medium":
             if tok["revoked"]:
-                return {
+                out = {
                     "valid": False,
                     "reason": "Token has been revoked.",
                     "token_id": token_id,
                     "_difficulty": difficulty,
                 }
+                out.update(self._idp_use_tags())
+                return out
             if tok["refresh_revoked"]:
-                return {
+                out = {
                     "valid": True,
                     "token_id": token_id,
                     "principal": tok["principal"],
@@ -266,23 +291,31 @@ class RevocationLab(LabModule):
                     ),
                     "_difficulty": difficulty,
                 }
-            return {
+                out.update(self._idp_use_tags())
+                return out
+            out = {
                 "valid": True,
                 "token_id": token_id,
                 "principal": tok["principal"],
                 "_difficulty": difficulty,
             }
+            out.update(self._idp_use_tags())
+            return out
 
         if tok["revoked"] or tok["refresh_revoked"]:
-            return {
+            out = {
                 "valid": False,
                 "reason": "Token has been revoked (immediate enforcement).",
                 "token_id": token_id,
                 "_difficulty": difficulty,
             }
-        return {
+            out.update(self._idp_use_tags())
+            return out
+        out = {
             "valid": True,
             "token_id": token_id,
             "principal": tok["principal"],
             "_difficulty": difficulty,
         }
+        out.update(self._idp_use_tags())
+        return out

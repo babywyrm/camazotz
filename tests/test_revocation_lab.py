@@ -249,6 +249,34 @@ def test_revocation_read_resource_wrong_prefix() -> None:
 # -- reset --------------------------------------------------------------------
 
 
+def test_revocation_lab_mock_mode_issue_without_idp_metadata(monkeypatch) -> None:
+    monkeypatch.setenv("CAMAZOTZ_IDP_PROVIDER", "mock")
+    client = TestClient(app)
+    result = _issue(client)
+    assert "_idp_provider" not in result
+    assert result["access_token"].startswith("cztz-access-")
+
+
+def test_revocation_lab_realism_mode_surfaces_idp_hooks(monkeypatch) -> None:
+    monkeypatch.setenv("CAMAZOTZ_IDP_PROVIDER", "zitadel")
+    client = TestClient(app)
+    issued = _issue(client)
+    assert issued["_idp_provider"] == "zitadel"
+
+    revoke = tool_call(
+        client,
+        "revocation.revoke_principal",
+        {"principal": "alice@example.com"},
+    )
+    assert revoke["_idp_provider"] == "zitadel"
+    assert revoke["_idp_revocation_hook"] == "revocation_endpoint"
+
+    use = tool_call(
+        client, "revocation.use_token", {"token_id": issued["token_id"]}
+    )
+    assert use["_idp_token_status"] == "local_store_only"
+
+
 def test_revocation_reset_clears_all() -> None:
     client = TestClient(app)
     _issue(client)
