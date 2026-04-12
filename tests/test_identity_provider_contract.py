@@ -6,6 +6,7 @@ from brain_gateway.app.config import get_idp_provider
 from brain_gateway.app.identity import IdentityProvider, MockIdentityProvider
 from brain_gateway.app.identity.mock_provider import MockIdentityProvider as MockIdentityProviderDirect
 from brain_gateway.app.identity.provider import IdentityProvider as IdentityProviderProtocol
+import brain_gateway.app.identity.service as identity_service
 from brain_gateway.app.identity.service import get_identity_provider
 from brain_gateway.app.identity.zitadel_provider import ZitadelIdentityProvider
 from brain_gateway.app.identity.types import (
@@ -37,11 +38,20 @@ def test_get_idp_provider_defaults_to_mock(monkeypatch) -> None:
 
 def test_get_idp_provider_accepts_zitadel(monkeypatch) -> None:
     monkeypatch.setenv("CAMAZOTZ_IDP_PROVIDER", "zitadel")
+    monkeypatch.setenv("CAMAZOTZ_IDP_TOKEN_ENDPOINT", "https://issuer.example/oauth/v2/token")
     assert get_idp_provider() == "zitadel"
 
 
 def test_get_idp_provider_invalid_falls_back_to_mock(monkeypatch) -> None:
     monkeypatch.setenv("CAMAZOTZ_IDP_PROVIDER", "unknown")
+    assert get_idp_provider() == "mock"
+
+
+def test_get_idp_provider_zitadel_without_token_endpoint_falls_back_to_mock(
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("CAMAZOTZ_IDP_PROVIDER", "zitadel")
+    monkeypatch.delenv("CAMAZOTZ_IDP_TOKEN_ENDPOINT", raising=False)
     assert get_idp_provider() == "mock"
 
 
@@ -188,6 +198,7 @@ def test_get_identity_provider_returns_mock_by_default(monkeypatch) -> None:
 
 
 def test_get_identity_provider_returns_zitadel_when_configured(monkeypatch) -> None:
+    monkeypatch.setattr(identity_service, "_zitadel_is_reachable", lambda _p: True)
     monkeypatch.setenv("CAMAZOTZ_IDP_PROVIDER", "zitadel")
     monkeypatch.setenv("CAMAZOTZ_IDP_ISSUER_URL", "https://issuer.example")
     monkeypatch.setenv("CAMAZOTZ_IDP_TOKEN_ENDPOINT", "https://issuer.example/oauth/v2/token")
@@ -198,3 +209,23 @@ def test_get_identity_provider_returns_zitadel_when_configured(monkeypatch) -> N
     p = get_identity_provider()
     assert isinstance(p, ZitadelIdentityProvider)
     assert p.issuer_url == "https://issuer.example"
+
+
+def test_get_identity_provider_falls_back_to_mock_when_zitadel_misconfigured(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(identity_service, "_zitadel_is_reachable", lambda _p: True)
+    monkeypatch.setenv("CAMAZOTZ_IDP_PROVIDER", "zitadel")
+    monkeypatch.delenv("CAMAZOTZ_IDP_TOKEN_ENDPOINT", raising=False)
+    p = get_identity_provider()
+    assert isinstance(p, MockIdentityProviderDirect)
+
+
+def test_get_identity_provider_falls_back_to_mock_when_zitadel_unreachable(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(identity_service, "_zitadel_is_reachable", lambda _p: False)
+    monkeypatch.setenv("CAMAZOTZ_IDP_PROVIDER", "zitadel")
+    monkeypatch.setenv("CAMAZOTZ_IDP_TOKEN_ENDPOINT", "https://issuer.example/oauth/v2/token")
+    p = get_identity_provider()
+    assert isinstance(p, MockIdentityProviderDirect)

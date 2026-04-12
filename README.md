@@ -327,7 +327,7 @@ Navigate to **http://localhost:3000/operator** (hidden — no nav link) for:
 | `CAMAZOTZ_DIFFICULTY` | `medium` | Guardrail level: EZ / MOD / MAX (switchable from portal) |
 | `CAMAZOTZ_SHOW_TOKENS` | `false` | Show LLM token usage and cost per call |
 | `CAMAZOTZ_OLLAMA_MODEL` | `llama3.2:3b` | Ollama model name |
-| `CAMAZOTZ_IDP_PROVIDER` | `mock` | Identity mode: `mock` (default) or `zitadel` (realism + stub provider; **no live HTTP OAuth/OIDC to ZITADEL yet** — see [docs/identity/overview.md](docs/identity/overview.md)) |
+| `CAMAZOTZ_IDP_PROVIDER` | `zitadel` (deployment), `mock` (runtime fallback) | Identity mode: `mock` or `zitadel` (realism + stub provider; **no live HTTP OAuth/OIDC to ZITADEL yet** — see [docs/identity/overview.md](docs/identity/overview.md)). Falls back to `mock` if ZITADEL config is incomplete. |
 
 ### How Bedrock credentials reach the container
 

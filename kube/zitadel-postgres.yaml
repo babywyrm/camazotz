@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zitadel-postgres
+  namespace: camazotz
+  labels:
+    app: zitadel-postgres
+    app.kubernetes.io/part-of: camazotz
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: zitadel-postgres
+  template:
+    metadata:
+      labels:
+        app: zitadel-postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16
+          env:
+            - name: POSTGRES_DB
+              value: "zitadel"
+            - name: POSTGRES_USER
+              value: "zitadel"
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: camazotz-secrets
+                  key: ZITADEL_DB_PASSWORD
+          ports:
+            - containerPort: 5432
+          readinessProbe:
+            exec:
+              command: ["/bin/sh", "-c", "pg_isready -d zitadel -U zitadel"]
+            initialDelaySeconds: 10
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zitadel-postgres
+  namespace: camazotz
+  labels:
+    app.kubernetes.io/part-of: camazotz
+spec:
+  selector:
+    app: zitadel-postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
+      protocol: TCP

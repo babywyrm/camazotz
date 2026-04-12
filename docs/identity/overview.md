@@ -1,16 +1,17 @@
 # Identity overview
 
-Camazotz can run with a **mock** identity layer (default) or a **ZITADEL-shaped** **realism** mode selected by `CAMAZOTZ_IDP_PROVIDER`. The goal is to teach agentic OAuth/OIDC failure modes without forcing every workshop to depend on a live IdP.
+Camazotz can run with a **mock** identity layer or a **ZITADEL-shaped** **realism** mode selected by `CAMAZOTZ_IDP_PROVIDER`. Deployment defaults now prefer `zitadel`, while runtime falls back to `mock` if ZITADEL config is incomplete or unreachable.
 
 ## What is implemented today
 
-| Layer | `mock` (default) | `zitadel` |
+| Layer | `mock` | `zitadel` |
 |--------|------------------|-----------|
 | Gateway `/config` | Reports `idp_provider: "mock"` | Reports `idp_provider: "zitadel"` |
-| `ZitadelIdentityProvider` | Not used | Loaded from env; **returns placeholder token/introspection/revocation shapes** after **local** config checks (empty token endpoint raises). **No outbound HTTP OAuth/OIDC calls** to ZITADEL yet. |
+| Deployment | No IdP pod required | Compose/Helm deploy `zitadel` + `zitadel-postgres` services by default. |
+| `ZitadelIdentityProvider` | Not used | Loaded from env; current provider path returns placeholder token/introspection/revocation shapes and uses fail-open checks. |
 | Labs (`oauth_delegation_lab`, `rbac_lab`, `revocation_lab`) | Original synthetic tokens and logic | Extra branches: different token prefixes, optional **injected** claims via lab env vars (simulating normalized identity context). |
 
-**Important:** Authorization Code + PKCE, refresh, RFC 8693 token exchange, and live introspection/revocation against ZITADEL are **design targets**, not fully implemented HTTP flows in the current codebase. Treat `zitadel` mode as **configuration + lab realism hooks** until live client calls land.
+**Important:** Authorization Code + PKCE, refresh, RFC 8693 token exchange, and full live introspection/revocation integration remain ongoing work. Treat current `zitadel` mode as **self-hosted IdP deployment + realism hooks + fail-open safety**, not complete OAuth feature parity.
 
 ## Trust boundaries (target architecture)
 
@@ -24,8 +25,9 @@ Today, step 1 is **not** wired inside Camazotz: there is no built-in browser OAu
 
 ## Provider selection
 
-- **`CAMAZOTZ_IDP_PROVIDER=mock`** — safe default for CI, local dev, and deterministic tests.
-- **`CAMAZOTZ_IDP_PROVIDER=zitadel`** — enables realism branches and the stub `ZitadelIdentityProvider`. Any other value is treated as **`mock`**.
+- **`CAMAZOTZ_IDP_PROVIDER=zitadel`** — deployment default for realism branches and the stub `ZitadelIdentityProvider`.
+- **`CAMAZOTZ_IDP_PROVIDER=mock`** — deterministic fallback mode for CI and local testing.
+- If `CAMAZOTZ_IDP_PROVIDER=zitadel` but required config is incomplete (currently token endpoint), provider selection falls back to **`mock`**.
 
 ## Smoke checks
 

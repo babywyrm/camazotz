@@ -45,12 +45,12 @@ services:
     - CAMAZOTZ_OLLAMA_MODEL=${CAMAZOTZ_OLLAMA_MODEL:-llama3.2:3b}
     - CAMAZOTZ_FLAGS_DIR=${CAMAZOTZ_FLAGS_DIR:-/opt/camazotz/flags}
     - CAMAZOTZ_MODULES_DIR=${CAMAZOTZ_MODULES_DIR:-/workspace/camazotz_modules}
-    - CAMAZOTZ_IDP_PROVIDER=${CAMAZOTZ_IDP_PROVIDER:-mock}
-    - CAMAZOTZ_IDP_ISSUER_URL=${CAMAZOTZ_IDP_ISSUER_URL:-}
-    - CAMAZOTZ_IDP_TOKEN_ENDPOINT=${CAMAZOTZ_IDP_TOKEN_ENDPOINT:-}
-    - CAMAZOTZ_IDP_INTROSPECTION_ENDPOINT=${CAMAZOTZ_IDP_INTROSPECTION_ENDPOINT:-}
-    - CAMAZOTZ_IDP_REVOCATION_ENDPOINT=${CAMAZOTZ_IDP_REVOCATION_ENDPOINT:-}
-    - CAMAZOTZ_IDP_CLIENT_ID=${CAMAZOTZ_IDP_CLIENT_ID:-}
+    - CAMAZOTZ_IDP_PROVIDER=${CAMAZOTZ_IDP_PROVIDER:-zitadel}
+    - CAMAZOTZ_IDP_ISSUER_URL=${CAMAZOTZ_IDP_ISSUER_URL:-http://zitadel:8080}
+    - CAMAZOTZ_IDP_TOKEN_ENDPOINT=${CAMAZOTZ_IDP_TOKEN_ENDPOINT:-http://zitadel:8080/oauth/v2/token}
+    - CAMAZOTZ_IDP_INTROSPECTION_ENDPOINT=${CAMAZOTZ_IDP_INTROSPECTION_ENDPOINT:-http://zitadel:8080/oauth/v2/introspect}
+    - CAMAZOTZ_IDP_REVOCATION_ENDPOINT=${CAMAZOTZ_IDP_REVOCATION_ENDPOINT:-http://zitadel:8080/oauth/v2/revoke}
+    - CAMAZOTZ_IDP_CLIENT_ID=${CAMAZOTZ_IDP_CLIENT_ID:-camazotz-gateway}
     - CAMAZOTZ_IDP_CLIENT_SECRET=${CAMAZOTZ_IDP_CLIENT_SECRET:-}
     - CZTZ_SECRET_DATABASE_URL=postgresql://admin:s3cretPassw0rd!@10.0.3.12:5432/prod_db
     - CZTZ_SECRET_AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
@@ -65,6 +65,9 @@ services:
     - 8080:8080
     depends_on:
       ollama:
+        condition: service_started
+        required: false
+      zitadel:
         condition: service_started
         required: false
     restart: unless-stopped
@@ -89,6 +92,54 @@ services:
     depends_on:
       brain-gateway:
         condition: service_healthy
+    restart: unless-stopped
+    networks:
+    - camazotz
+  zitadel-postgres:
+    image: postgres:16
+    environment:
+    - POSTGRES_DB=zitadel
+    - POSTGRES_USER=zitadel
+    - POSTGRES_PASSWORD=${ZITADEL_DB_PASSWORD:-camazotz-zitadel-postgres}
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - pg_isready -d zitadel -U zitadel
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+    networks:
+    - camazotz
+  zitadel:
+    image: ghcr.io/zitadel/zitadel:latest
+    command:
+    - start-from-init
+    - --masterkey
+    - ${ZITADEL_MASTERKEY:-CamazotzZitadelMasterKeyValue123}
+    environment:
+    - ZITADEL_PORT=8080
+    - ZITADEL_EXTERNALDOMAIN=zitadel
+    - ZITADEL_EXTERNALPORT=8080
+    - ZITADEL_EXTERNALSECURE=false
+    - ZITADEL_TLS_ENABLED=false
+    - ZITADEL_DATABASE_POSTGRES_DSN=postgres://zitadel:${ZITADEL_DB_PASSWORD:-camazotz-zitadel-postgres}@zitadel-postgres:5432/zitadel?sslmode=disable
+    - ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORDCHANGEREQUIRED=false
+    ports:
+    - 8180:8080
+    depends_on:
+      zitadel-postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+      - CMD
+      - /app/zitadel
+      - ready
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 30s
     restart: unless-stopped
     networks:
     - camazotz

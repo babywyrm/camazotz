@@ -23,6 +23,8 @@ def build_compose(v: dict) -> dict:
     pt = v["portal"]
     ob = v["observer"]
     ol = v["ollama"]
+    zit = v.get("zitadel", {})
+    zit_pg = v.get("zitadelPostgres", {})
 
     def env_line(key: str, val: str, compose_var: str | None = None) -> str:
         if compose_var:
@@ -114,6 +116,11 @@ def build_compose(v: dict) -> dict:
         "healthcheck": healthcheck(gw["port"], gw["healthPath"]),
         "networks": [v["namespace"]],
     }
+    if zit.get("enabled", False):
+        services["brain-gateway"]["depends_on"]["zitadel"] = {
+            "condition": "service_started",
+            "required": False,
+        }
 
     services["observer"] = {
         "build": {"context": ob["build"]["context"], "dockerfile": ob["build"]["dockerfile"]},
@@ -122,6 +129,67 @@ def build_compose(v: dict) -> dict:
         "restart": "unless-stopped",
         "networks": [v["namespace"]],
     }
+
+    if zit.get("enabled", False):
+        services["zitadel-postgres"] = {
+            "image": f"{zit_pg['image']}:{zit_pg['tag']}",
+            "environment": [
+                env_line("POSTGRES_DB", zit_pg["db"]),
+                env_line("POSTGRES_USER", zit_pg["user"]),
+                env_line("POSTGRES_PASSWORD", sec.get("zitadelDbPassword", ""), "ZITADEL_DB_PASSWORD"),
+            ],
+            "healthcheck": {
+                "test": [
+                    "CMD-SHELL",
+                    f"pg_isready -d {zit_pg['db']} -U {zit_pg['user']}",
+                ],
+                "interval": "10s",
+                "timeout": "5s",
+                "retries": 10,
+                "start_period": "20s",
+            },
+            "restart": "unless-stopped",
+            "networks": [v["namespace"]],
+        }
+        services["zitadel"] = {
+            "image": f"{zit['image']}:{zit['tag']}",
+            "command": [
+                "start-from-init",
+                "--masterkey",
+                "${ZITADEL_MASTERKEY:-" + sec.get("zitadelMasterKey", "") + "}",
+            ],
+            "environment": [
+                env_line("ZITADEL_PORT", str(zit["port"])),
+                env_line("ZITADEL_EXTERNALDOMAIN", zit.get("externalDomain", "zitadel")),
+                env_line("ZITADEL_EXTERNALPORT", str(zit.get("externalPort", "8080"))),
+                env_line("ZITADEL_EXTERNALSECURE", str(zit.get("externalSecure", "false"))),
+                "ZITADEL_TLS_ENABLED=false",
+                "ZITADEL_DATABASE_POSTGRES_DSN=postgres://"
+                + zit_pg["user"]
+                + ":${ZITADEL_DB_PASSWORD:-"
+                + sec.get("zitadelDbPassword", "")
+                + "}@zitadel-postgres:"
+                + str(zit_pg["port"])
+                + "/"
+                + zit_pg["db"]
+                + "?sslmode=disable",
+                env_line(
+                    "ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORDCHANGEREQUIRED",
+                    str(zit.get("firstInstancePasswordChangeRequired", "false")).lower(),
+                ),
+            ],
+            "ports": [f"{zit.get('hostPort', 8180)}:{zit['port']}"],
+            "depends_on": {"zitadel-postgres": {"condition": "service_healthy"}},
+            "healthcheck": {
+                "test": ["CMD", "/app/zitadel", "ready"],
+                "interval": "10s",
+                "timeout": "10s",
+                "retries": 12,
+                "start_period": "30s",
+            },
+            "restart": "unless-stopped",
+            "networks": [v["namespace"]],
+        }
 
     services["ollama"] = {
         "image": f"{ol['image']}:{ol['tag']}",

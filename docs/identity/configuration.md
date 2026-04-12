@@ -1,12 +1,12 @@
 # Identity configuration
 
-All identity-related settings are **optional** unless you set `CAMAZOTZ_IDP_PROVIDER=zitadel`. In that case the stub provider **requires** non-empty endpoint strings for the methods you call in code paths (today: token endpoint for client-credentials-style helpers; introspection/revocation endpoints for those APIs).
+All identity-related settings are optional, but deployment defaults now set `CAMAZOTZ_IDP_PROVIDER=zitadel` and deploy self-hosted `zitadel` + `zitadel-postgres` services. If ZITADEL config is incomplete or unreachable, provider selection falls back to `mock`.
 
 ## Gateway / operator variables
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `CAMAZOTZ_IDP_PROVIDER` | `mock` | `mock` or `zitadel`. Any other value → `mock`. |
+| `CAMAZOTZ_IDP_PROVIDER` | `zitadel` (deployment), `mock` (code fallback) | `mock` or `zitadel`. Any other value → `mock`. If set to `zitadel` but token endpoint is empty or IdP host is unreachable, runtime falls back to `mock`. |
 | `CAMAZOTZ_IDP_ISSUER_URL` | (empty) | Issuer URL string (metadata discovery is not implemented; this is for alignment and future use). |
 | `CAMAZOTZ_IDP_TOKEN_ENDPOINT` | (empty) | Required by stub `client_credentials_token` / `exchange_token` when provider is `zitadel` (non-empty string). |
 | `CAMAZOTZ_IDP_INTROSPECTION_ENDPOINT` | (empty) | Required by stub `introspect_token` when invoked. |

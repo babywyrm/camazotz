@@ -33,14 +33,20 @@ echo "[3/5] Applying K8s manifests..."
 $K apply -f "${KUBE_DIR}/namespace.yaml"
 $K apply -f "${KUBE_DIR}/configmap.yaml"
 $K apply -f "${KUBE_DIR}/secret.yaml"
+$K apply -f "${KUBE_DIR}/zitadel-postgres.yaml"
+$K apply -f "${KUBE_DIR}/zitadel.yaml"
 $K apply -f "${KUBE_DIR}/brain-gateway.yaml"
 $K apply -f "${KUBE_DIR}/portal.yaml"
 $K apply -f "${KUBE_DIR}/observer.yaml"
 
-echo "[4/5] Waiting for brain-gateway to be ready..."
+echo "[4/6] Waiting for zitadel to be ready..."
+$K -n "${NS}" rollout status deployment/zitadel-postgres --timeout=120s
+$K -n "${NS}" rollout status deployment/zitadel --timeout=180s
+
+echo "[5/6] Waiting for brain-gateway to be ready..."
 $K -n "${NS}" rollout status deployment/brain-gateway --timeout=60s
 
-echo "[5/5] Waiting for portal to be ready..."
+echo "[6/6] Waiting for portal to be ready..."
 $K -n "${NS}" rollout status deployment/portal --timeout=60s
 
 echo ""

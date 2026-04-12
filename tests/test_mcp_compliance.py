@@ -112,6 +112,9 @@ def test_gateway_config_get() -> None:
 
 def test_config_exposes_idp_provider(monkeypatch) -> None:
     monkeypatch.setenv("CAMAZOTZ_IDP_PROVIDER", "zitadel")
+    monkeypatch.setenv(
+        "CAMAZOTZ_IDP_TOKEN_ENDPOINT", "https://issuer.example/oauth/v2/token"
+    )
     client = TestClient(app)
     payload = client.get("/config").json()
     assert payload["idp_provider"] == "zitadel"

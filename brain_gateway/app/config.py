@@ -66,7 +66,11 @@ def get_ollama_model() -> str:
 def get_idp_provider() -> Literal["mock", "zitadel"]:
     """Active identity provider: ``mock`` (default) or ``zitadel``."""
     value = os.getenv("CAMAZOTZ_IDP_PROVIDER", "mock").lower().strip()
-    return value if value in {"mock", "zitadel"} else "mock"
+    if value != "zitadel":
+        return "mock"
+    if not os.getenv("CAMAZOTZ_IDP_TOKEN_ENDPOINT", "").strip():
+        return "mock"
+    return "zitadel"
 
 
 def get_idp_issuer_url() -> str:

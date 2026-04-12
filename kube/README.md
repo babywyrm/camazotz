@@ -39,6 +39,8 @@ sudo docker save camazotz/observer:latest | sudo k3s ctr images import -
 sudo k3s kubectl apply -f kube/namespace.yaml
 sudo k3s kubectl apply -f kube/configmap.yaml
 sudo k3s kubectl apply -f kube/secret.yaml
+sudo k3s kubectl apply -f kube/zitadel-postgres.yaml
+sudo k3s kubectl apply -f kube/zitadel.yaml
 sudo k3s kubectl apply -f kube/brain-gateway.yaml
 sudo k3s kubectl apply -f kube/portal.yaml
 sudo k3s kubectl apply -f kube/observer.yaml
@@ -85,6 +87,8 @@ sudo k3s kubectl -n camazotz rollout restart deployment/brain-gateway
 |---------|------|------|--------|
 | portal | LoadBalancer | 3000 | External — the branded web UI |
 | brain-gateway | ClusterIP | 8080 | Internal — MCP Streamable HTTP API |
+| zitadel | ClusterIP | 8080 | Internal — self-hosted IdP API |
+| zitadel-postgres | ClusterIP | 5432 | Internal — ZITADEL state store |
 | ollama | ClusterIP | 11434 | Internal — local LLM (optional) |
 
 ## Manifests
@@ -94,6 +98,8 @@ sudo k3s kubectl -n camazotz rollout restart deployment/brain-gateway
 | `namespace.yaml` | `camazotz` namespace |
 | `configmap.yaml` | Non-secret configuration |
 | `secret.yaml` | API keys and secrets |
+| `zitadel-postgres.yaml` | Postgres deployment + ClusterIP service for ZITADEL |
+| `zitadel.yaml` | ZITADEL deployment + ClusterIP service |
 | `brain-gateway.yaml` | Gateway deployment + ClusterIP service |
 | `portal.yaml` | Portal deployment + LoadBalancer service |
 | `observer.yaml` | Observer sidecar deployment |

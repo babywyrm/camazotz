@@ -5,13 +5,13 @@
 - `make env` — ensures `compose/.env` exists
 - Stack reachable at `http://localhost:8080` (gateway) and `http://localhost:3000` (portal)
 
-## Mock mode (default)
+## Mock mode
 
 No IdP configuration required.
 
 ```bash
 make env
-# ensure CAMAZOTZ_IDP_PROVIDER is unset or mock in compose/.env
+# set CAMAZOTZ_IDP_PROVIDER=mock in compose/.env
 make up              # or: make up-local  (Ollama / --profile local)
 make status
 ```
@@ -36,7 +36,7 @@ make smoke-local-llm
 
 ## ZITADEL realism mode (local)
 
-**Expectation:** This turns on **`zitadel` provider selection** and **lab realism branches**. It does **not** start a ZITADEL container or perform live Authorization Code + PKCE in the portal.
+**Expectation:** This turns on **`zitadel` provider selection** and **lab realism branches**. Compose now deploys `zitadel` and `zitadel-postgres` services by default; full Authorization Code + PKCE portal login wiring remains future work.
 
 1. Edit **`compose/.env`**:
 
@@ -69,6 +69,10 @@ make smoke-local-llm
    ```bash
    make smoke-local-identity
    ```
+
+Fallback behavior:
+
+- If `CAMAZOTZ_IDP_PROVIDER=zitadel` but `CAMAZOTZ_IDP_TOKEN_ENDPOINT` is empty, runtime falls back to `mock`.
 
 5. Optional lab injection (oauth exchange extras):
 

@@ -21,17 +21,19 @@ config:
   observerPollInterval: "2"
   observerBufferSize: "50"
   logLevel: info
-  idpProvider: mock
-  idpIssuerUrl: ""
-  idpTokenEndpoint: ""
-  idpIntrospectionEndpoint: ""
-  idpRevocationEndpoint: ""
-  idpClientId: ""
+  idpProvider: zitadel
+  idpIssuerUrl: "http://zitadel:8080"
+  idpTokenEndpoint: "http://zitadel:8080/oauth/v2/token"
+  idpIntrospectionEndpoint: "http://zitadel:8080/oauth/v2/introspect"
+  idpRevocationEndpoint: "http://zitadel:8080/oauth/v2/revoke"
+  idpClientId: "camazotz-gateway"
 
 secrets:
   anthropicApiKey: ""
   flaskSecret: "cztz-k8s-secret"
   idpClientSecret: ""
+  zitadelMasterKey: "CamazotzZitadelMasterKeyValue123"
+  zitadelDbPassword: "camazotz-zitadel-postgres"
 
 labSecrets:
   DATABASE_URL: "postgresql://admin:s3cretPassw0rd!@10.0.3.12:5432/prod_db"
@@ -112,3 +114,39 @@ ollama:
     limits:
       cpu: "2"
       memory: 4Gi
+
+zitadel:
+  enabled: true
+  image: ghcr.io/zitadel/zitadel
+  tag: latest
+  pullPolicy: IfNotPresent
+  port: 8080
+  serviceType: ClusterIP
+  hostPort: 8180
+  externalDomain: zitadel
+  externalPort: "8080"
+  externalSecure: "false"
+  firstInstancePasswordChangeRequired: "false"
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+zitadelPostgres:
+  enabled: true
+  image: postgres
+  tag: "16"
+  pullPolicy: IfNotPresent
+  port: 5432
+  db: zitadel
+  user: zitadel
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi

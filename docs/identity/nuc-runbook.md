@@ -7,9 +7,9 @@ This runbook assumes a Camazotz deployment via **Helm** (`deploy/helm/camazotz`)
 - **`scripts/smoke_test.py --target k8s`** uses **`http://<K8S_HOST>:30080`** for the gateway and **`http://<K8S_HOST>:3000`** for the portal (see `SmokeTarget` in `scripts/smoke_test.py`). Map these ports on your node or load balancer to match your chart.
 - Default smoke host: **`192.168.1.114`** (override per site).
 
-## Mock mode (default)
+## Mock mode
 
-Helm `values.yaml` ships with `config.idpProvider: mock`. No extra secrets required.
+Set `config.idpProvider: mock` if you need deterministic mode. No extra identity secrets required.
 
 Deploy (example):
 
@@ -63,7 +63,11 @@ make smoke-k8s-llm K8S_HOST=10.0.0.5
    curl -s http://<your-node-ip>:30080/config   # expect idp_provider zitadel (if using default smoke NodePort)
    ```
 
-**Scope note:** As on local Docker, **`zitadel` mode does not implement full live HTTP OAuth/OIDC** in the gateway yet; endpoints and secrets prepare Helm/Compose and the stub provider for future work and lab realism.
+**Scope note:** As on local Docker, cluster deployment now includes self-hosted `zitadel` + `zitadel-postgres`, but full live HTTP OAuth/OIDC integration inside gateway flows is still in progress. Current behavior combines deployed IdP infrastructure, provider selection, and realism hooks.
+
+Fallback behavior:
+
+- If `idpProvider: zitadel` but `idpTokenEndpoint` is empty, runtime falls back to `mock`.
 
 ## Lab env vars on Kubernetes
 
