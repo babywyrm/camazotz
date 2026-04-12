@@ -14,6 +14,17 @@ def setup_function() -> None:
     set_difficulty("easy")
 
 
+def _enable_zitadel_mode(monkeypatch) -> None:
+    monkeypatch.setenv("CAMAZOTZ_IDP_PROVIDER", "zitadel")
+    monkeypatch.setenv("CAMAZOTZ_IDP_TOKEN_ENDPOINT", "http://zitadel.example/token")
+    monkeypatch.setenv(
+        "CAMAZOTZ_IDP_INTROSPECTION_ENDPOINT", "http://zitadel.example/introspect"
+    )
+    monkeypatch.setenv(
+        "CAMAZOTZ_IDP_REVOCATION_ENDPOINT", "http://zitadel.example/revoke"
+    )
+
+
 def _issue(client: TestClient, principal: str = "alice@example.com") -> dict:
     return tool_call(
         client,
@@ -258,7 +269,19 @@ def test_revocation_lab_mock_mode_issue_without_idp_metadata(monkeypatch) -> Non
 
 
 def test_revocation_lab_realism_mode_surfaces_idp_hooks(monkeypatch) -> None:
-    monkeypatch.setenv("CAMAZOTZ_IDP_PROVIDER", "zitadel")
+    _enable_zitadel_mode(monkeypatch)
+
+    class _Provider:
+        def revoke_token(self, *, token: str) -> dict:
+            return {"revoked": True, "token_hint": token[:8]}
+
+        def introspect_token(self, *, token: str) -> dict:
+            return {"active": False, "sub": "alice@example.com"}
+
+    monkeypatch.setattr(
+        "camazotz_modules.revocation_lab.app.main.get_identity_provider",
+        lambda: _Provider(),
+    )
     client = TestClient(app)
     issued = _issue(client)
     assert issued["_idp_provider"] == "zitadel"
@@ -269,12 +292,42 @@ def test_revocation_lab_realism_mode_surfaces_idp_hooks(monkeypatch) -> None:
         {"principal": "alice@example.com"},
     )
     assert revoke["_idp_provider"] == "zitadel"
-    assert revoke["_idp_revocation_hook"] == "revocation_endpoint"
+    assert revoke["_idp_revocation_hook"] == "provider.revoke_token"
 
     use = tool_call(
         client, "revocation.use_token", {"token_id": issued["token_id"]}
     )
-    assert use["_idp_token_status"] == "local_store_only"
+    assert use["_idp_token_status"] == "inactive"
+
+
+def test_revocation_lab_realism_mode_uses_identity_provider_hooks(monkeypatch) -> None:
+    _enable_zitadel_mode(monkeypatch)
+
+    class _Provider:
+        def revoke_token(self, *, token: str) -> dict:
+            assert token
+            return {"revoked": True, "token_hint": token[:8]}
+
+        def introspect_token(self, *, token: str) -> dict:
+            return {"active": False, "sub": "alice@example.com"}
+
+    monkeypatch.setattr(
+        "camazotz_modules.revocation_lab.app.main.get_identity_provider",
+        lambda: _Provider(),
+    )
+    client = TestClient(app)
+    issued = _issue(client)
+    revoke = tool_call(
+        client,
+        "revocation.revoke_principal",
+        {"principal": "alice@example.com"},
+    )
+    assert revoke["_idp_provider"] == "zitadel"
+    assert revoke["_idp_revocation_hook"] == "provider.revoke_token"
+    use = tool_call(
+        client, "revocation.use_token", {"token_id": issued["token_id"]}
+    )
+    assert use["_idp_token_status"] == "inactive"
 
 
 def test_revocation_reset_clears_all() -> None:

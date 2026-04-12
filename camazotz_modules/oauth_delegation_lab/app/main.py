@@ -17,6 +17,7 @@ import threading
 import uuid
 
 from brain_gateway.app.config import get_idp_provider
+from brain_gateway.app.identity.service import get_identity_provider
 from brain_gateway.app.identity.service import normalize_claims
 from camazotz_modules.base import LabModule
 
@@ -321,6 +322,15 @@ class OAuthDelegationLab(LabModule):
 
         if difficulty == "easy":
             new_access = self._mint_exchanged_access(service)
+            if get_idp_provider() == "zitadel":
+                provider = get_identity_provider()
+                exchanged = provider.exchange_token(
+                    subject_token=principal,
+                    actor_token=None,
+                    audience=f"api://{service}",
+                    scope=tok["scope"],
+                )
+                new_access = exchanged["access_token"]
             return self._exchange_ok(
                 principal, service, tok, difficulty, new_access
             )
@@ -339,6 +349,15 @@ class OAuthDelegationLab(LabModule):
                         "_difficulty": difficulty,
                     }
             new_access = self._mint_exchanged_access(service)
+            if get_idp_provider() == "zitadel":
+                provider = get_identity_provider()
+                exchanged = provider.exchange_token(
+                    subject_token=principal,
+                    actor_token=None,
+                    audience=f"api://{service}",
+                    scope=tok["scope"],
+                )
+                new_access = exchanged["access_token"]
             return self._exchange_ok(
                 principal, service, tok, difficulty, new_access
             )
@@ -350,6 +369,15 @@ class OAuthDelegationLab(LabModule):
                 "_difficulty": difficulty,
             }
         new_access = self._mint_exchanged_access(service)
+        if get_idp_provider() == "zitadel":
+            provider = get_identity_provider()
+            exchanged = provider.exchange_token(
+                subject_token=principal,
+                actor_token=None,
+                audience=f"api://{service}",
+                scope=tok["scope"],
+            )
+            new_access = exchanged["access_token"]
         return self._exchange_ok(
             principal, service, tok, difficulty, new_access
         )

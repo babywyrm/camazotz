@@ -1,6 +1,7 @@
 from typing import Literal, get_type_hints
 
 import pytest
+import httpx
 
 from brain_gateway.app.config import get_idp_provider
 from brain_gateway.app.identity import IdentityProvider, MockIdentityProvider
@@ -162,7 +163,7 @@ def test_zitadel_provider_requires_revocation_endpoint() -> None:
         provider.revoke_token(token="t")
 
 
-def test_zitadel_provider_methods_return_typed_shapes_when_configured() -> None:
+def test_zitadel_provider_methods_return_typed_shapes_when_configured(monkeypatch) -> None:
     provider = ZitadelIdentityProvider(
         issuer_url="https://example.zitadel.cloud",
         token_endpoint="https://example/token",
@@ -171,6 +172,25 @@ def test_zitadel_provider_methods_return_typed_shapes_when_configured() -> None:
         client_id="cid",
         client_secret="secret",
     )
+
+    class _Resp:
+        def __init__(self, payload: dict[str, object]) -> None:
+            self._payload = payload
+
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict[str, object]:
+            return self._payload
+
+    def _fake_post(url: str, *, data: dict[str, str], timeout: float):
+        if "introspect" in url:
+            if data["token"] == "zitadel-live":
+                return _Resp({"active": True, "sub": "subj"})
+            return _Resp({"active": False, "sub": ""})
+        return _Resp({"access_token": "zitadel-access"})
+
+    monkeypatch.setattr(httpx, "post", _fake_post)
     cc = provider.client_credentials_token(audience="api://x", scope="openid")
     assert cc["access_token"]
     assert cc["aud"] == "api://x"
@@ -229,3 +249,77 @@ def test_get_identity_provider_falls_back_to_mock_when_zitadel_unreachable(
     monkeypatch.setenv("CAMAZOTZ_IDP_TOKEN_ENDPOINT", "https://issuer.example/oauth/v2/token")
     p = get_identity_provider()
     assert isinstance(p, MockIdentityProviderDirect)
+
+
+def test_zitadel_provider_client_credentials_uses_token_endpoint(monkeypatch) -> None:
+    provider = ZitadelIdentityProvider(
+        issuer_url="https://example.zitadel.cloud",
+        token_endpoint="https://example/token",
+        introspection_endpoint="https://example/introspect",
+        revocation_endpoint="https://example/revoke",
+        client_id="cid",
+        client_secret="secret",
+    )
+    called: dict[str, object] = {}
+
+    class _Resp:
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict[str, str]:
+            return {"access_token": "real-access"}
+
+    def _fake_post(url: str, *, data: dict[str, str], timeout: float):
+        called["url"] = url
+        called["data"] = data
+        called["timeout"] = timeout
+        return _Resp()
+
+    monkeypatch.setattr(httpx, "post", _fake_post)
+    out = provider.client_credentials_token(audience="api://cam", scope="openid profile")
+    assert out["access_token"] == "real-access"
+    assert out["aud"] == "api://cam"
+    assert out["scope"] == "openid profile"
+    assert called["url"] == "https://example/token"
+    assert called["data"] == {
+        "grant_type": "client_credentials",
+        "client_id": "cid",
+        "client_secret": "secret",
+        "audience": "api://cam",
+        "scope": "openid profile",
+    }
+
+
+def test_zitadel_provider_introspection_uses_endpoint(monkeypatch) -> None:
+    provider = ZitadelIdentityProvider(
+        issuer_url="https://example.zitadel.cloud",
+        token_endpoint="https://example/token",
+        introspection_endpoint="https://example/introspect",
+        revocation_endpoint="https://example/revoke",
+        client_id="cid",
+        client_secret="secret",
+    )
+    called: dict[str, object] = {}
+
+    class _Resp:
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict[str, object]:
+            return {"active": True, "sub": "alice@example.com"}
+
+    def _fake_post(url: str, *, data: dict[str, str], timeout: float):
+        called["url"] = url
+        called["data"] = data
+        called["timeout"] = timeout
+        return _Resp()
+
+    monkeypatch.setattr(httpx, "post", _fake_post)
+    out = provider.introspect_token(token="token-123")
+    assert out == {"active": True, "sub": "alice@example.com"}
+    assert called["url"] == "https://example/introspect"
+    assert called["data"] == {
+        "token": "token-123",
+        "client_id": "cid",
+        "client_secret": "secret",
+    }

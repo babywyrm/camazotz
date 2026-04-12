@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import httpx
+
 from brain_gateway.app.config import (
     get_idp_client_id,
     get_idp_client_secret,
@@ -59,8 +61,24 @@ class ZitadelIdentityProvider:
         self, *, audience: str, scope: str
     ) -> ClientCredentialsTokenResponse:
         self._require_token_endpoint()
+        response = httpx.post(
+            self.token_endpoint,
+            data={
+                "grant_type": "client_credentials",
+                "client_id": self.client_id,
+                "client_secret": self.client_secret,
+                "audience": audience,
+                "scope": scope,
+            },
+            timeout=5.0,
+        )
+        response.raise_for_status()
+        payload = response.json()
+        access_token = payload.get("access_token")
+        if not isinstance(access_token, str) or not access_token:
+            raise ValueError("Zitadel token endpoint returned no access token")
         return {
-            "access_token": "zitadel-placeholder",
+            "access_token": access_token,
             "aud": audience,
             "scope": scope,
         }
@@ -74,8 +92,24 @@ class ZitadelIdentityProvider:
         scope: str,
     ) -> ExchangeTokenResponse:
         self._require_token_endpoint()
+        data = {
+            "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+            "client_id": self.client_id,
+            "client_secret": self.client_secret,
+            "subject_token": subject_token,
+            "audience": audience,
+            "scope": scope,
+        }
+        if actor_token:
+            data["actor_token"] = actor_token
+        response = httpx.post(self.token_endpoint, data=data, timeout=5.0)
+        response.raise_for_status()
+        payload = response.json()
+        access_token = payload.get("access_token")
+        if not isinstance(access_token, str) or not access_token:
+            raise ValueError("Zitadel token exchange returned no access token")
         return {
-            "access_token": "zitadel-exchanged-placeholder",
+            "access_token": access_token,
             "aud": audience,
             "scope": scope,
             "act": actor_token,
@@ -85,10 +119,34 @@ class ZitadelIdentityProvider:
     def introspect_token(self, *, token: str) -> IntrospectTokenResponse:
         if not self.introspection_endpoint:
             raise ValueError("Missing introspection endpoint")
-        return {"active": token.startswith("zitadel-"), "sub": ""}
+        response = httpx.post(
+            self.introspection_endpoint,
+            data={
+                "token": token,
+                "client_id": self.client_id,
+                "client_secret": self.client_secret,
+            },
+            timeout=5.0,
+        )
+        response.raise_for_status()
+        payload = response.json()
+        return {
+            "active": bool(payload.get("active", False)),
+            "sub": payload.get("sub", "") if isinstance(payload.get("sub", ""), str) else "",
+        }
 
     def revoke_token(self, *, token: str) -> RevokeTokenResponse:
         if not self.revocation_endpoint:
             raise ValueError("Missing revocation endpoint")
+        response = httpx.post(
+            self.revocation_endpoint,
+            data={
+                "token": token,
+                "client_id": self.client_id,
+                "client_secret": self.client_secret,
+            },
+            timeout=5.0,
+        )
+        response.raise_for_status()
         hint = token[:8] if len(token) >= 8 else token
         return {"revoked": True, "token_hint": hint}

@@ -16,6 +16,7 @@ import time
 import uuid
 
 from brain_gateway.app.config import get_idp_provider
+from brain_gateway.app.identity.service import get_identity_provider
 from camazotz_modules.base import LabModule
 
 
@@ -56,10 +57,19 @@ class RevocationLab(LabModule):
             return {}
         return {"_idp_provider": "zitadel"}
 
-    def _idp_use_tags(self) -> dict:
+    def _idp_use_tags(self, *, access_token: str | None = None) -> dict:
         if get_idp_provider() != "zitadel":
             return {}
-        return {"_idp_token_status": "local_store_only"}
+        if not access_token:
+            return {"_idp_token_status": "token_missing"}
+        provider = get_identity_provider()
+        try:
+            introspection = provider.introspect_token(token=access_token)
+        except Exception:
+            return {"_idp_token_status": "introspection_error"}
+        return {
+            "_idp_token_status": "active" if introspection.get("active") else "inactive"
+        }
 
     # -- MCP resources --------------------------------------------------------
 
@@ -226,8 +236,14 @@ class RevocationLab(LabModule):
             "_difficulty": difficulty,
         }
         if get_idp_provider() == "zitadel":
+            provider = get_identity_provider()
+            for tid in revoked_ids:
+                with self._lock:
+                    access_token = self._tokens.get(tid, {}).get("access_token", "")
+                if access_token:
+                    provider.revoke_token(token=access_token)
             out["_idp_provider"] = "zitadel"
-            out["_idp_revocation_hook"] = "revocation_endpoint"
+            out["_idp_revocation_hook"] = "provider.revoke_token"
         return out
 
     def _use_token(self, arguments: dict) -> dict:
@@ -259,7 +275,7 @@ class RevocationLab(LabModule):
                     ),
                     "_difficulty": difficulty,
                 }
-                out.update(self._idp_use_tags())
+                out.update(self._idp_use_tags(access_token=tok["access_token"]))
                 return out
             out = {
                 "valid": True,
@@ -267,7 +283,7 @@ class RevocationLab(LabModule):
                 "principal": tok["principal"],
                 "_difficulty": difficulty,
             }
-            out.update(self._idp_use_tags())
+            out.update(self._idp_use_tags(access_token=tok["access_token"]))
             return out
 
         if difficulty == "medium":
@@ -278,7 +294,7 @@ class RevocationLab(LabModule):
                     "token_id": token_id,
                     "_difficulty": difficulty,
                 }
-                out.update(self._idp_use_tags())
+                out.update(self._idp_use_tags(access_token=tok["access_token"]))
                 return out
             if tok["refresh_revoked"]:
                 out = {
@@ -291,7 +307,7 @@ class RevocationLab(LabModule):
                     ),
                     "_difficulty": difficulty,
                 }
-                out.update(self._idp_use_tags())
+                out.update(self._idp_use_tags(access_token=tok["access_token"]))
                 return out
             out = {
                 "valid": True,
@@ -299,7 +315,7 @@ class RevocationLab(LabModule):
                 "principal": tok["principal"],
                 "_difficulty": difficulty,
             }
-            out.update(self._idp_use_tags())
+            out.update(self._idp_use_tags(access_token=tok["access_token"]))
             return out
 
         if tok["revoked"] or tok["refresh_revoked"]:
@@ -309,7 +325,7 @@ class RevocationLab(LabModule):
                 "token_id": token_id,
                 "_difficulty": difficulty,
             }
-            out.update(self._idp_use_tags())
+            out.update(self._idp_use_tags(access_token=tok["access_token"]))
             return out
         out = {
             "valid": True,
@@ -317,5 +333,5 @@ class RevocationLab(LabModule):
             "principal": tok["principal"],
             "_difficulty": difficulty,
         }
-        out.update(self._idp_use_tags())
+        out.update(self._idp_use_tags(access_token=tok["access_token"]))
         return out

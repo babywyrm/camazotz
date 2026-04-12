@@ -15,6 +15,33 @@ def setup_function() -> None:
     set_difficulty("easy")
 
 
+def _enable_zitadel_mode(monkeypatch, *, access_token: str = "zitadel-at-test") -> None:
+    monkeypatch.setenv("CAMAZOTZ_IDP_PROVIDER", "zitadel")
+    monkeypatch.setenv("CAMAZOTZ_IDP_TOKEN_ENDPOINT", "http://zitadel.example/token")
+
+    class _Provider:
+        def exchange_token(
+            self,
+            *,
+            subject_token: str,
+            actor_token: str | None,
+            audience: str,
+            scope: str,
+        ) -> dict:
+            return {
+                "access_token": access_token,
+                "aud": audience,
+                "scope": scope,
+                "act": actor_token,
+                "sub": subject_token,
+            }
+
+    monkeypatch.setattr(
+        "camazotz_modules.oauth_delegation_lab.app.main.get_identity_provider",
+        lambda: _Provider(),
+    )
+
+
 def test_oauth_tools_registered() -> None:
     client = TestClient(app)
     body = rpc_call(client, "tools/list", {}, 10)
@@ -292,7 +319,7 @@ def test_oauth_lab_mock_mode_exchange_token_format_unchanged(monkeypatch) -> Non
 
 
 def test_oauth_lab_realism_mode_exchange_without_claims_json(monkeypatch) -> None:
-    monkeypatch.setenv("CAMAZOTZ_IDP_PROVIDER", "zitadel")
+    _enable_zitadel_mode(monkeypatch)
     monkeypatch.delenv("CAMAZOTZ_LAB_IDENTITY_CLAIMS_JSON", raising=False)
     client = TestClient(app)
     result = tool_call(
@@ -312,7 +339,7 @@ def test_oauth_lab_realism_mode_exchange_without_claims_json(monkeypatch) -> Non
 def test_oauth_lab_realism_mode_non_object_claims_json_skips_normalization(
     monkeypatch,
 ) -> None:
-    monkeypatch.setenv("CAMAZOTZ_IDP_PROVIDER", "zitadel")
+    _enable_zitadel_mode(monkeypatch)
     monkeypatch.setenv("CAMAZOTZ_LAB_IDENTITY_CLAIMS_JSON", "[1, 2]")
     client = TestClient(app)
     result = tool_call(
@@ -331,7 +358,7 @@ def test_oauth_lab_realism_mode_non_object_claims_json_skips_normalization(
 def test_oauth_lab_realism_mode_invalid_claims_json_skips_normalization(
     monkeypatch,
 ) -> None:
-    monkeypatch.setenv("CAMAZOTZ_IDP_PROVIDER", "zitadel")
+    _enable_zitadel_mode(monkeypatch)
     monkeypatch.setenv("CAMAZOTZ_LAB_IDENTITY_CLAIMS_JSON", "not-json")
     client = TestClient(app)
     result = tool_call(
@@ -349,7 +376,7 @@ def test_oauth_lab_realism_mode_invalid_claims_json_skips_normalization(
 
 
 def test_oauth_lab_realism_mode_exchange_uses_normalized_identity(monkeypatch) -> None:
-    monkeypatch.setenv("CAMAZOTZ_IDP_PROVIDER", "zitadel")
+    _enable_zitadel_mode(monkeypatch, access_token="zitadel-at-realism")
     monkeypatch.setenv(
         "CAMAZOTZ_LAB_IDENTITY_CLAIMS_JSON",
         (
@@ -371,12 +398,56 @@ def test_oauth_lab_realism_mode_exchange_uses_normalized_identity(monkeypatch) -
     )
     assert result["exchanged"] is True
     assert result["_idp_provider"] == "zitadel"
-    assert result["access_token"].startswith("zitadel-at-")
+    assert result["access_token"] == "zitadel-at-realism"
     norm = result["_normalized_identity"]
     assert norm["sub"] == "alice@example.com"
     assert norm["env"] == "nuc"
     assert norm["tenant_id"] == "tenant-z"
     assert "repo" in norm["scope"].split()
+
+
+def test_oauth_lab_realism_mode_uses_identity_provider_exchange(monkeypatch) -> None:
+    monkeypatch.setenv("CAMAZOTZ_IDP_PROVIDER", "zitadel")
+    monkeypatch.setenv("CAMAZOTZ_IDP_TOKEN_ENDPOINT", "http://zitadel.example/token")
+
+    class _Provider:
+        def exchange_token(
+            self,
+            *,
+            subject_token: str,
+            actor_token: str | None,
+            audience: str,
+            scope: str,
+        ) -> dict:
+            assert subject_token == "alice@example.com"
+            assert actor_token is None
+            assert audience == "api://github"
+            assert scope == "repo,read:org"
+            return {
+                "access_token": "zitadel-provider-access",
+                "aud": audience,
+                "scope": scope,
+                "act": actor_token,
+                "sub": subject_token,
+            }
+
+    monkeypatch.setattr(
+        "camazotz_modules.oauth_delegation_lab.app.main.get_identity_provider",
+        lambda: _Provider(),
+    )
+    client = TestClient(app)
+    result = tool_call(
+        client,
+        "oauth.exchange_token",
+        {
+            "principal": "alice@example.com",
+            "service": "github",
+            "refresh_token": "anything",
+        },
+    )
+    assert result["exchanged"] is True
+    assert result["access_token"] == "zitadel-provider-access"
+    assert result["_idp_provider"] == "zitadel"
 
 
 def test_oauth_reset_restores_tokens() -> None:
