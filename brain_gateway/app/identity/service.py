@@ -45,10 +45,27 @@ def _zitadel_is_reachable(provider: ZitadelIdentityProvider) -> bool:
 def get_identity_provider() -> IdentityProvider:
     if get_idp_provider() == "zitadel":
         provider = ZitadelIdentityProvider.from_env()
-        # Fail open to mock when ZITADEL settings are incomplete.
         if provider.token_endpoint and _zitadel_is_reachable(provider):
             return provider
     return MockIdentityProvider()
+
+
+def is_idp_degraded() -> bool:
+    """True when configured for zitadel but runtime fell back to mock."""
+    return get_idp_provider() == "zitadel" and isinstance(
+        get_identity_provider(), MockIdentityProvider
+    )
+
+
+def idp_status() -> dict[str, object]:
+    """Canonical IDP status block for inclusion in /config and tool responses."""
+    provider_name = get_idp_provider()
+    degraded = is_idp_degraded()
+    return {
+        "idp_provider": provider_name,
+        "idp_degraded": degraded,
+        "idp_reason": "zitadel_unreachable" if degraded else "ok",
+    }
 
 
 def normalize_claims(raw: dict, *, env: str, tenant_id: str) -> NormalizedClaimsEnvelope:

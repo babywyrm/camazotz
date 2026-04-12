@@ -110,6 +110,8 @@ def test_gateway_config_get() -> None:
     assert "idp_provider" in data
     assert "idp_backed_labs" in data
     assert "idp_backed_tools" in data
+    assert "idp_degraded" in data
+    assert "idp_reason" in data
 
 
 def test_config_exposes_idp_provider(monkeypatch) -> None:

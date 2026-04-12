@@ -7,10 +7,10 @@ All identity-related settings are optional, but deployment defaults now set `CAM
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `CAMAZOTZ_IDP_PROVIDER` | `zitadel` (deployment), `mock` (code fallback) | `mock` or `zitadel`. Any other value → `mock`. If set to `zitadel` but token endpoint is empty or IdP host is unreachable, runtime falls back to `mock`. |
-| `CAMAZOTZ_IDP_ISSUER_URL` | (empty) | Issuer URL string (metadata discovery is not implemented; this is for alignment and future use). |
-| `CAMAZOTZ_IDP_TOKEN_ENDPOINT` | (empty) | Required by stub `client_credentials_token` / `exchange_token` when provider is `zitadel` (non-empty string). |
-| `CAMAZOTZ_IDP_INTROSPECTION_ENDPOINT` | (empty) | Required by stub `introspect_token` when invoked. |
-| `CAMAZOTZ_IDP_REVOCATION_ENDPOINT` | (empty) | Required by stub `revoke_token` when invoked. |
+| `CAMAZOTZ_IDP_ISSUER_URL` | (empty) | Issuer URL string (used for health probes; metadata discovery not implemented). |
+| `CAMAZOTZ_IDP_TOKEN_ENDPOINT` | (empty) | Required for live `client_credentials_token` / `exchange_token` HTTP calls when provider is `zitadel`. |
+| `CAMAZOTZ_IDP_INTROSPECTION_ENDPOINT` | (empty) | Required for live `introspect_token` HTTP calls when invoked by IDP-backed labs. |
+| `CAMAZOTZ_IDP_REVOCATION_ENDPOINT` | (empty) | Required for live `revoke_token` HTTP calls when invoked by IDP-backed labs. |
 | `CAMAZOTZ_IDP_CLIENT_ID` | (empty) | Client id for future live HTTP calls. |
 | `CAMAZOTZ_IDP_CLIENT_SECRET` | (empty) | Client secret; **treat as sensitive**. |
 
@@ -52,4 +52,4 @@ Used when `CAMAZOTZ_IDP_PROVIDER=zitadel` to inject **synthetic** identity-shape
 
 ## Runtime visibility
 
-`GET http://<gateway>:8080/config` returns JSON including `"idp_provider": "mock"` or `"zitadel"`. `PUT /config` only updates difficulty today; it does **not** change `idp_provider` (provider comes from environment).
+`GET http://<gateway>:8080/config` returns JSON including `idp_provider`, `idp_degraded`, `idp_reason`, `idp_backed_labs`, and `idp_backed_tools`. `PUT /config` only updates difficulty; `idp_provider` comes from environment.

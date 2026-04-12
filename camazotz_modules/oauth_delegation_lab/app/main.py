@@ -92,7 +92,7 @@ class OAuthDelegationLab(LabModule):
         if get_idp_provider() != "zitadel":
             return {}
         raw_json = os.getenv("CAMAZOTZ_LAB_IDENTITY_CLAIMS_JSON", "").strip()
-        out: dict = {"_idp_provider": "zitadel"}
+        out: dict = {"_idp_provider": "zitadel", "_idp_backed": True}
         if not raw_json:
             return out
         try:
@@ -109,6 +109,24 @@ class OAuthDelegationLab(LabModule):
             )
         return out
 
+    def _try_provider_exchange(
+        self, principal: str, service: str, scope: str, fallback_access: str,
+    ) -> tuple[str, bool]:
+        """Attempt provider-backed exchange; return (access_token, degraded)."""
+        if get_idp_provider() != "zitadel":
+            return fallback_access, False
+        try:
+            provider = get_identity_provider()
+            exchanged = provider.exchange_token(
+                subject_token=principal,
+                actor_token=None,
+                audience=f"api://{service}",
+                scope=scope,
+            )
+            return exchanged["access_token"], False
+        except Exception:
+            return fallback_access, True
+
     def _mint_exchanged_access(self, service: str) -> str:
         if get_idp_provider() == "zitadel":
             return f"zitadel-at-{uuid.uuid4().hex[:12]}"
@@ -121,6 +139,8 @@ class OAuthDelegationLab(LabModule):
         tok: dict,
         difficulty: str,
         new_access: str,
+        *,
+        degraded: bool = False,
     ) -> dict:
         with self._lock:
             self._store[principal][service]["access_token"] = new_access
@@ -131,6 +151,9 @@ class OAuthDelegationLab(LabModule):
             "_difficulty": difficulty,
         }
         out.update(self._zitadel_exchange_extras())
+        if degraded:
+            out["_idp_degraded"] = True
+            out["_idp_reason"] = "provider_call_failed"
         return out
 
     # -- MCP resources --------------------------------------------------------
@@ -322,17 +345,12 @@ class OAuthDelegationLab(LabModule):
 
         if difficulty == "easy":
             new_access = self._mint_exchanged_access(service)
-            if get_idp_provider() == "zitadel":
-                provider = get_identity_provider()
-                exchanged = provider.exchange_token(
-                    subject_token=principal,
-                    actor_token=None,
-                    audience=f"api://{service}",
-                    scope=tok["scope"],
-                )
-                new_access = exchanged["access_token"]
+            new_access, degraded = self._try_provider_exchange(
+                principal, service, tok["scope"], new_access,
+            )
             return self._exchange_ok(
-                principal, service, tok, difficulty, new_access
+                principal, service, tok, difficulty, new_access,
+                degraded=degraded,
             )
 
         if difficulty == "medium":
@@ -349,17 +367,12 @@ class OAuthDelegationLab(LabModule):
                         "_difficulty": difficulty,
                     }
             new_access = self._mint_exchanged_access(service)
-            if get_idp_provider() == "zitadel":
-                provider = get_identity_provider()
-                exchanged = provider.exchange_token(
-                    subject_token=principal,
-                    actor_token=None,
-                    audience=f"api://{service}",
-                    scope=tok["scope"],
-                )
-                new_access = exchanged["access_token"]
+            new_access, degraded = self._try_provider_exchange(
+                principal, service, tok["scope"], new_access,
+            )
             return self._exchange_ok(
-                principal, service, tok, difficulty, new_access
+                principal, service, tok, difficulty, new_access,
+                degraded=degraded,
             )
 
         if refresh_token != tok["refresh_token"]:
@@ -369,17 +382,12 @@ class OAuthDelegationLab(LabModule):
                 "_difficulty": difficulty,
             }
         new_access = self._mint_exchanged_access(service)
-        if get_idp_provider() == "zitadel":
-            provider = get_identity_provider()
-            exchanged = provider.exchange_token(
-                subject_token=principal,
-                actor_token=None,
-                audience=f"api://{service}",
-                scope=tok["scope"],
-            )
-            new_access = exchanged["access_token"]
+        new_access, degraded = self._try_provider_exchange(
+            principal, service, tok["scope"], new_access,
+        )
         return self._exchange_ok(
-            principal, service, tok, difficulty, new_access
+            principal, service, tok, difficulty, new_access,
+            degraded=degraded,
         )
 
     def _call_downstream(self, arguments: dict) -> dict:

@@ -321,6 +321,7 @@ def test_rbac_lab_realism_merge_skipped_when_groups_only_separators(
 
 def test_rbac_lab_realism_check_membership_merges_groups(monkeypatch) -> None:
     monkeypatch.setenv("CAMAZOTZ_IDP_PROVIDER", "zitadel")
+    monkeypatch.setenv("CAMAZOTZ_IDP_TOKEN_ENDPOINT", "http://zitadel.example/token")
     monkeypatch.setenv("CAMAZOTZ_LAB_IDENTITY_SUB", "alice@example.com")
     monkeypatch.setenv("CAMAZOTZ_LAB_IDENTITY_GROUPS", "sre-oncall")
     client = TestClient(app)
@@ -333,6 +334,7 @@ def test_rbac_lab_realism_check_membership_merges_groups(monkeypatch) -> None:
 
 def test_rbac_lab_realism_mode_merges_claim_groups_for_principal(monkeypatch) -> None:
     monkeypatch.setenv("CAMAZOTZ_IDP_PROVIDER", "zitadel")
+    monkeypatch.setenv("CAMAZOTZ_IDP_TOKEN_ENDPOINT", "http://zitadel.example/token")
     monkeypatch.setenv("CAMAZOTZ_LAB_IDENTITY_SUB", "alice@example.com")
     monkeypatch.setenv("CAMAZOTZ_LAB_IDENTITY_GROUPS", "sre-oncall")
     set_difficulty("hard")

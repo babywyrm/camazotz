@@ -5,6 +5,43 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## IDP Trio Rollout — Live ZITADEL Identity Flows (2026-04-12)
+
+### Identity Provider Integration
+- **Self-hosted ZITADEL** deployed as first-class service in both Docker
+  Compose and K3s/Helm stacks (`zitadel` + `zitadel-postgres`).
+- **Live HTTP provider calls** for client credentials, token exchange
+  (RFC 8693), introspection, and revocation via `ZitadelIdentityProvider`.
+- **Graceful degradation** — if ZITADEL is unreachable or misconfigured,
+  IDP-backed labs fall back to mock/synthetic behavior with explicit
+  `_idp_degraded` + `_idp_reason` markers in tool responses.
+
+### IDP-Backed Challenge Trio
+- **`oauth_delegation_lab`** — token exchange now calls provider when
+  `idp_provider=zitadel`; falls back gracefully on failure.
+- **`revocation_lab`** — revoke and introspect hooks now call provider;
+  introspection errors produce clear degraded markers.
+- **`rbac_lab`** — group membership merges IDP claims when configured.
+- All trio tool responses include `_idp_backed: true` when IDP mode is
+  active, making it machine-readable which flows are provider-backed.
+
+### UI Visibility
+- **Global IDP status strip** on every page (provider pill + backed tools
+  list + degraded state indicator).
+- **Operator Console** shows IDP-backed lab card badges and per-step
+  IDP-backed/degraded badges in walkthrough player.
+- **Gateway `/config`** now returns `idp_degraded`, `idp_reason`,
+  `idp_backed_labs`, and `idp_backed_tools` fields.
+
+### Testing & Tooling
+- **`tests/test_zitadel_flows.py`** — dedicated test suite covering
+  active provider paths, degraded fallback, and cloud-brain compatibility.
+- **`make test-zitadel-flows`** — run ZITADEL flow tests standalone.
+- **`make smoke-local-identity-llm`** / **`make smoke-k8s-identity-llm`**
+  — combined identity + LLM smoke probes for both environments.
+
+---
+
 ## Threat Map, Walkthrough Links & Observer Improvements (2026-04-08)
 
 ### Threat Map

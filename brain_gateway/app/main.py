@@ -21,6 +21,7 @@ from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 
 from brain_gateway.app.config import get_difficulty, get_idp_provider, set_difficulty, show_tokens
+from brain_gateway.app.identity.service import idp_status
 from brain_gateway.app.mcp_handlers import handle_rpc
 from brain_gateway.app.rate_limit import TokenBucketLimiter
 from brain_gateway.app.models import JsonRpcRequest
@@ -120,10 +121,13 @@ def health() -> dict[str, str]:
 @app.get("/config")
 def get_config() -> dict[str, object]:
     """Return current runtime configuration."""
+    status = idp_status()
     return {
         "difficulty": get_difficulty(),
         "show_tokens": show_tokens(),
-        "idp_provider": get_idp_provider(),
+        "idp_provider": status["idp_provider"],
+        "idp_degraded": status["idp_degraded"],
+        "idp_reason": status["idp_reason"],
         "idp_backed_labs": list(IDP_BACKED_LABS),
         "idp_backed_tools": list(IDP_BACKED_TOOLS),
     }

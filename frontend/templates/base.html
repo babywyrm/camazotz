@@ -131,6 +131,14 @@ code,pre{font-family:var(--font-mono)}
 .badge-accent{background:var(--accent-glow);color:var(--accent2);border:1px solid rgba(220,38,38,.2)}
 
 .glow-line{height:1px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:.3;margin:2rem 0}
+.idp-global-strip{display:none;align-items:center;justify-content:center;gap:.5rem;flex-wrap:wrap;
+  padding:.35rem .8rem;font-size:.68rem;background:var(--bg2);border-bottom:1px solid var(--border)}
+.idp-global-strip.visible{display:flex}
+.idp-global-pill{padding:.15rem .45rem;border-radius:999px;font-weight:700;letter-spacing:.03em}
+.idp-global-pill.on{background:rgba(34,197,94,.15);color:#86efac;border:1px solid rgba(34,197,94,.25)}
+.idp-global-pill.off{background:var(--surface);color:var(--text2);border:1px solid var(--border)}
+.idp-global-pill.degraded{background:rgba(251,191,36,.12);color:#facc15;border:1px solid rgba(251,191,36,.2)}
+.idp-global-tools{color:var(--text2)}
 
 .btn-primary{background:var(--accent);color:#fff;padding:.7rem 1.6rem;border-radius:10px;
   font-weight:600;font-size:.9rem;transition:all .25s;border:none;cursor:pointer;display:inline-block}
@@ -184,6 +192,11 @@ code,pre{font-family:var(--font-mono)}
   </div>
 </nav>
 
+<div class="idp-global-strip" id="idpStrip">
+  <span class="idp-global-pill" id="idpPill"></span>
+  <span class="idp-global-tools" id="idpTools"></span>
+</div>
+
 {% block content %}{% endblock %}
 
 <footer class="footer">
@@ -204,6 +217,19 @@ code,pre{font-family:var(--font-mono)}
       document.getElementById('diffSelect').value=d.difficulty;
       const dot=document.getElementById('diffDot');
       dot.className='diff-dot '+d.difficulty;
+    }
+    var strip=document.getElementById('idpStrip');
+    var pill=document.getElementById('idpPill');
+    var tools=document.getElementById('idpTools');
+    if(d.idp_provider&&strip&&pill){
+      var prov=d.idp_provider;
+      var deg=d.idp_degraded;
+      pill.textContent='IDP: '+prov;
+      pill.className='idp-global-pill '+(prov==='zitadel'?(deg?'degraded':'on'):'off');
+      var backed=d.idp_backed_tools||[];
+      tools.textContent=backed.length?('IDP-backed: '+backed.join(', ')):'';
+      if(deg)tools.textContent+=' (degraded: '+(d.idp_reason||'fallback')+')';
+      strip.classList.add('visible');
     }
   }).catch(()=>{});
 })();

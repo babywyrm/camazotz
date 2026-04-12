@@ -80,7 +80,7 @@ To mirror local `CAMAZOTZ_LAB_IDENTITY_*` injection, add equivalent env entries 
 | `smoke-k8s-identity` connection refused | Wrong `K8S_HOST`, NodePort, or firewall | `kubectl get svc -n camazotz`, verify portal/gateway exposure |
 | `/config` shows `mock` in cluster | `idpProvider` not updated or old pod | `helm get values camazotz -n camazotz`, rollout restart |
 | Secret not mounted | `secrets.idpClientSecret` empty in chart | Set in values or external secret operator |
-| Identity smoke passes but ZITADEL “unused” | Expected | Smoke only checks `idp_provider` field; no live IdP call |
+| `_idp_degraded: true` in tool responses | ZITADEL unreachable from cluster | Check ZITADEL pod: `kubectl -n camazotz exec deploy/zitadel -- /app/zitadel ready`; trio falls back to mock gracefully |
 | `make smoke-k8s-llm` fails | Brain provider credentials missing in cluster | Set `secrets.anthropicApiKey` or Bedrock/AWS env per [deploy/README.md](../../deploy/README.md) |
 
 ## Rollback

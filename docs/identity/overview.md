@@ -6,12 +6,14 @@ Camazotz can run with a **mock** identity layer or a **ZITADEL-shaped** **realis
 
 | Layer | `mock` | `zitadel` |
 |--------|------------------|-----------|
-| Gateway `/config` | Reports `idp_provider: "mock"` | Reports `idp_provider: "zitadel"` |
+| Gateway `/config` | Reports `idp_provider: "mock"`, `idp_degraded: false` | Reports `idp_provider: "zitadel"`, `idp_degraded` true/false, `idp_backed_labs`, `idp_backed_tools` |
 | Deployment | No IdP pod required | Compose/Helm deploy `zitadel` + `zitadel-postgres` services by default. |
-| `ZitadelIdentityProvider` | Not used | Loaded from env; current provider path returns placeholder token/introspection/revocation shapes and uses fail-open checks. |
-| Labs (`oauth_delegation_lab`, `rbac_lab`, `revocation_lab`) | Original synthetic tokens and logic | Extra branches: different token prefixes, optional **injected** claims via lab env vars (simulating normalized identity context). |
+| `ZitadelIdentityProvider` | Not used | Live HTTP calls to ZITADEL token/introspect/revoke endpoints. |
+| IDP-backed trio | Synthetic tokens only | `oauth_delegation_lab`: provider-backed token exchange. `revocation_lab`: provider-backed revoke + introspect. `rbac_lab`: IDP-aware group mapping. |
+| Graceful degradation | N/A | On provider failure, trio falls back to mock/synthetic behavior and tags responses with `_idp_degraded: true` + `_idp_reason`. |
+| UI visibility | No IDP indicators | Global IDP status strip on all pages; per-step IDP-backed/degraded badges in Operator walkthroughs; IDP-backed lab card badges. |
 
-**Important:** Authorization Code + PKCE, refresh, RFC 8693 token exchange, and full live introspection/revocation integration remain ongoing work. Treat current `zitadel` mode as **self-hosted IdP deployment + realism hooks + fail-open safety**, not complete OAuth feature parity.
+**Important:** Authorization Code + PKCE, refresh, and full browser OAuth login remain future work. Current `zitadel` mode provides live token lifecycle operations for the IDP-backed trio, with graceful fallback to mock when the provider is unreachable.
 
 ## Trust boundaries (target architecture)
 
@@ -25,13 +27,15 @@ Today, step 1 is **not** wired inside Camazotz: there is no built-in browser OAu
 
 ## Provider selection
 
-- **`CAMAZOTZ_IDP_PROVIDER=zitadel`** — deployment default for realism branches and the stub `ZitadelIdentityProvider`.
+- **`CAMAZOTZ_IDP_PROVIDER=zitadel`** — deployment default; enables live HTTP token/introspect/revoke calls via `ZitadelIdentityProvider` for the IDP-backed trio.
 - **`CAMAZOTZ_IDP_PROVIDER=mock`** — deterministic fallback mode for CI and local testing.
 - If `CAMAZOTZ_IDP_PROVIDER=zitadel` but required config is incomplete (currently token endpoint), provider selection falls back to **`mock`**.
 
 ## Smoke checks
 
-- **`make smoke-local-identity`** / **`make smoke-k8s-identity`** — assert the gateway answers `GET /config` with `idp_provider` ∈ `{"mock","zitadel"}`. They do **not** prove live ZITADEL connectivity.
+- **`make smoke-local-identity`** / **`make smoke-k8s-identity`** — assert the gateway answers `GET /config` with `idp_provider` ∈ `{"mock","zitadel"}`.
+- **`make smoke-local-identity-llm`** / **`make smoke-k8s-identity-llm`** — identity probe + LLM-backed tool call to verify cloud brain + IDP coexistence.
+- **`make test-zitadel-flows`** — dedicated test suite for IDP-backed trio behavior (active + degraded paths).
 
 ## Further reading
 

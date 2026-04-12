@@ -272,6 +272,8 @@ class RbacLab(LabModule):
             "groups": user_groups,
             "_difficulty": difficulty,
         }
+        if get_idp_provider() == "zitadel":
+            out["_idp_backed"] = True
         if idp_merge:
             out["_idp_group_merge"] = True
         return out
@@ -353,6 +355,8 @@ class RbacLab(LabModule):
             "group_count": len(groups),
             "_difficulty": self.difficulty,
         }
+        if get_idp_provider() == "zitadel":
+            out["_idp_backed"] = True
         if idp_merge:
             out["_idp_group_merge"] = True
         return out

@@ -55,20 +55,26 @@ class RevocationLab(LabModule):
     def _idp_issue_tags(self) -> dict:
         if get_idp_provider() != "zitadel":
             return {}
-        return {"_idp_provider": "zitadel"}
+        return {"_idp_provider": "zitadel", "_idp_backed": True}
 
     def _idp_use_tags(self, *, access_token: str | None = None) -> dict:
         if get_idp_provider() != "zitadel":
             return {}
         if not access_token:
-            return {"_idp_token_status": "token_missing"}
+            return {"_idp_token_status": "token_missing", "_idp_backed": True}
         provider = get_identity_provider()
         try:
             introspection = provider.introspect_token(token=access_token)
         except Exception:
-            return {"_idp_token_status": "introspection_error"}
+            return {
+                "_idp_token_status": "introspection_error",
+                "_idp_backed": True,
+                "_idp_degraded": True,
+                "_idp_reason": "introspection_call_failed",
+            }
         return {
-            "_idp_token_status": "active" if introspection.get("active") else "inactive"
+            "_idp_token_status": "active" if introspection.get("active") else "inactive",
+            "_idp_backed": True,
         }
 
     # -- MCP resources --------------------------------------------------------
@@ -237,13 +243,21 @@ class RevocationLab(LabModule):
         }
         if get_idp_provider() == "zitadel":
             provider = get_identity_provider()
+            revoke_degraded = False
             for tid in revoked_ids:
                 with self._lock:
                     access_token = self._tokens.get(tid, {}).get("access_token", "")
                 if access_token:
-                    provider.revoke_token(token=access_token)
+                    try:
+                        provider.revoke_token(token=access_token)
+                    except Exception:
+                        revoke_degraded = True
             out["_idp_provider"] = "zitadel"
+            out["_idp_backed"] = True
             out["_idp_revocation_hook"] = "provider.revoke_token"
+            if revoke_degraded:
+                out["_idp_degraded"] = True
+                out["_idp_reason"] = "revocation_call_failed"
         return out
 
     def _use_token(self, arguments: dict) -> dict:

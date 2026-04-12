@@ -90,8 +90,9 @@ Fallback behavior:
 | `make status` → gateway **DOWN** | Stack not started or wrong port | `make ps`, `make logs-gateway`, then `make up` |
 | `/config` still shows `mock` | Typo in `CAMAZOTZ_IDP_PROVIDER` or container not recreated | Only `zitadel` is accepted; anything else → mock. `make down && make up` |
 | `smoke-local-identity` fails on `/config` | Gateway not reachable | Start stack first; check firewall |
-| ZITADEL vars set but “nothing calls ZITADEL” | Expected today | Stub provider does not open HTTPS OAuth/OIDC yet; see [overview](overview.md) |
-| Introspection/revocation **ValueError** in custom code | Empty endpoint env | Set `CAMAZOTZ_IDP_INTROSPECTION_ENDPOINT` / `CAMAZOTZ_IDP_REVOCATION_ENDPOINT` if you call those methods |
+| Trio labs not showing `_idp_backed` | Config or endpoint incomplete | Verify `CAMAZOTZ_IDP_PROVIDER=zitadel` and all endpoint vars are set; check `/config` for `idp_degraded` |
+| `_idp_degraded: true` in tool responses | ZITADEL unreachable | Check ZITADEL health: `curl http://localhost:8180/debug/healthz`; trio falls back to mock behavior gracefully |
+| Introspection/revocation **ValueError** | Empty endpoint env | Set `CAMAZOTZ_IDP_INTROSPECTION_ENDPOINT` / `CAMAZOTZ_IDP_REVOCATION_ENDPOINT` |
 
 ## Command reference
 

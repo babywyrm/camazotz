@@ -97,6 +97,9 @@
 .step-json-section{margin-bottom:.5rem}
 .step-json-label{font-size:.68rem;color:var(--muted);font-weight:700;text-transform:uppercase;
   letter-spacing:.04em;margin-bottom:.3rem}
+.step-idp-badge{display:inline-block;padding:.12rem .45rem;border-radius:999px;font-size:.62rem;font-weight:700;letter-spacing:.03em;margin-right:.3rem}
+.step-idp-badge.backed{background:rgba(34,197,94,.15);color:#86efac;border:1px solid rgba(34,197,94,.25)}
+.step-idp-badge.degraded{background:rgba(251,191,36,.12);color:#facc15;border:1px solid rgba(251,191,36,.2)}
 .step-json-pre{background:var(--bg2);border:1px solid var(--border);border-radius:8px;
   padding:.6rem .8rem;font-family:var(--font-mono);font-size:.7rem;color:var(--text2);
   overflow-x:auto;line-height:1.5;max-height:300px;overflow-y:auto;white-space:pre-wrap;word-break:break-all}
@@ -488,7 +491,16 @@ async function _executeStep(idx){
       +'<span class="step-title">'+_escHtml(data.title)+'</span>'
       +'<span class="step-status-icon">'+(ok?'\u2713':'\u2717')+'</span>';
 
-    var bodyHtml='<div class="step-narrative">'+_escHtml(data.narrative)+'</div>';
+    var idpBadges='';
+    try{
+      var respText=(data.response&&data.response.result&&data.response.result.content&&data.response.result.content[0])?data.response.result.content[0].text:'';
+      if(respText){var parsed=JSON.parse(respText);
+        if(parsed._idp_backed)idpBadges+='<span class="step-idp-badge backed">IDP-backed</span>';
+        if(parsed._idp_degraded)idpBadges+='<span class="step-idp-badge degraded">degraded: '+(parsed._idp_reason||'fallback')+'</span>';
+      }
+    }catch(e){}
+    var bodyHtml=(idpBadges?'<div style="margin-bottom:.5rem">'+idpBadges+'</div>':'')
+      +'<div class="step-narrative">'+_escHtml(data.narrative)+'</div>';
 
     if(!ok&&data.response&&data.response.error){
       bodyHtml+='<div class="step-error">'+_escHtml(
