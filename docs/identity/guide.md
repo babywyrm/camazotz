@@ -42,7 +42,7 @@ The `revocation.revoke_principal` tool revokes tokens, and `revocation.use_token
 
 **RBAC & Isolation Boundary Bypass (MCP-T20) -- `rbac_lab`**
 
-The `rbac.list_agents` and `rbac.trigger_agent` tools enforce group-based authorization. In `zitadel` mode, group claims can be merged from the IDP configuration. The attack surface: prefix matching, group override injection, and cross-tenant boundary violations. With a real IDP, group membership comes from an authoritative source rather than a static map.
+The `rbac.list_agents`, `rbac.trigger_agent`, and `rbac.check_membership` tools enforce group-based authorization. In `zitadel` mode, group claims can be merged from the IDP configuration. The attack surface: prefix matching, group override injection, and cross-tenant boundary violations. With a real IDP, group membership comes from an authoritative source rather than a static map.
 
 ### Graceful degradation
 
@@ -63,44 +63,55 @@ The [MCP @ Scale Golden Path](../mcp-at-scale-golden-path.md) defines the produc
 
 ### Data flow
 
-```text
-Portal (browser)
-  |
-  v
-Brain Gateway (FastAPI)
-  |-- GET /config --> { idp_provider, idp_degraded, idp_backed_labs, ... }
-  |
-  |-- tools/call --> Lab Registry
-  |     |
-  |     |-- oauth_delegation_lab
-  |     |     |-- _try_provider_exchange()
-  |     |     |     |-- [success] ZitadelIdentityProvider.exchange_token() --> ZITADEL /oauth/v2/token
-  |     |     |     |-- [failure] fallback to synthetic token + _idp_degraded=true
-  |     |
-  |     |-- revocation_lab
-  |     |     |-- revoke_principal() --> ZitadelIdentityProvider.revoke_token() --> ZITADEL /oauth/v2/revoke
-  |     |     |-- use_token() --> ZitadelIdentityProvider.introspect_token() --> ZITADEL /oauth/v2/introspect
-  |     |
-  |     |-- rbac_lab
-  |           |-- _effective_groups() --> env-based IDP claim merge
-  |
-  v
-ZITADEL (self-hosted, port 8180 local / ClusterIP 8080 k8s)
-  |
-  v
-PostgreSQL (zitadel-postgres)
+```mermaid
+flowchart LR
+    subgraph client [MCP Client]
+        Agent["AI Agent / Scanner"]
+    end
+    subgraph stack [Camazotz Stack]
+        Portal["Portal :3000"]
+        Gateway["Brain Gateway :8080"]
+        OAuthLab["oauth_delegation_lab"]
+        RevLab["revocation_lab"]
+        RBACLab["rbac_lab"]
+    end
+    subgraph idp [Identity Provider]
+        ZITADEL["ZITADEL :8180"]
+        ZDB["Postgres"]
+    end
+    Agent -->|"POST /mcp (tools/call)"| Gateway
+    Gateway --> OAuthLab
+    Gateway --> RevLab
+    Gateway --> RBACLab
+    OAuthLab -->|"token exchange"| ZITADEL
+    RevLab -->|"introspect / revoke"| ZITADEL
+    RBACLab -.->|"env-based group merge (no HTTP)"| RBACLab
+    ZITADEL --> ZDB
+    Portal -->|"GET /config"| Gateway
 ```
 
-### Provider selection
+The Portal does **not** participate in OAuth token flows today — it reads `/config` for operator visibility only. The RBAC lab merges group claims from environment variables rather than making HTTP calls to ZITADEL.
 
-```text
-get_idp_provider()               # returns "mock" or "zitadel" based on env
-  |
-  v
-get_identity_provider()           # returns ZitadelIdentityProvider or MockIdentityProvider
-  |-- if zitadel + token_endpoint set + ZITADEL reachable --> ZitadelIdentityProvider
-  |-- otherwise --> MockIdentityProvider
+### Provider selection and degradation
+
+There are two levels of degradation. **Gateway-level**: ZITADEL host is unreachable, so the entire runtime uses the mock provider and `/config` reports `idp_degraded: true`. **Per-tool**: ZITADEL is reachable but a specific HTTP call fails, so the lab falls back to a synthetic token and the tool response gets `_idp_degraded: true` with a reason string.
+
+```mermaid
+flowchart TD
+    Start["Request arrives"] --> CheckConfig{"CAMAZOTZ_IDP_PROVIDER?"}
+    CheckConfig -->|"mock or unset"| UseMock["MockIdentityProvider"]
+    CheckConfig -->|"zitadel"| CheckEndpoint{"Token endpoint set?"}
+    CheckEndpoint -->|"empty"| UseMock
+    CheckEndpoint -->|"set"| HealthProbe{"ZITADEL reachable? (10s TTL cache)"}
+    HealthProbe -->|"yes"| UseZitadel["ZitadelIdentityProvider (live HTTP)"]
+    HealthProbe -->|"no"| Degraded["MockIdentityProvider + idp_degraded=true"]
+    UseZitadel --> LabCall["Lab calls provider method"]
+    LabCall --> LabSuccess{"HTTP call succeeds?"}
+    LabSuccess -->|"yes"| TagBacked["Response: _idp_backed=true"]
+    LabSuccess -->|"no"| TagDegraded["Response: _idp_degraded=true, _idp_reason"]
 ```
+
+The health probe (`_zitadel_is_reachable`) sends a GET request to the ZITADEL host root URL with a 1-second timeout, caching the result for 10 seconds. This means degradation detection is near-instant but recovery takes up to 10 seconds after ZITADEL comes back online.
 
 ### Gateway `/config` contract
 
@@ -114,6 +125,52 @@ get_identity_provider()           # returns ZitadelIdentityProvider or MockIdent
 }
 ```
 
+### Token lifecycle in zitadel mode
+
+This sequence diagram shows the three live ZITADEL HTTP operations and which lab triggers each. Every call uses form-encoded POST with `client_id` and `client_secret` authentication and a 5-second timeout.
+
+```mermaid
+sequenceDiagram
+    participant C as MCP Client
+    participant GW as Brain Gateway
+    participant OL as oauth_delegation_lab
+    participant RL as revocation_lab
+    participant Z as ZITADEL
+
+    Note over GW,Z: Startup: health probe
+    GW->>Z: GET scheme://host/ (1s timeout, cached 10s)
+    Z-->>GW: 200 OK
+
+    Note over C,Z: oauth.exchange_token
+    C->>GW: tools/call oauth.exchange_token
+    GW->>OL: exchange_token(principal, service)
+    OL->>Z: POST /oauth/v2/token
+    Note right of Z: grant_type=urn:ietf:params:oauth:<br/>grant-type:token-exchange<br/>subject_token, audience, scope
+    Z-->>OL: {"access_token": "..."}
+    OL-->>GW: result + _idp_backed, _normalized_identity
+    GW-->>C: JSON-RPC result
+
+    Note over C,Z: revocation.use_token
+    C->>GW: tools/call revocation.use_token
+    GW->>RL: use_token(token_id)
+    RL->>Z: POST /oauth/v2/introspect
+    Note right of Z: token, client_id, client_secret
+    Z-->>RL: {"active": true/false, "sub": "..."}
+    RL-->>GW: result + _idp_token_status
+    GW-->>C: JSON-RPC result
+
+    Note over C,Z: revocation.revoke_principal
+    C->>GW: tools/call revocation.revoke_principal
+    GW->>RL: revoke_principal(principal)
+    RL->>Z: POST /oauth/v2/revoke (per token)
+    Note right of Z: token, client_id, client_secret
+    Z-->>RL: 200 OK
+    RL-->>GW: result + _idp_revocation_hook
+    GW-->>C: JSON-RPC result
+```
+
+Note that `client_credentials_token` is defined on the provider interface but is not currently invoked by any lab tool path. The three live operations are token exchange, introspection, and revocation.
+
 ### Tool response markers
 
 Every IDP-backed tool response includes:
@@ -124,6 +181,70 @@ Every IDP-backed tool response includes:
 | `_idp_provider` | string | Active provider name (`zitadel`) |
 | `_idp_degraded` | bool | Provider call failed; fell back to mock |
 | `_idp_reason` | string | Why degradation occurred |
+
+### Per-lab ZITADEL integration
+
+Each IDP-backed lab uses ZITADEL differently. This section walks through exactly what is real (live HTTP to ZITADEL), what is synthetic (lab-generated), and what happens when the provider is degraded.
+
+#### oauth_delegation_lab (MCP-T21: Confused Deputy)
+
+**Tools:** `oauth.exchange_token`, `oauth.list_connections`, `oauth.call_downstream`
+
+**ZITADEL integration:** Only `oauth.exchange_token` makes a ZITADEL HTTP call. It performs an RFC 8693 token exchange: the lab sends the principal's email as the `subject_token` to the ZITADEL token endpoint with `grant_type=urn:ietf:params:oauth:grant-type:token-exchange`. The other two tools operate entirely on the lab's in-memory token store.
+
+| Artifact | What provides it |
+|----------|-----------------|
+| Initial principal/service tokens in `TOKEN_STORE` | Synthetic (lab-generated) |
+| Exchange `access_token` | ZITADEL (real token from token endpoint) |
+| `_normalized_identity` claims envelope | Environment config (`CAMAZOTZ_LAB_IDENTITY_CLAIMS_JSON`) shaped by `normalize_claims()` |
+| Downstream validation (`call_downstream`) | Synthetic (in-memory token check) |
+
+**Degraded behavior:** If the `exchange_token` HTTP call raises an exception, the lab falls back to a locally minted `zitadel-at-{12 hex}` token string. The response includes `_idp_degraded: true` and `_idp_reason: "provider_call_failed"`. The exchange still appears to succeed from the student's perspective, but the token is synthetic.
+
+#### revocation_lab (MCP-T26: Revocation Failure)
+
+**Tools:** `revocation.issue_token`, `revocation.use_token`, `revocation.revoke_principal`
+
+**ZITADEL integration:** Two of three tools make ZITADEL HTTP calls. `revoke_principal` calls the revocation endpoint for each token being revoked. `use_token` calls the introspection endpoint to check whether a token is active. `issue_token` does **not** call ZITADEL — it mints synthetic `cztz-access-*` strings locally and only adds `_idp_provider`/`_idp_backed` metadata tags.
+
+| Artifact | What provides it |
+|----------|-----------------|
+| Issued tokens (`cztz-access-*` strings) | Synthetic (lab-generated, no ZITADEL call) |
+| Token valid/revoked state tracking | Synthetic (lab's in-memory `TOKENS` dict) |
+| Revocation confirmation | ZITADEL (real HTTP POST to `/oauth/v2/revoke`) |
+| Token active/inactive check | ZITADEL (real HTTP POST to `/oauth/v2/introspect`) |
+
+**Important subtlety:** The mock provider's `introspect_token` returns `active: true` only for tokens starting with `mock-`. Lab tokens start with `cztz-access-`, so mock introspection always returns `active: false` — the same result you get from real ZITADEL (which has no record of lab-minted tokens). The difference is that with real ZITADEL, introspection failure reflects genuine token lifecycle behavior rather than a prefix check.
+
+**Degraded behavior:** If `revoke_token` raises, the response gets `_idp_degraded: true, _idp_reason: "revocation_call_failed"`. If `introspect_token` raises, the response gets `_idp_token_status: "introspection_error"` and `_idp_degraded: true`. In both cases the lab's own valid/revoked tracking still works — degradation only affects the ZITADEL-side confirmation.
+
+#### rbac_lab (MCP-T20: RBAC Bypass)
+
+**Tools:** `rbac.list_agents`, `rbac.trigger_agent`, `rbac.check_membership`
+
+**ZITADEL integration:** The RBAC lab makes **no HTTP calls** to ZITADEL. When `idp_provider=zitadel`, it merges group claims from `CAMAZOTZ_LAB_IDENTITY_SUB` and `CAMAZOTZ_LAB_IDENTITY_GROUPS` into the effective group set when the request principal matches the configured subject. This simulates receiving group membership from an authoritative identity source.
+
+| Artifact | What provides it |
+|----------|-----------------|
+| RBAC policy and agent definitions | Synthetic (lab-generated) |
+| Group membership resolution | Env-based merge (`CAMAZOTZ_LAB_IDENTITY_GROUPS`) in zitadel mode; static config in mock mode |
+| Authorization decisions | Synthetic (lab logic) |
+| `_idp_backed` / `_idp_group_merge` tags | Present when `idp_provider=zitadel` |
+
+**Degraded behavior:** Since no HTTP calls are involved, gateway-level degradation (ZITADEL unreachable) means the provider falls back to mock, `get_idp_provider()` still returns `"zitadel"`, and group merge still activates. The RBAC lab effectively cannot degrade at the per-tool level.
+
+### Real vs synthetic: summary
+
+This table shows what each artifact looks like across the three runtime states:
+
+| Artifact | Mock mode | Zitadel mode (healthy) | Zitadel mode (degraded) |
+|----------|-----------|------------------------|------------------------|
+| Exchange `access_token` | `mock-exchanged` | Real ZITADEL token | `zitadel-at-{hex}` synthetic fallback |
+| Introspection result | `active` only for `mock-*` prefix | Live ZITADEL introspection | Exception caught, `_idp_degraded: true` |
+| Revocation | Always `revoked: true` | Real ZITADEL revocation POST | Exception caught, `_idp_degraded: true` |
+| Normalized claims | Not present | From `CAMAZOTZ_LAB_IDENTITY_CLAIMS_JSON` | Same (env-driven, not ZITADEL HTTP) |
+| RBAC groups | Static config | Merged from `CAMAZOTZ_LAB_IDENTITY_GROUPS` | Same (env-driven) |
+| `/config` status | `idp_provider: "mock"` | `idp_provider: "zitadel"`, `idp_degraded: false` | `idp_provider: "zitadel"`, `idp_degraded: true` |
 
 ---
 

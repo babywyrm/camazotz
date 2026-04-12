@@ -40,6 +40,11 @@ Today, step 1 is **not** wired inside Camazotz: there is no built-in browser OAu
 ## Further reading
 
 - [Identity Guide](guide.md) — comprehensive teaching + operations reference (start here).
+  - [Architecture and data flow](guide.md#data-flow) — how the stack connects to ZITADEL.
+  - [Token lifecycle](guide.md#token-lifecycle-in-zitadel-mode) — sequence diagram of exchange, introspect, and revoke operations.
+  - [Provider selection and degradation](guide.md#provider-selection-and-degradation) — flowchart of fallback behavior.
+  - [Per-lab integration](guide.md#per-lab-zitadel-integration) — what each lab uses from ZITADEL and what remains synthetic.
+  - [Real vs synthetic summary](guide.md#real-vs-synthetic-summary) — comparison across mock, healthy, and degraded modes.
 - [Configuration](configuration.md) — environment variables and secrets.
 - [Local runbook](local-runbook.md) — Docker Compose and troubleshooting.
 - [Kubernetes runbook](k8s-runbook.md) — Helm values and cluster checks.
