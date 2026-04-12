@@ -180,6 +180,7 @@ Edit `compose/.env` to tune behavior:
 | `CAMAZOTZ_DIFFICULTY` | `medium` | `easy`, `medium`, or `hard` (switchable live from portal) |
 | `CAMAZOTZ_SHOW_TOKENS` | `false` | Show token usage and cost |
 | `CAMAZOTZ_OLLAMA_MODEL` | `llama3.2:3b` | Ollama model name |
+| `CAMAZOTZ_IDP_PROVIDER` | `mock` | `mock` or `zitadel`; invalid values use `mock` (Zitadel integration still in progress) |
 
 See [README.md](README.md) for the full configuration reference.
 
