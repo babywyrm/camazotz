@@ -159,7 +159,7 @@ make smoke-k8s-identity K8S_HOST=10.0.0.5
 
 Override the host: `make smoke-k8s K8S_HOST=10.0.0.5`
 
-Identity modes, env vars, and troubleshooting: [docs/identity/overview.md](docs/identity/overview.md), [docs/identity/local-runbook.md](docs/identity/local-runbook.md), [docs/identity/nuc-runbook.md](docs/identity/nuc-runbook.md).
+Identity modes, env vars, and troubleshooting: [docs/identity/overview.md](docs/identity/overview.md), [docs/identity/local-runbook.md](docs/identity/local-runbook.md), [docs/identity/k8s-runbook.md](docs/identity/k8s-runbook.md).
 
 ## Common Operations
 

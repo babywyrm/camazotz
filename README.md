@@ -452,7 +452,7 @@ make help           # show all targets
 | [docs/identity/overview.md](docs/identity/overview.md) | Identity architecture: mock vs `zitadel` realism, trust boundaries, smoke probes |
 | [docs/identity/configuration.md](docs/identity/configuration.md) | `CAMAZOTZ_IDP_*` env vars, Helm values, lab injection helpers |
 | [docs/identity/local-runbook.md](docs/identity/local-runbook.md) | Docker Compose identity mode, commands, troubleshooting |
-| [docs/identity/nuc-runbook.md](docs/identity/nuc-runbook.md) | Kubernetes / NUC Helm identity mode, smoke commands, rollback |
+| [docs/identity/k8s-runbook.md](docs/identity/k8s-runbook.md) | Kubernetes Helm identity mode, smoke commands, rollback |
 | [QUICKSTART.md](QUICKSTART.md) | Setup, configuration, first run, profiles |
 | [deploy/README.md](deploy/README.md) | Helm chart, compose generation, deployment workflows |
 | [docs/scenarios.md](docs/scenarios.md) | Red/blue team exercises for every scenario |

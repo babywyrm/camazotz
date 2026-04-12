@@ -148,7 +148,7 @@ make up
 
 **Manual alternative (via ZITADEL Console):**
 
-1. Open `http://localhost:8180/ui/console` (local) or the NUC equivalent
+1. Open `http://localhost:8180/ui/console` (local) or the cluster equivalent
 2. Default login: `zitadel-admin@zitadel.localhost` / `Password1!`
 3. Navigate to Service Accounts > New
 4. Username: `camazotz-gateway`, Display name: `Camazotz Gateway`
@@ -276,7 +276,7 @@ uv run pytest -q --no-cov tests/test_oauth_delegation_lab.py tests/test_revocati
 
 # Smoke with identity + LLM
 make smoke-local-identity-llm    # local Docker Compose
-make smoke-k8s-identity-llm      # NUC / K3s
+make smoke-k8s-identity-llm      # Kubernetes cluster
 ```
 
 ### Force degraded mode (for testing)
@@ -305,6 +305,6 @@ docker compose -f compose/docker-compose.yml --env-file compose/.env start zitad
 - [Identity overview](overview.md) -- architecture summary and provider selection
 - [Configuration reference](configuration.md) -- all environment variables
 - [Local runbook](local-runbook.md) -- Docker Compose setup and troubleshooting
-- [NUC runbook](nuc-runbook.md) -- Kubernetes setup and troubleshooting
+- [Kubernetes runbook](k8s-runbook.md) -- Kubernetes setup and troubleshooting
 - [MCP @ Scale Golden Path](../mcp-at-scale-golden-path.md) -- production security architecture
 - [Design spec](../superpowers/specs/2026-04-11-zitadel-agentic-identity-design.md) -- original design decisions

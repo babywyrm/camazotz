@@ -1,11 +1,11 @@
-# NUC / Kubernetes identity runbook
+# Kubernetes identity runbook
 
 This runbook assumes a Camazotz deployment via **Helm** (`deploy/helm/camazotz`), consistent with `make helm-deploy` / `make helm-deploy-local`. Adjust namespace and release name if you use custom flags.
 
 ## Defaults
 
 - **`scripts/smoke_test.py --target k8s`** uses **`http://<K8S_HOST>:30080`** for the gateway and **`http://<K8S_HOST>:3000`** for the portal (see `SmokeTarget` in `scripts/smoke_test.py`). Map these ports on your node or load balancer to match your chart.
-- Default smoke host: **`192.168.1.114`** (override per site).
+- Override the default smoke host with `K8S_HOST=<your-node-ip>` (e.g. `K8S_HOST=10.0.0.5`).
 
 ## Mock mode
 

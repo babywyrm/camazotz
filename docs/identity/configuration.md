@@ -47,7 +47,7 @@ Used when `CAMAZOTZ_IDP_PROVIDER=zitadel` to inject **synthetic** identity-shape
 ## Secret handling
 
 - Never commit real `CAMAZOTZ_IDP_CLIENT_SECRET` or refresh tokens.
-- Prefer Kubernetes secrets or a secret manager for NUC/production-like setups.
+- Prefer Kubernetes secrets or a secret manager for cluster/production-like setups.
 - Logs: gateway and labs should not print raw tokens; if debugging, redact bearer tokens in copy-paste.
 
 ## Runtime visibility

@@ -39,7 +39,7 @@ make down && make up
 
 No config changes needed — Compose rebuilds images from source.
 
-### Kubernetes (NUC / cluster)
+### Kubernetes (cluster)
 
 ```bash
 # 1. Make your code changes
@@ -104,10 +104,10 @@ make helm-deploy
 make helm-deploy-local
 ```
 
-**Kubernetes (NUC, no local Helm):**
+**Kubernetes (remote cluster, no local Helm):**
 
 ```bash
-# Copy updated chart to NUC, then:
+# Copy updated chart to the cluster node, then:
 sudo helm upgrade --install camazotz /opt/camazotz/deploy/helm/camazotz \
   --namespace camazotz \
   --set secrets.anthropicApiKey=sk-ant-...
