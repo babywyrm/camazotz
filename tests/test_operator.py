@@ -54,6 +54,16 @@ def test_operator_page_200(frontend_client) -> None:
     assert b"Run QA Suite" in resp.data
 
 
+def test_identity_page_200(frontend_client) -> None:
+    client, _ = frontend_client
+    resp = client.get("/identity")
+    assert resp.status_code == 200
+    assert b"Identity" in resp.data
+    assert b"Provider Status" in resp.data
+    assert b"Live IDP Activity" in resp.data
+    assert b"Architecture Reference" in resp.data
+
+
 def test_operator_page_lists_modules(frontend_client) -> None:
     client, _ = frontend_client
     resp = client.get("/operator")
@@ -166,11 +176,12 @@ def test_observer_page_has_tabs(frontend_client):
     assert 'id="filterSignal"' in html
 
 
-def test_operator_no_nav_link(frontend_client) -> None:
-    """The operator page should NOT appear in the main navigation."""
+def test_operator_easter_egg_in_nav(frontend_client) -> None:
+    """The operator page is in the nav as a subtle easter egg."""
     client, _ = frontend_client
     resp = client.get("/")
-    assert b'href="/operator"' not in resp.data
+    assert b'href="/operator"' in resp.data
+    assert b'nav-op-egg' in resp.data
 
 
 def test_results_to_dict_structure() -> None:

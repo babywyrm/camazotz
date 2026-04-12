@@ -121,8 +121,10 @@ def health() -> dict[str, str]:
 @app.get("/config")
 def get_config() -> dict[str, object]:
     """Return current runtime configuration."""
+    from brain_gateway.app.identity.zitadel_provider import ZitadelIdentityProvider
+
     status = idp_status()
-    return {
+    config: dict[str, object] = {
         "difficulty": get_difficulty(),
         "show_tokens": show_tokens(),
         "idp_provider": status["idp_provider"],
@@ -131,6 +133,15 @@ def get_config() -> dict[str, object]:
         "idp_backed_labs": list(IDP_BACKED_LABS),
         "idp_backed_tools": list(IDP_BACKED_TOOLS),
     }
+    if status["idp_provider"] == "zitadel":
+        p = ZitadelIdentityProvider.from_env()
+        config["idp_endpoints"] = {
+            "issuer": p.issuer_url or "",
+            "token": p.token_endpoint or "",
+            "introspection": p.introspection_endpoint or "",
+            "revocation": p.revocation_endpoint or "",
+        }
+    return config
 
 
 class _ConfigUpdate(BaseModel):

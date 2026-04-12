@@ -1,0 +1,397 @@
+{% extends "base.html" %}
+{% block title %}Identity Dashboard — Camazotz{% endblock %}
+
+{% block extra_css %}
+<style>
+.id-hero{text-align:center;padding:2.5rem 0 1.5rem}
+.id-hero h1{font-size:2rem;font-weight:800;letter-spacing:-.03em;margin-bottom:.4rem}
+.id-hero h1 span{color:var(--green)}
+.id-hero p{color:var(--text2);font-size:.9rem;max-width:560px;margin:0 auto}
+
+.id-section{margin-bottom:2.5rem}
+.id-section-title{font-size:1.1rem;font-weight:700;margin-bottom:1rem;display:flex;align-items:center;gap:.5rem}
+.id-section-title .dot{width:8px;height:8px;border-radius:50%}
+.id-section-title .dot.ok{background:var(--green)}
+.id-section-title .dot.warn{background:var(--yellow)}
+.id-section-title .dot.off{background:var(--muted)}
+
+.id-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem}
+@media(max-width:768px){.id-grid{grid-template-columns:1fr}}
+
+.id-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem}
+.id-card-label{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:.5rem}
+.id-card-value{font-size:1.1rem;font-weight:600}
+.id-card-value.green{color:var(--green)}
+.id-card-value.yellow{color:var(--yellow)}
+.id-card-value.muted{color:var(--muted)}
+
+.id-endpoints{width:100%}
+.id-endpoints td{padding:.4rem .6rem;font-size:.78rem;font-family:var(--font-mono);border-bottom:1px solid var(--border);vertical-align:top}
+.id-endpoints td:first-child{color:var(--muted);font-weight:600;white-space:nowrap;width:110px}
+.id-endpoints td:last-child{color:var(--text2);word-break:break-all}
+
+.id-pill{display:inline-block;padding:.2rem .6rem;border-radius:999px;font-size:.72rem;font-weight:700;letter-spacing:.03em}
+.id-pill.on{background:rgba(34,197,94,.15);color:#86efac;border:1px solid rgba(34,197,94,.25)}
+.id-pill.off{background:var(--surface2);color:var(--text2);border:1px solid var(--border)}
+.id-pill.degraded{background:rgba(251,191,36,.12);color:#facc15;border:1px solid rgba(251,191,36,.2)}
+
+.id-tags{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.3rem}
+.id-tag{font-size:.7rem;padding:.15rem .45rem;border-radius:5px;background:var(--surface2);color:var(--text2);border:1px solid var(--border)}
+.id-tag.backed{background:rgba(16,185,129,.1);color:var(--green);border-color:rgba(16,185,129,.2)}
+
+.id-console-link{display:inline-flex;align-items:center;gap:.4rem;font-size:.78rem;font-weight:600;
+  color:var(--accent2);margin-top:.6rem;padding:.3rem .6rem;border:1px solid var(--border);
+  border-radius:6px;transition:all .2s}
+.id-console-link:hover{border-color:var(--accent);background:var(--accent-glow)}
+.id-console-link svg{width:12px;height:12px}
+
+.id-feed-controls{display:flex;align-items:center;gap:.8rem;margin-bottom:.8rem;flex-wrap:wrap}
+.id-feed-controls label{font-size:.78rem;color:var(--text2);display:flex;align-items:center;gap:.3rem}
+.id-feed-controls input{accent-color:var(--green)}
+.id-feed-controls select{background:var(--surface);color:var(--text);border:1px solid var(--border);
+  border-radius:6px;padding:.25rem .4rem;font-size:.72rem;font-family:inherit;cursor:pointer}
+
+.id-feed-table{width:100%;border-collapse:collapse}
+.id-feed-table th{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;
+  color:var(--muted);text-align:left;padding:.4rem .6rem;border-bottom:1px solid var(--border)}
+.id-feed-table td{padding:.4rem .6rem;font-size:.78rem;font-family:var(--font-mono);
+  border-bottom:1px solid var(--border);vertical-align:top}
+.id-feed-row:hover{background:var(--surface2)}
+.id-badge-backed{display:inline-block;padding:.12rem .4rem;border-radius:5px;font-size:.62rem;
+  font-weight:700;text-transform:uppercase;background:rgba(16,185,129,.12);color:var(--green)}
+.id-badge-degraded{display:inline-block;padding:.12rem .4rem;border-radius:5px;font-size:.62rem;
+  font-weight:700;text-transform:uppercase;background:rgba(234,179,8,.12);color:var(--yellow)}
+.id-empty{padding:1.5rem;text-align:center;color:var(--muted);font-size:.82rem}
+
+.id-ref{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem;margin-bottom:1.25rem}
+.id-ref h4{font-size:.9rem;font-weight:700;margin-bottom:.8rem}
+.id-ref p{font-size:.82rem;color:var(--text2);line-height:1.7;margin-bottom:.6rem}
+.id-ref table{width:100%;border-collapse:collapse;margin-top:.5rem}
+.id-ref th{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;
+  color:var(--muted);text-align:left;padding:.4rem .5rem;border-bottom:1px solid var(--border)}
+.id-ref td{font-size:.78rem;padding:.4rem .5rem;border-bottom:1px solid var(--border);color:var(--text2)}
+.id-ref td:first-child{color:var(--text);font-weight:500}
+.id-ref code{font-size:.72rem;background:var(--surface2);padding:.1rem .3rem;border-radius:4px}
+
+.mermaid{margin:1rem 0}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="id-hero">
+    <h1>Identity <span>Dashboard</span></h1>
+    <p>Live ZITADEL integration status, IDP-backed tool activity, and identity architecture reference.</p>
+  </div>
+
+  <!-- ─── Status Panel ─── -->
+  <div class="id-section">
+    <div class="id-section-title">
+      <span class="dot {% if idp_provider == 'zitadel' and not idp_degraded %}ok{% elif idp_degraded %}warn{% else %}off{% endif %}"></span>
+      Provider Status
+    </div>
+    <div class="id-grid">
+      <div class="id-card">
+        <div class="id-card-label">Provider Mode</div>
+        <div class="id-card-value">
+          <span class="id-pill {% if idp_provider == 'zitadel' %}{% if idp_degraded %}degraded{% else %}on{% endif %}{% else %}off{% endif %}">
+            {{ idp_provider }}
+          </span>
+          {% if idp_degraded %}
+          <span style="font-size:.78rem;color:var(--yellow);margin-left:.5rem">{{ idp_reason }}</span>
+          {% endif %}
+        </div>
+        <a href="{{ zitadel_console_url }}" target="_blank" rel="noopener" class="id-console-link">
+          ZITADEL Console
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        </a>
+      </div>
+      <div class="id-card">
+        <div class="id-card-label">IDP-Backed Labs</div>
+        <div class="id-tags">
+          {% for lab in idp_backed_labs %}
+          <span class="id-tag backed">{{ lab }}</span>
+          {% endfor %}
+        </div>
+        <div class="id-card-label" style="margin-top:.8rem">IDP-Backed Tools</div>
+        <div class="id-tags">
+          {% for tool in idp_backed_tools %}
+          <span class="id-tag backed">{{ tool }}</span>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    {% if idp_endpoints %}
+    <div class="id-card" style="margin-top:1.25rem">
+      <div class="id-card-label">ZITADEL Endpoints</div>
+      <table class="id-endpoints">
+        <tr><td>Issuer</td><td>{{ idp_endpoints.get('issuer', '—') }}</td></tr>
+        <tr><td>Token</td><td>{{ idp_endpoints.get('token', '—') }}</td></tr>
+        <tr><td>Introspection</td><td>{{ idp_endpoints.get('introspection', '—') }}</td></tr>
+        <tr><td>Revocation</td><td>{{ idp_endpoints.get('revocation', '—') }}</td></tr>
+      </table>
+    </div>
+    {% endif %}
+
+    <div class="id-card" style="margin-top:1.25rem">
+      <div class="id-card-label">Health Probe</div>
+      <div id="healthResult" style="font-size:.82rem;color:var(--muted)">Checking...</div>
+    </div>
+  </div>
+
+  <!-- ─── Live IDP Activity Feed ─── -->
+  <div class="id-section">
+    <div class="id-section-title">
+      <span class="dot ok"></span>
+      Live IDP Activity
+    </div>
+    <div class="id-feed-controls">
+      <label><input type="checkbox" id="idpAutoRefresh" onchange="toggleIdpAuto()"> Auto-refresh</label>
+      <select id="idpPollInterval" onchange="toggleIdpAuto()">
+        <option value="2000" selected>2s</option>
+        <option value="5000">5s</option>
+        <option value="10000">10s</option>
+      </select>
+      <select id="idpFilter" onchange="renderIdpFeed()">
+        <option value="all">All IDP events</option>
+        <option value="backed">IDP-backed only</option>
+        <option value="degraded">Degraded only</option>
+      </select>
+    </div>
+    <div id="idpFeedContent">
+      <div class="id-empty">No IDP events yet. Use the Playground to invoke an IDP-backed tool.</div>
+    </div>
+  </div>
+
+  <!-- ─── Teaching Reference ─── -->
+  <div class="id-section">
+    <div class="id-section-title">Architecture Reference</div>
+
+    <div class="id-ref">
+      <h4>Data Flow</h4>
+      <p>How the Camazotz stack connects to ZITADEL. Only the oauth_delegation and revocation labs make live HTTP calls. The RBAC lab merges group claims from environment variables.</p>
+      <div class="mermaid">
+flowchart LR
+    subgraph client [MCP Client]
+        Agent["AI Agent / Scanner"]
+    end
+    subgraph stack [Camazotz Stack]
+        Portal["Portal :3000"]
+        Gateway["Brain Gateway :8080"]
+        OAuthLab["oauth_delegation_lab"]
+        RevLab["revocation_lab"]
+        RBACLab["rbac_lab"]
+    end
+    subgraph idp [Identity Provider]
+        ZITADEL["ZITADEL :8180"]
+        ZDB["Postgres"]
+    end
+    Agent -->|"POST /mcp"| Gateway
+    Gateway --> OAuthLab
+    Gateway --> RevLab
+    Gateway --> RBACLab
+    OAuthLab -->|"token exchange"| ZITADEL
+    RevLab -->|"introspect / revoke"| ZITADEL
+    ZITADEL --> ZDB
+    Portal -->|"GET /config"| Gateway
+      </div>
+    </div>
+
+    <div class="id-ref">
+      <h4>Provider Selection and Degradation</h4>
+      <p>Two levels of degradation. <strong>Gateway-level</strong>: ZITADEL unreachable, entire runtime uses mock. <strong>Per-tool</strong>: ZITADEL reachable but a specific HTTP call fails, lab falls back to synthetic token.</p>
+      <div class="mermaid">
+flowchart TD
+    Start["Request arrives"] --> CheckConfig{"CAMAZOTZ_IDP_PROVIDER?"}
+    CheckConfig -->|"mock or unset"| UseMock["MockIdentityProvider"]
+    CheckConfig -->|"zitadel"| CheckEndpoint{"Token endpoint set?"}
+    CheckEndpoint -->|"empty"| UseMock
+    CheckEndpoint -->|"set"| HealthProbe{"ZITADEL reachable?"}
+    HealthProbe -->|"yes"| UseZitadel["ZitadelIdentityProvider"]
+    HealthProbe -->|"no"| Degraded["MockIdentityProvider + degraded"]
+    UseZitadel --> LabCall["Lab calls provider method"]
+    LabCall --> LabSuccess{"HTTP call succeeds?"}
+    LabSuccess -->|"yes"| TagBacked["_idp_backed: true"]
+    LabSuccess -->|"no"| TagDegraded["_idp_degraded: true"]
+      </div>
+    </div>
+
+    <div class="id-ref">
+      <h4>Token Lifecycle</h4>
+      <p>The three live ZITADEL HTTP operations and which lab triggers each. All use form-encoded POST with client_id/client_secret auth and 5s timeout.</p>
+      <div class="mermaid">
+sequenceDiagram
+    participant C as MCP Client
+    participant GW as Gateway
+    participant OL as oauth_delegation_lab
+    participant RL as revocation_lab
+    participant Z as ZITADEL
+
+    Note over GW,Z: Health probe (cached 10s)
+    GW->>Z: GET host root
+    Z-->>GW: 200 OK
+
+    C->>GW: oauth.exchange_token
+    GW->>OL: exchange(principal, service)
+    OL->>Z: POST /oauth/v2/token
+    Z-->>OL: access_token
+    OL-->>C: result + _idp_backed
+
+    C->>GW: revocation.use_token
+    GW->>RL: use_token(token_id)
+    RL->>Z: POST /oauth/v2/introspect
+    Z-->>RL: active true/false
+    RL-->>C: result + _idp_token_status
+
+    C->>GW: revocation.revoke_principal
+    GW->>RL: revoke(principal)
+    RL->>Z: POST /oauth/v2/revoke
+    Z-->>RL: 200 OK
+    RL-->>C: result + _idp_revocation_hook
+      </div>
+    </div>
+
+    <div class="id-ref">
+      <h4>Real vs Synthetic</h4>
+      <p>What comes from live ZITADEL HTTP calls vs what the lab generates locally.</p>
+      <table>
+        <thead><tr><th>Artifact</th><th>Mock</th><th>Zitadel (healthy)</th><th>Zitadel (degraded)</th></tr></thead>
+        <tbody>
+          <tr><td>Exchange access_token</td><td><code>mock-exchanged</code></td><td>Real ZITADEL token</td><td><code>zitadel-at-{hex}</code> fallback</td></tr>
+          <tr><td>Introspection</td><td>active for <code>mock-*</code> only</td><td>Live ZITADEL introspect</td><td>Exception, _idp_degraded</td></tr>
+          <tr><td>Revocation</td><td>Always revoked: true</td><td>Real ZITADEL revoke POST</td><td>Exception, _idp_degraded</td></tr>
+          <tr><td>Normalized claims</td><td>Not present</td><td>From env config</td><td>Same (env-driven)</td></tr>
+          <tr><td>RBAC groups</td><td>Static config</td><td>Env-merged groups</td><td>Same (env-driven)</td></tr>
+          <tr><td>/config status</td><td>idp_provider: mock</td><td>zitadel, degraded: false</td><td>zitadel, degraded: true</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="id-ref">
+      <h4>Per-Lab Integration</h4>
+      <table>
+        <thead><tr><th>Lab</th><th>ZITADEL Calls</th><th>What's Real</th><th>What's Synthetic</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>oauth_delegation_lab</td>
+            <td><code>exchange_token</code> only</td>
+            <td>Exchange access_token, normalized claims</td>
+            <td>TOKEN_STORE, downstream validation</td>
+          </tr>
+          <tr>
+            <td>revocation_lab</td>
+            <td><code>revoke_token</code>, <code>introspect_token</code></td>
+            <td>Revocation POST, introspection check</td>
+            <td>Token issuance, valid/revoked tracking</td>
+          </tr>
+          <tr>
+            <td>rbac_lab</td>
+            <td>None (env-based)</td>
+            <td>_idp_backed tag, group merge</td>
+            <td>All RBAC policy and agent definitions</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>
+mermaid.initialize({startOnLoad:true, theme:'dark', themeVariables:{
+  primaryColor:'#1a1520', primaryTextColor:'#ede8f2', primaryBorderColor:'#2e2638',
+  lineColor:'#6b5f7a', secondaryColor:'#141018', tertiaryColor:'#0e0a12',
+  fontFamily:'Inter, sans-serif', fontSize:'13px'
+}});
+
+var _idpEvents=[];
+var _idpTimer=null;
+
+function formatTs(ts){
+  if(!ts)return '';
+  var p=ts.split('T');
+  return p.length>1?(p[1].split('.')[0]||''):'';
+}
+
+function esc(s){
+  if(s==null)return '';
+  var d=document.createElement('div');
+  d.textContent=String(s);
+  return d.innerHTML;
+}
+
+function renderIdpFeed(){
+  var el=document.getElementById('idpFeedContent');
+  var filter=document.getElementById('idpFilter').value;
+  var filtered=_idpEvents.filter(function(ev){
+    if(filter==='backed')return ev.idp_backed&&!ev.idp_degraded;
+    if(filter==='degraded')return ev.idp_degraded;
+    return ev.idp_backed||ev.idp_degraded;
+  });
+  if(!filtered.length){
+    el.innerHTML='<div class="id-empty">No IDP events yet. Use the Playground to invoke an IDP-backed tool.</div>';
+    return;
+  }
+  var html='<table class="id-feed-table"><thead><tr><th>Time</th><th>Tool</th><th>Status</th><th>Outcome</th><th>Reason</th></tr></thead><tbody>';
+  for(var i=0;i<filtered.length;i++){
+    var ev=filtered[i];
+    var badge=ev.idp_degraded
+      ?'<span class="id-badge-degraded">DEGRADED</span>'
+      :'<span class="id-badge-backed">IDP</span>';
+    html+='<tr class="id-feed-row">'+
+      '<td style="color:var(--muted)">'+esc(formatTs(ev.timestamp))+'</td>'+
+      '<td style="color:var(--accent2)">'+esc(ev.tool_name)+'</td>'+
+      '<td>'+badge+'</td>'+
+      '<td>'+esc(ev.outcome||'—')+'</td>'+
+      '<td style="color:var(--muted)">'+esc(ev.idp_reason||'—')+'</td>'+
+      '</tr>';
+  }
+  html+='</tbody></table>';
+  el.innerHTML=html;
+}
+
+async function fetchIdpEvents(){
+  try{
+    var resp=await fetch('/api/observer/events?limit=100');
+    var data=await resp.json();
+    _idpEvents=(data.events||[]).filter(function(ev){return ev.idp_backed||ev.idp_degraded;});
+    renderIdpFeed();
+  }catch(e){}
+}
+
+function toggleIdpAuto(){
+  clearInterval(_idpTimer);
+  _idpTimer=null;
+  if(document.getElementById('idpAutoRefresh').checked){
+    var interval=parseInt(document.getElementById('idpPollInterval').value)||2000;
+    _idpTimer=setInterval(fetchIdpEvents,interval);
+  }
+}
+
+async function checkHealth(){
+  var el=document.getElementById('healthResult');
+  try{
+    var t0=performance.now();
+    var resp=await fetch('/api/config');
+    var ms=Math.round(performance.now()-t0);
+    var d=await resp.json();
+    if(d.idp_provider==='zitadel'&&!d.idp_degraded){
+      el.innerHTML='<span style="color:var(--green);font-weight:600">Healthy</span> — ZITADEL reachable ('+ms+'ms round-trip to gateway /config)';
+    }else if(d.idp_degraded){
+      el.innerHTML='<span style="color:var(--yellow);font-weight:600">Degraded</span> — '+esc(d.idp_reason||'ZITADEL unreachable')+' ('+ms+'ms)';
+    }else{
+      el.innerHTML='<span style="color:var(--muted);font-weight:600">Mock mode</span> — no ZITADEL connection ('+ms+'ms)';
+    }
+  }catch(e){
+    el.innerHTML='<span style="color:var(--red);font-weight:600">Error</span> — gateway unreachable';
+  }
+}
+
+checkHealth();
+fetchIdpEvents();
+setInterval(checkHealth,15000);
+</script>
+{% endblock %}

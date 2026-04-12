@@ -252,6 +252,21 @@ def _fetch_gateway_config() -> dict[str, object]:
     }
 
 
+@app.route("/identity")
+def identity():
+    cfg = _fetch_gateway_config()
+    return render_template(
+        "identity.html",
+        idp_provider=cfg.get("idp_provider", "unknown"),
+        idp_degraded=cfg.get("idp_degraded", False),
+        idp_reason=cfg.get("idp_reason", ""),
+        idp_backed_labs=cfg.get("idp_backed_labs", []),
+        idp_backed_tools=cfg.get("idp_backed_tools", []),
+        idp_endpoints=cfg.get("idp_endpoints", {}),
+        zitadel_console_url=ZITADEL_CONSOLE_URL,
+    )
+
+
 @app.route("/challenges")
 def challenges():
     scenarios = _fetch_scenarios()

@@ -47,7 +47,7 @@ code,pre{font-family:var(--font-mono)}
 .nav-brand svg{width:30px;height:30px}
 .nav-brand .brand-text span{color:var(--accent2)}
 .nav-links{display:flex;gap:2rem;align-items:center}
-.nav-links a{color:var(--text2);font-size:.875rem;font-weight:500;transition:color .2s}
+.nav-links a{color:var(--text2);font-size:.875rem;font-weight:500;transition:color .2s;white-space:nowrap}
 .nav-links a:hover,.nav-links a.active{color:var(--text)}
 .nav-idp-link{color:var(--green) !important;font-size:.78rem;font-weight:600;letter-spacing:.02em}
 .diff-switcher{display:flex;align-items:center;gap:.4rem;margin-left:.5rem}
@@ -67,6 +67,9 @@ code,pre{font-family:var(--font-mono)}
   font-family:inherit;transition:all .2s;text-transform:uppercase;letter-spacing:.04em}
 .nav-reset:hover{border-color:var(--accent);color:var(--accent2)}
 .nav-reset.resetting{opacity:.5;cursor:wait}
+.nav-op-egg{font-family:var(--font-mono);font-size:.72rem;color:var(--muted);opacity:.35;
+  transition:all .3s;letter-spacing:.05em;margin-left:.2rem}
+.nav-op-egg:hover{opacity:1;color:var(--green)}
 
 .container{max-width:1100px;margin:0 auto;padding:0 2rem}
 .section{padding:4rem 0}
@@ -179,7 +182,7 @@ code,pre{font-family:var(--font-mono)}
       <a href="/challenges" class="{% if request.path.startswith('/challenges') %}active{% endif %}">Challenges</a>
       <a href="/threat-map" class="{% if request.path == '/threat-map' %}active{% endif %}">Threat Map</a>
       <a href="/observer" class="{% if request.path == '/observer' %}active{% endif %}">Observer</a>
-      <a href="{{ zitadel_console_url }}" target="_blank" rel="noopener" class="nav-idp-link" title="ZITADEL Identity Console">Identity</a>
+      <a href="/identity" class="nav-idp-link {% if request.path == '/identity' %}active{% endif %}" title="Identity Dashboard">Identity</a>
       <div class="diff-switcher">
         <label>Guardrails</label>
         <span class="diff-dot medium" id="diffDot"></span>
@@ -190,6 +193,7 @@ code,pre{font-family:var(--font-mono)}
         </select>
       </div>
       <button class="nav-reset" id="resetBtn" onclick="resetLabs()" title="Reset tool_lab and shadow_lab state">Reset</button>
+      <a href="/operator" class="nav-op-egg" title="Operator Console">&gt;_</a>
     </div>
   </div>
 </nav>
@@ -206,8 +210,11 @@ code,pre{font-family:var(--font-mono)}
     <div class="footer-text">&copy; 2026 Camazotz Security Corp. &mdash; MCP Security Platform &nbsp;<span class="dbg-trigger" id="dbgTrigger">&gt;_</span></div>
     <div class="footer-links">
       <a href="/scenarios">Scenarios</a>
+      <a href="/challenges">Challenges</a>
+      <a href="/threat-map">Threat Map</a>
       <a href="/playground">Playground</a>
       <a href="/observer">Observer</a>
+      <a href="/identity">Identity</a>
     </div>
   </div>
 </footer>
@@ -365,4 +372,3 @@ function resetLabs(){
 </script>
 </body>
 </html>
->
