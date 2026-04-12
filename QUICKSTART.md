@@ -149,7 +149,17 @@ make smoke-k8s            # K8s cluster (default K8S_HOST=192.168.1.114)
 make smoke-k8s-llm        # same + LLM probe
 ```
 
+Identity probe (checks `GET /config` returns `idp_provider` of `mock` or `zitadel`; **does not** call ZITADEL over HTTP):
+
+```bash
+make smoke-local-identity
+make smoke-k8s-identity
+make smoke-k8s-identity K8S_HOST=10.0.0.5
+```
+
 Override the host: `make smoke-k8s K8S_HOST=10.0.0.5`
+
+Identity modes, env vars, and troubleshooting: [docs/identity/overview.md](docs/identity/overview.md), [docs/identity/local-runbook.md](docs/identity/local-runbook.md), [docs/identity/nuc-runbook.md](docs/identity/nuc-runbook.md).
 
 ## Common Operations
 
@@ -180,7 +190,7 @@ Edit `compose/.env` to tune behavior:
 | `CAMAZOTZ_DIFFICULTY` | `medium` | `easy`, `medium`, or `hard` (switchable live from portal) |
 | `CAMAZOTZ_SHOW_TOKENS` | `false` | Show token usage and cost |
 | `CAMAZOTZ_OLLAMA_MODEL` | `llama3.2:3b` | Ollama model name |
-| `CAMAZOTZ_IDP_PROVIDER` | `mock` | `mock` or `zitadel`; invalid values use `mock` (Zitadel integration still in progress) |
+| `CAMAZOTZ_IDP_PROVIDER` | `mock` | `mock` or `zitadel` (realism + stub provider; live OAuth/OIDC HTTP not implemented yet — see [docs/identity/overview.md](docs/identity/overview.md)) |
 
 See [README.md](README.md) for the full configuration reference.
 

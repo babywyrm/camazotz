@@ -1,0 +1,102 @@
+# Local identity runbook (Docker Compose)
+
+## Prerequisites
+
+- `make env` — ensures `compose/.env` exists
+- Stack reachable at `http://localhost:8080` (gateway) and `http://localhost:3000` (portal)
+
+## Mock mode (default)
+
+No IdP configuration required.
+
+```bash
+make env
+# ensure CAMAZOTZ_IDP_PROVIDER is unset or mock in compose/.env
+make up              # or: make up-local  (Ollama / --profile local)
+make status
+```
+
+Verify config:
+
+```bash
+curl -s http://localhost:8080/config | python3 -m json.tool
+```
+
+Smoke (no LLM required):
+
+```bash
+make smoke-local-identity
+```
+
+Smoke with LLM (needs working brain provider, e.g. API key for cloud):
+
+```bash
+make smoke-local-llm
+```
+
+## ZITADEL realism mode (local)
+
+**Expectation:** This turns on **`zitadel` provider selection** and **lab realism branches**. It does **not** start a ZITADEL container or perform live Authorization Code + PKCE in the portal.
+
+1. Edit **`compose/.env`**:
+
+   ```bash
+   CAMAZOTZ_IDP_PROVIDER=zitadel
+   CAMAZOTZ_IDP_ISSUER_URL=https://your-instance.example/oauth/v2/your-project
+   CAMAZOTZ_IDP_TOKEN_ENDPOINT=https://your-instance.example/oauth/v2/token
+   CAMAZOTZ_IDP_INTROSPECTION_ENDPOINT=https://your-instance.example/oauth/v2/introspect
+   CAMAZOTZ_IDP_REVOCATION_ENDPOINT=https://your-instance.example/oauth/v2/revoke
+   CAMAZOTZ_IDP_CLIENT_ID=your-client-id
+   CAMAZOTZ_IDP_CLIENT_SECRET=your-client-secret
+   ```
+
+2. Recreate the gateway container so env is picked up:
+
+   ```bash
+   make down
+   make up          # or make up-local
+   ```
+
+3. Confirm `/config`:
+
+   ```bash
+   curl -s http://localhost:8080/config | python3 -m json.tool
+   # expect: "idp_provider": "zitadel"
+   ```
+
+4. Identity smoke (checks `/config` only):
+
+   ```bash
+   make smoke-local-identity
+   ```
+
+5. Optional lab injection (oauth exchange extras):
+
+   ```bash
+   # example — JSON must be a single object
+   export CAMAZOTZ_LAB_IDENTITY_CLAIMS_JSON='{"sub":"alice@example.com","scope":"openid","groups":["platform-eng"]}'
+   # In Compose, add the same under brain-gateway environment in values + compose-gen,
+   # or use docker compose override — see deploy docs.
+   ```
+
+## Troubleshooting
+
+| Symptom | Likely cause | What to do |
+|---------|----------------|------------|
+| `make status` → gateway **DOWN** | Stack not started or wrong port | `make ps`, `make logs-gateway`, then `make up` |
+| `/config` still shows `mock` | Typo in `CAMAZOTZ_IDP_PROVIDER` or container not recreated | Only `zitadel` is accepted; anything else → mock. `make down && make up` |
+| `smoke-local-identity` fails on `/config` | Gateway not reachable | Start stack first; check firewall |
+| ZITADEL vars set but “nothing calls ZITADEL” | Expected today | Stub provider does not open HTTPS OAuth/OIDC yet; see [overview](overview.md) |
+| Introspection/revocation **ValueError** in custom code | Empty endpoint env | Set `CAMAZOTZ_IDP_INTROSPECTION_ENDPOINT` / `CAMAZOTZ_IDP_REVOCATION_ENDPOINT` if you call those methods |
+
+## Command reference
+
+| Command | Purpose |
+|---------|---------|
+| `make up` / `make up-local` | Start Compose stack |
+| `make down` | Stop stack |
+| `make status` | curl health endpoints (gateway, portal, Ollama) |
+| `make smoke-local-identity` | `scripts/smoke_test.py --target local --require-identity` |
+| `make smoke-local-llm` | Local smoke + LLM probe |
+
+See also [configuration.md](configuration.md) and [QUICKSTART.md](../../QUICKSTART.md).

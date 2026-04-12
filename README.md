@@ -327,7 +327,7 @@ Navigate to **http://localhost:3000/operator** (hidden — no nav link) for:
 | `CAMAZOTZ_DIFFICULTY` | `medium` | Guardrail level: EZ / MOD / MAX (switchable from portal) |
 | `CAMAZOTZ_SHOW_TOKENS` | `false` | Show LLM token usage and cost per call |
 | `CAMAZOTZ_OLLAMA_MODEL` | `llama3.2:3b` | Ollama model name |
-| `CAMAZOTZ_IDP_PROVIDER` | `mock` | Identity provider toggle: `mock` or `zitadel`; any other value falls back to `mock`. (`zitadel` is not fully wired yet.) |
+| `CAMAZOTZ_IDP_PROVIDER` | `mock` | Identity mode: `mock` (default) or `zitadel` (realism + stub provider; **no live HTTP OAuth/OIDC to ZITADEL yet** — see [docs/identity/overview.md](docs/identity/overview.md)) |
 
 ### How Bedrock credentials reach the container
 
@@ -434,6 +434,8 @@ make smoke-local    # smoke test local Docker Compose target
 make smoke-k8s      # smoke test k8s target (K8S_HOST=192.168.1.114)
 make smoke-local-llm  # smoke test local + LLM probe
 make smoke-k8s-llm    # smoke test k8s + LLM probe
+make smoke-local-identity   # local smoke + GET /config idp_provider probe
+make smoke-k8s-identity     # k8s smoke + GET /config idp_provider probe
 make status         # health check all services
 make compose-gen    # regenerate docker-compose.yml from Helm values
 make helm-deploy    # deploy to K8s
@@ -446,6 +448,10 @@ make help           # show all targets
 
 | Document | Covers |
 |----------|--------|
+| [docs/identity/overview.md](docs/identity/overview.md) | Identity architecture: mock vs `zitadel` realism, trust boundaries, smoke probes |
+| [docs/identity/configuration.md](docs/identity/configuration.md) | `CAMAZOTZ_IDP_*` env vars, Helm values, lab injection helpers |
+| [docs/identity/local-runbook.md](docs/identity/local-runbook.md) | Docker Compose identity mode, commands, troubleshooting |
+| [docs/identity/nuc-runbook.md](docs/identity/nuc-runbook.md) | Kubernetes / NUC Helm identity mode, smoke commands, rollback |
 | [QUICKSTART.md](QUICKSTART.md) | Setup, configuration, first run, profiles |
 | [deploy/README.md](deploy/README.md) | Helm chart, compose generation, deployment workflows |
 | [docs/scenarios.md](docs/scenarios.md) | Red/blue team exercises for every scenario |
