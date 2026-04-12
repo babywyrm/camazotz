@@ -45,6 +45,21 @@ def build_compose(v: dict) -> dict:
         env_line("CAMAZOTZ_SHOW_TOKENS", cfg["showTokens"], "CAMAZOTZ_SHOW_TOKENS"),
         env_line("OLLAMA_HOST", cfg["ollamaHost"], "OLLAMA_HOST"),
         env_line("CAMAZOTZ_OLLAMA_MODEL", cfg["ollamaModel"], "CAMAZOTZ_OLLAMA_MODEL"),
+        env_line("CAMAZOTZ_IDP_PROVIDER", cfg.get("idpProvider", "mock"), "CAMAZOTZ_IDP_PROVIDER"),
+        env_line("CAMAZOTZ_IDP_ISSUER_URL", cfg.get("idpIssuerUrl", ""), "CAMAZOTZ_IDP_ISSUER_URL"),
+        env_line("CAMAZOTZ_IDP_TOKEN_ENDPOINT", cfg.get("idpTokenEndpoint", ""), "CAMAZOTZ_IDP_TOKEN_ENDPOINT"),
+        env_line(
+            "CAMAZOTZ_IDP_INTROSPECTION_ENDPOINT",
+            cfg.get("idpIntrospectionEndpoint", ""),
+            "CAMAZOTZ_IDP_INTROSPECTION_ENDPOINT",
+        ),
+        env_line(
+            "CAMAZOTZ_IDP_REVOCATION_ENDPOINT",
+            cfg.get("idpRevocationEndpoint", ""),
+            "CAMAZOTZ_IDP_REVOCATION_ENDPOINT",
+        ),
+        env_line("CAMAZOTZ_IDP_CLIENT_ID", cfg.get("idpClientId", ""), "CAMAZOTZ_IDP_CLIENT_ID"),
+        env_line("CAMAZOTZ_IDP_CLIENT_SECRET", sec.get("idpClientSecret", ""), "CAMAZOTZ_IDP_CLIENT_SECRET"),
     ]
 
     lab_secrets = v.get("labSecrets", {})

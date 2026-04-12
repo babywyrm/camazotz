@@ -19,3 +19,9 @@ data:
   OBSERVER_POLL_INTERVAL: {{ .Values.config.observerPollInterval | quote }}
   OBSERVER_BUFFER_SIZE: {{ .Values.config.observerBufferSize | quote }}
   LOG_LEVEL: {{ .Values.config.logLevel | quote }}
+  CAMAZOTZ_IDP_PROVIDER: {{ .Values.config.idpProvider | quote }}
+  CAMAZOTZ_IDP_ISSUER_URL: {{ .Values.config.idpIssuerUrl | quote }}
+  CAMAZOTZ_IDP_TOKEN_ENDPOINT: {{ .Values.config.idpTokenEndpoint | quote }}
+  CAMAZOTZ_IDP_INTROSPECTION_ENDPOINT: {{ .Values.config.idpIntrospectionEndpoint | quote }}
+  CAMAZOTZ_IDP_REVOCATION_ENDPOINT: {{ .Values.config.idpRevocationEndpoint | quote }}
+  CAMAZOTZ_IDP_CLIENT_ID: {{ .Values.config.idpClientId | quote }}

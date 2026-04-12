@@ -5,8 +5,12 @@ import socket
 import subprocess
 import sys
 import threading
+import urllib.error
+import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+
+import pytest
 
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "smoke_test.py"
@@ -18,7 +22,11 @@ def _free_port() -> int:
         return int(s.getsockname()[1])
 
 
-def _start_server(require_llm: bool) -> tuple[ThreadingHTTPServer, dict[str, int]]:
+def _start_server(
+    require_llm: bool,
+    *,
+    config_payload: dict[str, object] | None = None,
+) -> tuple[ThreadingHTTPServer, dict[str, int]]:
     calls = {"tools_call": 0}
 
     class Handler(BaseHTTPRequestHandler):
@@ -36,6 +44,12 @@ def _start_server(require_llm: bool) -> tuple[ThreadingHTTPServer, dict[str, int
         def do_GET(self) -> None:  # noqa: N802
             if self.path == "/health":
                 self._send_json({"ok": True})
+                return
+            if self.path == "/config":
+                if config_payload is None:
+                    self._send_json({"detail": "not found"}, status=404)
+                    return
+                self._send_json(config_payload)
                 return
             self._send_json({"detail": "not found"}, status=404)  # pragma: no cover
 
@@ -99,6 +113,19 @@ def _start_server(require_llm: bool) -> tuple[ThreadingHTTPServer, dict[str, int
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     return server, calls
+
+
+def test_mock_server_returns_404_for_config_when_no_payload() -> None:
+    server, _ = _start_server(False)
+    try:
+        port = server.server_address[1]
+        url = f"http://127.0.0.1:{port}/config"
+        with pytest.raises(urllib.error.HTTPError) as excinfo:
+            urllib.request.urlopen(url, timeout=2)  # noqa: S310 — test loopback only
+        assert excinfo.value.code == 404
+    finally:
+        server.shutdown()
+        server.server_close()
 
 
 def test_smoke_passes_without_llm_probe() -> None:
@@ -170,6 +197,70 @@ def test_smoke_fails_when_llm_probe_errors() -> None:
         )
         assert proc.returncode == 1, proc.stdout + proc.stderr
         assert calls["tools_call"] == 1
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
+def test_smoke_cli_lists_require_identity_flag() -> None:
+    proc = subprocess.run(
+        [sys.executable, str(SCRIPT), "--help"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "--require-identity" in proc.stdout
+
+
+def test_smoke_passes_with_identity_probe() -> None:
+    server, calls = _start_server(
+        False,
+        config_payload={"difficulty": "medium", "show_tokens": False, "idp_provider": "mock"},
+    )
+    try:
+        base = f"http://127.0.0.1:{server.server_address[1]}"
+        proc = subprocess.run(
+            [
+                sys.executable,
+                str(SCRIPT),
+                "--gateway-url",
+                base,
+                "--portal-url",
+                base,
+                "--require-identity",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert proc.returncode == 0, proc.stdout + proc.stderr
+        assert calls["tools_call"] == 0
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
+def test_smoke_fails_when_identity_probe_invalid() -> None:
+    server, calls = _start_server(False, config_payload={"difficulty": "medium"})
+    try:
+        base = f"http://127.0.0.1:{server.server_address[1]}"
+        proc = subprocess.run(
+            [
+                sys.executable,
+                str(SCRIPT),
+                "--gateway-url",
+                base,
+                "--portal-url",
+                base,
+                "--require-identity",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert proc.returncode == 1, proc.stdout + proc.stderr
+        assert calls["tools_call"] == 0
     finally:
         server.shutdown()
         server.server_close()

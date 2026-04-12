@@ -21,10 +21,17 @@ config:
   observerPollInterval: "2"
   observerBufferSize: "50"
   logLevel: info
+  idpProvider: mock
+  idpIssuerUrl: ""
+  idpTokenEndpoint: ""
+  idpIntrospectionEndpoint: ""
+  idpRevocationEndpoint: ""
+  idpClientId: ""
 
 secrets:
   anthropicApiKey: ""
   flaskSecret: "cztz-k8s-secret"
+  idpClientSecret: ""
 
 labSecrets:
   DATABASE_URL: "postgresql://admin:s3cretPassw0rd!@10.0.3.12:5432/prod_db"

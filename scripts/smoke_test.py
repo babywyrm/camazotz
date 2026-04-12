@@ -95,6 +95,18 @@ def _check_llm_probe(client: httpx.Client, gateway_url: str, session_id: str | N
     print("PASS llm probe (config.ask_agent)")
 
 
+def _check_identity_probe(client: httpx.Client, gateway_url: str) -> None:
+    resp = client.get(f"{gateway_url}/config")
+    resp.raise_for_status()
+    body = resp.json()
+    provider = body.get("idp_provider")
+    if provider not in ("mock", "zitadel"):
+        raise RuntimeError(
+            f"identity probe: idp_provider must be 'mock' or 'zitadel', got {provider!r}"
+        )
+    print(f"PASS identity probe (/config idp_provider={provider})")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Smoke checks for Camazotz gateway + portal")
     parser.add_argument("--target", choices=["local", "k8s"], default="local", help="Preset target profile")
@@ -103,6 +115,11 @@ def main() -> int:
     parser.add_argument("--portal-url", help="Override portal base URL")
     parser.add_argument("--timeout", type=float, default=20, help="HTTP timeout in seconds")
     parser.add_argument("--require-llm", action="store_true", help="Also verify model-backed tool call")
+    parser.add_argument(
+        "--require-identity",
+        action="store_true",
+        help="Also verify GET /config exposes idp_provider (mock or zitadel)",
+    )
     args = parser.parse_args()
 
     target = _resolve_target(args)
@@ -113,6 +130,8 @@ def main() -> int:
             _check_health(client, "portal", target.portal_url)
             session_id = _mcp_initialize(client, target.gateway_url)
             _mcp_tools_list(client, target.gateway_url, session_id)
+            if args.require_identity:
+                _check_identity_probe(client, target.gateway_url)
             if args.require_llm:
                 _check_llm_probe(client, target.gateway_url, session_id)
     except (httpx.HTTPError, RuntimeError, ValueError, KeyError) as exc:
