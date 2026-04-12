@@ -107,6 +107,8 @@ class RbacLab(LabModule):
         extra_raw = os.getenv("CAMAZOTZ_LAB_IDENTITY_GROUPS", "").strip()
         if not extra_raw:
             return base, False
+        if not sub:
+            return base, False
         if sub and principal != sub:
             return base, False
         extras = [g.strip() for g in extra_raw.split(",") if g.strip()]

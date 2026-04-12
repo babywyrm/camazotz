@@ -292,6 +292,19 @@ def test_rbac_lab_realism_merge_skipped_when_sub_mismatch(monkeypatch) -> None:
     assert "_idp_group_merge" not in result
 
 
+def test_rbac_lab_realism_merge_skipped_when_sub_unset(monkeypatch) -> None:
+    monkeypatch.setenv("CAMAZOTZ_IDP_PROVIDER", "zitadel")
+    monkeypatch.delenv("CAMAZOTZ_LAB_IDENTITY_SUB", raising=False)
+    monkeypatch.setenv("CAMAZOTZ_LAB_IDENTITY_GROUPS", "sre-oncall")
+    set_difficulty("hard")
+    client = TestClient(app)
+    result = tool_call(
+        client, "rbac.list_agents", {"principal": "alice@example.com"}
+    )
+    assert "sre-oncall" not in result["groups"]
+    assert "_idp_group_merge" not in result
+
+
 def test_rbac_lab_realism_merge_skipped_when_groups_only_separators(
     monkeypatch,
 ) -> None:
