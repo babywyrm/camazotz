@@ -61,3 +61,9 @@ def get_ollama_host() -> str:
 
 def get_ollama_model() -> str:
     return os.getenv("CAMAZOTZ_OLLAMA_MODEL", "llama3.2:3b")
+
+
+def get_idp_provider() -> str:
+    """Active identity provider: ``mock`` (default) or ``zitadel``."""
+    value = os.getenv("CAMAZOTZ_IDP_PROVIDER", "mock").lower().strip()
+    return value if value in {"mock", "zitadel"} else "mock"
