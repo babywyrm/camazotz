@@ -111,10 +111,10 @@ def test_gateway_config_get() -> None:
 
 
 def test_config_exposes_idp_provider(monkeypatch) -> None:
-    monkeypatch.setenv("CAMAZOTZ_IDP_PROVIDER", "mock")
+    monkeypatch.setenv("CAMAZOTZ_IDP_PROVIDER", "zitadel")
     client = TestClient(app)
     payload = client.get("/config").json()
-    assert payload["idp_provider"] == "mock"
+    assert payload["idp_provider"] == "zitadel"
 
 
 def test_gateway_config_put_difficulty() -> None:
