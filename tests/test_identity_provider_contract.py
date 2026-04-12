@@ -5,6 +5,7 @@ import pytest
 from brain_gateway.app.config import get_idp_provider
 from brain_gateway.app.identity import IdentityProvider, MockIdentityProvider
 from brain_gateway.app.identity.mock_provider import MockIdentityProvider as MockIdentityProviderDirect
+from brain_gateway.app.identity.provider import IdentityProvider as IdentityProviderProtocol
 from brain_gateway.app.identity.service import get_identity_provider
 from brain_gateway.app.identity.zitadel_provider import ZitadelIdentityProvider
 from brain_gateway.app.identity.types import (
@@ -48,6 +49,11 @@ def test_get_idp_provider_return_type_is_idp_literal() -> None:
     ret = get_type_hints(get_idp_provider)["return"]
     assert ret == Literal["mock", "zitadel"]
     assert getattr(ret, "__args__", ()) == ("mock", "zitadel")
+
+
+def test_get_identity_provider_return_type_is_protocol() -> None:
+    ret = get_type_hints(get_identity_provider)["return"]
+    assert ret is IdentityProviderProtocol
 
 
 def test_mock_provider_methods_use_response_typed_dicts() -> None:
@@ -166,9 +172,11 @@ def test_zitadel_provider_methods_return_typed_shapes_when_configured() -> None:
     )
     assert ex["sub"] == "subj"
     assert ex["act"] == "act"
-    intro = provider.introspect_token(token="any")
-    assert "active" in intro
+    intro = provider.introspect_token(token="zitadel-live")
+    assert intro["active"] is True
     assert "sub" in intro
+    inactive = provider.introspect_token(token="any")
+    assert inactive["active"] is False
     rev = provider.revoke_token(token="secret-token")
     assert rev["revoked"] is True
 

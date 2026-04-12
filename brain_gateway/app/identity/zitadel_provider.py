@@ -17,6 +17,12 @@ from brain_gateway.app.identity.types import (
 
 
 class ZitadelIdentityProvider:
+    """Task 2 stub provider for ZITADEL-backed identity.
+
+    This class validates configuration and returns deterministic placeholder
+    responses. Real HTTP interactions are introduced in later tasks.
+    """
+
     def __init__(
         self,
         *,
@@ -79,7 +85,7 @@ class ZitadelIdentityProvider:
     def introspect_token(self, *, token: str) -> IntrospectTokenResponse:
         if not self.introspection_endpoint:
             raise ValueError("Missing introspection endpoint")
-        return {"active": False, "sub": ""}
+        return {"active": token.startswith("zitadel-"), "sub": ""}
 
     def revoke_token(self, *, token: str) -> RevokeTokenResponse:
         if not self.revocation_endpoint:
