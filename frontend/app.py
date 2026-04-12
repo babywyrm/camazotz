@@ -230,6 +230,22 @@ def _fetch_scenarios() -> list[dict]:
         return []
 
 
+def _fetch_gateway_config() -> dict[str, object]:
+    try:
+        resp = httpx.get(f"{GATEWAY_URL}/config", timeout=5.0)
+        resp.raise_for_status()
+        payload = resp.json()
+        if isinstance(payload, dict):
+            return payload
+    except (httpx.HTTPError, ValueError):
+        pass
+    return {
+        "idp_provider": "mock",
+        "idp_backed_labs": [],
+        "idp_backed_tools": [],
+    }
+
+
 @app.route("/challenges")
 def challenges():
     scenarios = _fetch_scenarios()
@@ -273,6 +289,15 @@ def challenge_verify(threat_id: str):
 def operator():
     from qa_runner.walkthroughs import WALKTHROUGHS
 
+    cfg = _fetch_gateway_config()
+    idp_provider = str(cfg.get("idp_provider", "mock"))
+    idp_backed_labs = {
+        lab for lab in cfg.get("idp_backed_labs", []) if isinstance(lab, str)
+    }
+    idp_backed_tools = [
+        tool for tool in cfg.get("idp_backed_tools", []) if isinstance(tool, str)
+    ]
+
     scenarios = {s["module_name"]: s for s in _fetch_scenarios()}
     walkthrough_labs = []
     for lab_name, steps in sorted(
@@ -286,12 +311,15 @@ def operator():
             "title": sc.get("title", lab_name),
             "description": sc.get("description", ""),
             "step_count": len(steps),
+            "idp_backed": lab_name in idp_backed_labs,
         })
     return render_template(
         "operator.html",
         modules=list(MODULE_TESTS.keys()),
         levels=list(GUARDRAIL_LEVELS),
         walkthrough_labs=walkthrough_labs,
+        idp_provider=idp_provider,
+        idp_backed_tools=idp_backed_tools,
     )
 
 

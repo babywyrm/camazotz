@@ -7,6 +7,11 @@
 .op-hero h1{font-size:1.8rem;font-weight:700;letter-spacing:-.03em;margin-bottom:.3rem}
 .op-hero h1 span{color:var(--accent2)}
 .op-hero p{color:var(--text2);font-size:.88rem;max-width:520px;margin:0 auto .8rem}
+.idp-strip{display:flex;align-items:center;justify-content:center;gap:.5rem;flex-wrap:wrap;margin:.5rem 0 1rem}
+.idp-pill{padding:.2rem .55rem;border-radius:999px;font-size:.68rem;font-weight:700;letter-spacing:.03em}
+.idp-pill.on{background:rgba(34,197,94,.15);color:#86efac;border:1px solid rgba(34,197,94,.25)}
+.idp-pill.off{background:var(--surface);color:var(--text2);border:1px solid var(--border)}
+.idp-tools{font-size:.72rem;color:var(--text2)}
 
 .op-tabs{display:flex;gap:2px;border-bottom:1px solid var(--border);margin-bottom:1.5rem}
 .op-tab{padding:.65rem 1.5rem;font-size:.85rem;font-weight:600;cursor:pointer;
@@ -195,6 +200,12 @@
   <div class="op-hero">
     <h1>Operator <span>Console</span></h1>
     <p>Walkthrough labs and QA orchestrator for Camazotz MCP security scenarios.</p>
+    <div class="idp-strip">
+      <span class="idp-pill {{ 'on' if idp_provider == 'zitadel' else 'off' }}">
+        IDP: {{ idp_provider }}
+      </span>
+      <span class="idp-tools">IDP-backed tools: {{ idp_backed_tools|join(', ') if idp_backed_tools else 'none' }}</span>
+    </div>
   </div>
 
   <div class="op-tabs">
@@ -211,6 +222,9 @@
           <div class="lab-card-header">
             <span class="lab-card-threat">{{ lab.threat_id or '\u2014' }}</span>
             <span class="lab-card-steps">{{ lab.step_count }} steps</span>
+            {% if lab.idp_backed %}
+            <span class="lab-card-steps">IDP-backed</span>
+            {% endif %}
           </div>
           <div class="lab-card-title">{{ lab.title }}</div>
           <div class="lab-card-desc">{{ lab.description or lab.lab }}</div>

@@ -1,4 +1,4 @@
-.PHONY: help up up-local down logs test build clean status ps env compose-gen helm-template qa qa-json smoke-local smoke-k8s smoke-local-llm smoke-k8s-llm smoke-local-identity smoke-k8s-identity
+.PHONY: help up up-local down logs test test-zitadel-flows build clean status ps env compose-gen helm-template qa qa-json smoke-local smoke-k8s smoke-local-llm smoke-k8s-llm smoke-local-identity smoke-k8s-identity smoke-local-identity-llm smoke-k8s-identity-llm
 
 COMPOSE := docker compose -f compose/docker-compose.yml
 ENV_FILE := compose/.env
@@ -65,6 +65,9 @@ logs-init: ## Tail ollama-init model pull logs
 test: ## Run pytest with coverage
 	uv run pytest -q
 
+test-zitadel-flows: ## Run dedicated ZITADEL flow tests
+	uv run pytest -q --no-cov tests/test_zitadel_flows.py
+
 test-v: ## Run pytest verbose
 	uv run pytest -v
 
@@ -91,6 +94,12 @@ smoke-local-identity: ## Smoke test local target including identity (/config) pr
 
 smoke-k8s-identity: ## Smoke test k8s target including identity (/config) probe
 	uv run python scripts/smoke_test.py --target k8s --k8s-host $${K8S_HOST:-192.168.1.114} --require-identity
+
+smoke-local-identity-llm: ## Smoke local target including identity and LLM probe
+	uv run python scripts/smoke_test.py --target local --require-identity --require-llm
+
+smoke-k8s-identity-llm: ## Smoke k8s target including identity and LLM probe
+	uv run python scripts/smoke_test.py --target k8s --k8s-host $${K8S_HOST:-192.168.1.114} --require-identity --require-llm
 
 compose-gen: ## Regenerate docker-compose.yml from Helm values
 	uv run python deploy/generate-compose.py

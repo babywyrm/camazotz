@@ -68,6 +68,36 @@ def test_operator_page_lists_levels(frontend_client) -> None:
     assert b"hard" in resp.data
 
 
+def test_operator_shows_idp_wiring_strip(frontend_client) -> None:
+    client, mod = frontend_client
+
+    def _fake_get(url, *args, **kwargs):
+        if str(url).endswith("/config"):
+            m = MagicMock()
+            m.status_code = 200
+            m.json.return_value = {
+                "idp_provider": "zitadel",
+                "idp_backed_labs": ["oauth_delegation_lab", "revocation_lab"],
+                "idp_backed_tools": ["oauth.exchange_token", "revocation.revoke_principal"],
+            }
+            m.raise_for_status = MagicMock()
+            return m
+        if str(url).endswith("/api/scenarios"):
+            m = MagicMock()
+            m.status_code = 200
+            m.json.return_value = []
+            m.raise_for_status = MagicMock()
+            return m
+        raise httpx.ConnectError("unexpected url")
+
+    with patch.object(mod.httpx, "get", side_effect=_fake_get):
+        resp = client.get("/operator")
+    assert resp.status_code == 200
+    html = resp.data.decode()
+    assert "IDP: zitadel" in html
+    assert "oauth.exchange_token" in html
+
+
 def test_operator_run_returns_report(frontend_client) -> None:
     client, mod = frontend_client
     mock_results = _make_mock_results()

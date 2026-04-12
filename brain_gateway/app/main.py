@@ -33,6 +33,13 @@ app = FastAPI(title="Camazotz Brain Gateway")
 sessions = SessionManager()
 _rate_limiter = TokenBucketLimiter()
 
+IDP_BACKED_LABS: tuple[str, ...] = ("oauth_delegation_lab", "rbac_lab", "revocation_lab")
+IDP_BACKED_TOOLS: tuple[str, ...] = (
+    "oauth.exchange_token",
+    "revocation.revoke_principal",
+    "revocation.use_token",
+)
+
 _scenario_loader: ScenarioLoader | None = None
 _loader_lock = threading.Lock()
 
@@ -117,6 +124,8 @@ def get_config() -> dict[str, object]:
         "difficulty": get_difficulty(),
         "show_tokens": show_tokens(),
         "idp_provider": get_idp_provider(),
+        "idp_backed_labs": list(IDP_BACKED_LABS),
+        "idp_backed_tools": list(IDP_BACKED_TOOLS),
     }
 
 
