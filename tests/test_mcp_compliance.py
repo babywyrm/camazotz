@@ -1,5 +1,6 @@
 import uuid
 
+import brain_gateway.app.identity.service as identity_service
 from fastapi.testclient import TestClient
 
 from brain_gateway.app.main import app
@@ -124,6 +125,46 @@ def test_config_exposes_idp_provider(monkeypatch) -> None:
     assert payload["idp_provider"] == "zitadel"
     assert "oauth_delegation_lab" in payload["idp_backed_labs"]
     assert "revocation.revoke_principal" in payload["idp_backed_tools"]
+
+
+def test_config_reports_zitadel_when_reachable(monkeypatch) -> None:
+    monkeypatch.setattr(identity_service, "_zitadel_health_ok", None)
+    monkeypatch.setattr(identity_service, "_zitadel_health_checked_at", 0.0)
+    monkeypatch.setattr(identity_service, "_zitadel_is_reachable", lambda _p: True)
+    monkeypatch.setenv("CAMAZOTZ_IDP_PROVIDER", "zitadel")
+    monkeypatch.setenv("CAMAZOTZ_IDP_ISSUER_URL", "https://issuer.example")
+    monkeypatch.setenv(
+        "CAMAZOTZ_IDP_TOKEN_ENDPOINT", "https://issuer.example/oauth/v2/token"
+    )
+    monkeypatch.setenv(
+        "CAMAZOTZ_IDP_INTROSPECTION_ENDPOINT",
+        "https://issuer.example/oauth/v2/introspect",
+    )
+    monkeypatch.setenv(
+        "CAMAZOTZ_IDP_REVOCATION_ENDPOINT", "https://issuer.example/oauth/v2/revoke"
+    )
+    monkeypatch.setenv("CAMAZOTZ_IDP_CLIENT_ID", "cid")
+    monkeypatch.setenv("CAMAZOTZ_IDP_CLIENT_SECRET", "secret")
+    client = TestClient(app)
+    payload = client.get("/config").json()
+    assert payload["idp_provider"] == "zitadel"
+    assert payload["idp_degraded"] is False
+    assert payload["idp_reason"] == "ok"
+
+
+def test_config_reports_degraded_when_zitadel_unreachable(monkeypatch) -> None:
+    monkeypatch.setattr(identity_service, "_zitadel_health_ok", None)
+    monkeypatch.setattr(identity_service, "_zitadel_health_checked_at", 0.0)
+    monkeypatch.setattr(identity_service, "_zitadel_is_reachable", lambda _p: False)
+    monkeypatch.setenv("CAMAZOTZ_IDP_PROVIDER", "zitadel")
+    monkeypatch.setenv(
+        "CAMAZOTZ_IDP_TOKEN_ENDPOINT", "https://issuer.example/oauth/v2/token"
+    )
+    client = TestClient(app)
+    payload = client.get("/config").json()
+    assert payload["idp_provider"] == "zitadel"
+    assert payload["idp_degraded"] is True
+    assert payload["idp_reason"] == "zitadel_unreachable"
 
 
 def test_gateway_config_put_difficulty() -> None:

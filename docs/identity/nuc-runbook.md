@@ -67,7 +67,7 @@ For the full identity guide, see [guide.md](guide.md).
    curl -s http://<your-node-ip>:30080/config   # expect idp_provider zitadel (if using default smoke NodePort)
    ```
 
-**Scope note:** As on local Docker, cluster deployment now includes self-hosted `zitadel` + `zitadel-postgres`, but full live HTTP OAuth/OIDC integration inside gateway flows is still in progress. Current behavior combines deployed IdP infrastructure, provider selection, and realism hooks.
+**Scope note:** Cluster deployment includes self-hosted `zitadel` + `zitadel-postgres` with full live HTTP OAuth/OIDC integration. The gateway performs real token exchange, introspection, and revocation calls against ZITADEL when `idpProvider: zitadel` is configured and the instance is reachable. If ZITADEL becomes unreachable, the gateway gracefully degrades to mock mode.
 
 Fallback behavior:
 

@@ -241,6 +241,74 @@ def test_smoke_passes_with_identity_probe() -> None:
         server.server_close()
 
 
+def test_smoke_identity_probe_passes_with_zitadel_provider() -> None:
+    server, calls = _start_server(
+        False,
+        config_payload={
+            "difficulty": "medium",
+            "show_tokens": False,
+            "idp_provider": "zitadel",
+            "idp_degraded": False,
+            "idp_reason": "ok",
+        },
+    )
+    try:
+        base = f"http://127.0.0.1:{server.server_address[1]}"
+        proc = subprocess.run(
+            [
+                sys.executable,
+                str(SCRIPT),
+                "--gateway-url",
+                base,
+                "--portal-url",
+                base,
+                "--require-identity",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert proc.returncode == 0, proc.stdout + proc.stderr
+        assert calls["tools_call"] == 0
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
+def test_smoke_identity_probe_passes_when_degraded() -> None:
+    server, calls = _start_server(
+        False,
+        config_payload={
+            "difficulty": "medium",
+            "show_tokens": False,
+            "idp_provider": "zitadel",
+            "idp_degraded": True,
+            "idp_reason": "zitadel_unreachable",
+        },
+    )
+    try:
+        base = f"http://127.0.0.1:{server.server_address[1]}"
+        proc = subprocess.run(
+            [
+                sys.executable,
+                str(SCRIPT),
+                "--gateway-url",
+                base,
+                "--portal-url",
+                base,
+                "--require-identity",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert proc.returncode == 0, proc.stdout + proc.stderr
+        assert calls["tools_call"] == 0
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
 def test_smoke_fails_when_identity_probe_invalid() -> None:
     server, calls = _start_server(False, config_payload={"difficulty": "medium"})
     try:
