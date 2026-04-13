@@ -32,6 +32,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   IDP-backed/degraded badges in walkthrough player.
 - **Gateway `/config`** now returns `idp_degraded`, `idp_reason`,
   `idp_backed_labs`, and `idp_backed_tools` fields.
+- **`GET /identity`** — new portal page with live ZITADEL status panel,
+  IDP activity feed (filtered observer events), and Mermaid architecture
+  diagrams.
+- **Observer Enhanced tab** gains IDP column with backed/degraded badges
+  and IDP filter dropdown.
+- **`GET /config`** now includes `idp_endpoints` block (issuer, token,
+  introspection, revocation URLs) when `idp_provider` is `"zitadel"`.
 
 ### Testing & Tooling
 - **`tests/test_zitadel_flows.py`** — dedicated test suite covering
@@ -39,6 +46,24 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **`make test-zitadel-flows`** — run ZITADEL flow tests standalone.
 - **`make smoke-local-identity-llm`** / **`make smoke-k8s-identity-llm`**
   — combined identity + LLM smoke probes for both environments.
+- **QA runner** fetches `/config` pre-flight and includes `idp_status`
+  in reports; optional IDP assertions run when ZITADEL is live and healthy.
+- **New tests:** `/config` fallback/degraded assertions
+  (`test_mcp_compliance.py`), smoke identity probe with zitadel/degraded
+  payloads (`test_smoke_test.py`).
+
+### Documentation
+- **Identity guide refresh:** Mermaid architecture, token lifecycle, and
+  degradation diagrams; per-lab ZITADEL integration walkthroughs;
+  real-vs-synthetic comparison table.
+- **Renamed** `nuc-runbook.md` → `k8s-runbook.md`; generalized all
+  NUC-specific references across active docs.
+
+### UI Polish
+- **Nav:** `white-space: nowrap` fixes Threat Map wrapping; Identity link
+  now goes to `/identity` dashboard.
+- **Operator Console** accessible via subtle `>_` easter egg in nav.
+- **Footer** updated with Challenges, Threat Map, Identity links.
 
 ---
 

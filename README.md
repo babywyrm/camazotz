@@ -3,7 +3,7 @@
 
 <p align="center">
 <img src="https://img.shields.io/badge/python-3.12%2B-3776ab?style=flat-square&logo=python&logoColor=white" alt="Python 3.12+">
-<img src="https://img.shields.io/badge/tests-594_passing-10b981?style=flat-square" alt="594 tests">
+<img src="https://img.shields.io/badge/tests-671_passing-10b981?style=flat-square" alt="671 tests">
 <img src="https://img.shields.io/badge/coverage-100%25-10b981?style=flat-square" alt="100% coverage">
 <img src="https://img.shields.io/badge/modules-25_labs-dc2626?style=flat-square" alt="25 labs">
 <img src="https://img.shields.io/badge/Red_Team_Playbook-14%2F14-10b981?style=flat-square" alt="Playbook 14/14">
@@ -111,6 +111,12 @@ For Kubernetes deployment: `make helm-deploy` (see [deploy/README.md](deploy/REA
         │                                    ┌──────────────────────────┐
         └───────────────────────────────────▶│  AI Brain                │
                                              │  Bedrock │ API │ Ollama  │
+                                             └──────────────────────────┘
+
+                                             ┌──────────────────────────┐
+                                             │  ZITADEL IDP :8180       │
+                                             │  OAuth token exchange,   │
+                                             │  introspection, revoke   │
                                              └──────────────────────────┘
 ```
 
@@ -297,6 +303,10 @@ Open **http://localhost:3000/challenges** for the PortSwigger-style challenge la
 
 Reset all flags: `POST /reset` or click the Reset button in the nav.
 
+### Identity Dashboard
+
+Open **http://localhost:3000/identity** for the Identity Dashboard showing live ZITADEL status, IDP-backed tool activity, and architecture reference.
+
 ### Operator Console
 
 Navigate to **http://localhost:3000/operator** (hidden — no nav link) for:
@@ -328,6 +338,11 @@ Navigate to **http://localhost:3000/operator** (hidden — no nav link) for:
 | `CAMAZOTZ_SHOW_TOKENS` | `false` | Show LLM token usage and cost per call |
 | `CAMAZOTZ_OLLAMA_MODEL` | `llama3.2:3b` | Ollama model name |
 | `CAMAZOTZ_IDP_PROVIDER` | `zitadel` (deployment), `mock` (runtime fallback) | Identity mode: `mock` or `zitadel`. In `zitadel` mode, IDP-backed trio labs (`oauth_delegation`, `revocation`, `rbac`) use live HTTP token/introspect/revoke calls with graceful degradation. Falls back to `mock` if ZITADEL config is incomplete. See [docs/identity/overview.md](docs/identity/overview.md). |
+
+> **`GET /config` IDP endpoints:** When `idp_provider` is `"zitadel"`, the
+> `GET /config` response includes an `idp_endpoints` object with `issuer`,
+> `token_endpoint`, `introspection_endpoint`, and `revocation_endpoint` URLs
+> pointing at the live ZITADEL instance.
 
 ### How Bedrock credentials reach the container
 
@@ -417,7 +432,7 @@ camazotz/
 ├── scripts/
 │   ├── qa_harness.py        # CLI entry point for E2E QA
 │   └── qa_runner/            # Reusable QA engine (shared by CLI + operator panel)
-├── tests/                   # 594 tests, 100% coverage
+├── tests/                   # 671 tests, 100% coverage
 └── Makefile                 # Cross-platform dev/deploy targets
 ```
 
@@ -427,7 +442,7 @@ camazotz/
 make up             # start with Claude
 make up-local       # start with Ollama
 make down           # stop all services
-make test           # run 594 tests (100% coverage)
+make test           # run 671 tests (100% coverage)
 make qa             # E2E QA harness against live gateway
 make qa-json        # QA harness with machine-readable JSON output
 make smoke-local    # smoke test local Docker Compose target
@@ -497,6 +512,18 @@ make help           # show all targets
 - **QA checks for all 25 labs** — 25/25 labs covered in QA harness
 - **Operator Console** — guided walkthroughs for all 25 labs at medium
   guardrails with telemetry strip
+- **ZITADEL live flow wiring** — real HTTP token exchange, introspection,
+  and revocation
+- **`/identity` dashboard** — live status, IDP activity feed, and
+  architecture diagrams
+- **Observer IDP telemetry** — first-class `idp_backed`/`idp_degraded`
+  fields per event
+- **QA runner IDP awareness** — pre-flight `/config` read, optional IDP
+  assertions
+- **Identity docs refresh** — Mermaid diagrams, per-lab walkthroughs,
+  real-vs-synthetic tables
+- **`nuc-runbook.md` → `k8s-runbook.md`** — generalized Kubernetes
+  references
 
 ---
 

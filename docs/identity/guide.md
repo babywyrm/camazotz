@@ -424,6 +424,7 @@ docker compose -f compose/docker-compose.yml --env-file compose/.env start zitad
 ## Further reading
 
 - [Identity overview](overview.md) -- architecture summary and provider selection
+- [Testing examples](testing-examples.md) -- hands-on curl commands for manually testing every IDP path
 - [Configuration reference](configuration.md) -- all environment variables
 - [Local runbook](local-runbook.md) -- Docker Compose setup and troubleshooting
 - [Kubernetes runbook](k8s-runbook.md) -- Kubernetes setup and troubleshooting

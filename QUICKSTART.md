@@ -65,6 +65,7 @@ Services:
 |---------|-----|-------------|
 | Portal | http://localhost:3000 | Branded web interface |
 | Gateway | http://localhost:8080 | MCP Streamable HTTP API |
+| ZITADEL Console | `http://localhost:8180/ui/console` | Identity admin (default: `zitadel-admin@zitadel.localhost` / `Password1!`) |
 
 ## Option C: Local provider (Ollama)
 
@@ -135,6 +136,8 @@ dropdown in the nav bar to switch between easy/medium/hard in real-time.
 
 Start with the **Threat Map** (`/threat-map`) for a birds-eye view of all
 25 labs organized by threat category, then dive into individual challenges.
+Visit `/identity` for the **Identity Dashboard** showing live ZITADEL
+status and IDP integration details.
 If you get stuck, each challenge offers a link to its guided walkthrough.
 
 ## Smoke Tests
@@ -155,6 +158,13 @@ Identity probe (checks `GET /config` returns `idp_provider` of `mock` or `zitade
 make smoke-local-identity
 make smoke-k8s-identity
 make smoke-k8s-identity K8S_HOST=10.0.0.5
+```
+
+Combined identity + LLM probes:
+
+```bash
+make smoke-local-identity-llm
+make smoke-k8s-identity-llm
 ```
 
 Override the host: `make smoke-k8s K8S_HOST=10.0.0.5`
