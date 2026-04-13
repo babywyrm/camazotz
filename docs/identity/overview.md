@@ -17,7 +17,7 @@ Camazotz can run with a **mock** identity layer or a **ZITADEL-shaped** **realis
 
 ## Trust boundaries (target architecture)
 
-The design doc (`docs/superpowers/specs/2026-04-11-zitadel-agentic-identity-design.md`) describes the end-state:
+The target architecture describes the end-state:
 
 1. **Portal** — user-facing token acquisition (e.g. Auth Code + PKCE) against the IdP.
 2. **Brain gateway** — MCP front door; exposes `idp_provider` in `GET /config`; modules read `get_idp_provider()` for realism branches.

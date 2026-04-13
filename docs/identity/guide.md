@@ -429,4 +429,3 @@ docker compose -f compose/docker-compose.yml --env-file compose/.env start zitad
 - [Local runbook](local-runbook.md) -- Docker Compose setup and troubleshooting
 - [Kubernetes runbook](k8s-runbook.md) -- Kubernetes setup and troubleshooting
 - [MCP @ Scale Golden Path](../mcp-at-scale-golden-path.md) -- production security architecture
-- [Design spec](../superpowers/specs/2026-04-11-zitadel-agentic-identity-design.md) -- original design decisions

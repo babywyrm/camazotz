@@ -52,3 +52,7 @@ dist/
 
 # Local git worktrees
 .worktrees/
+
+# Superpowers (local-only brainstorm, plans, specs)
+.superpowers/
+docs/superpowers/

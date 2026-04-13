@@ -19,10 +19,10 @@ from brain_gateway.app.identity.types import (
 
 
 class ZitadelIdentityProvider:
-    """Task 2 stub provider for ZITADEL-backed identity.
+    """Live ZITADEL identity provider.
 
-    This class validates configuration and returns deterministic placeholder
-    responses. Real HTTP interactions are introduced in later tasks.
+    Performs real HTTP calls to ZITADEL token, introspection, and revocation
+    endpoints using client credentials authentication.
     """
 
     def __init__(
