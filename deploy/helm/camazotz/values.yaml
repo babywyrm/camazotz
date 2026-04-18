@@ -135,6 +135,24 @@ zitadel:
       cpu: 500m
       memory: 512Mi
 
+nullfield:
+  enabled: false
+  image: ghcr.io/babywyrm/nullfield
+  tag: latest
+  pullPolicy: Never
+  listenPort: 9090
+  adminPort: 9091
+  circuitMaxCalls: "50"
+  circuitMaxDuration: "5m"
+  auditLogLevel: "FULL"
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
 zitadelPostgres:
   enabled: true
   image: postgres

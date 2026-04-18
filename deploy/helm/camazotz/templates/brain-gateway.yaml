@@ -19,6 +19,11 @@ spec:
       volumes:
         - name: flags
           emptyDir: {}
+        {{- if .Values.nullfield.enabled }}
+        - name: nullfield-tools
+          configMap:
+            name: nullfield-tools
+        {{- end }}
       containers:
         - name: brain-gateway
           image: "{{ .Values.gateway.image }}:{{ .Values.gateway.tag }}"
@@ -52,6 +57,46 @@ spec:
             periodSeconds: 15
           resources:
             {{- toYaml .Values.gateway.resources | nindent 12 }}
+        {{- if .Values.nullfield.enabled }}
+        - name: nullfield
+          image: "{{ .Values.nullfield.image }}:{{ .Values.nullfield.tag }}"
+          imagePullPolicy: {{ .Values.nullfield.pullPolicy }}
+          ports:
+            - name: proxy
+              containerPort: {{ .Values.nullfield.listenPort }}
+              protocol: TCP
+            - name: admin
+              containerPort: {{ .Values.nullfield.adminPort }}
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: nullfield-config
+          volumeMounts:
+            - name: nullfield-tools
+              mountPath: /etc/nullfield
+              readOnly: true
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: admin
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: admin
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.nullfield.resources | nindent 12 }}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+        {{- end }}
 ---
 apiVersion: v1
 kind: Service
@@ -65,6 +110,17 @@ spec:
   selector:
     {{- include "camazotz.selectorLabels" "brain-gateway" | nindent 4 }}
   ports:
-    - port: {{ .Values.gateway.port }}
+    - name: mcp
+      port: {{ .Values.gateway.port }}
+      {{- if .Values.nullfield.enabled }}
+      targetPort: {{ .Values.nullfield.listenPort }}
+      {{- else }}
       targetPort: {{ .Values.gateway.port }}
+      {{- end }}
       protocol: TCP
+    {{- if .Values.nullfield.enabled }}
+    - name: nullfield-admin
+      port: {{ .Values.nullfield.adminPort }}
+      targetPort: {{ .Values.nullfield.adminPort }}
+      protocol: TCP
+    {{- end }}
