@@ -1,0 +1,21 @@
+threat_id: "MCP-T26"
+title: "Short-Lived Certificate Replay Attack"
+difficulty: medium
+category: identity
+description: >
+  Teleport tbot issues certificates with a 1-hour TTL. This lab tests
+  whether an expired or nearly-expired certificate can be replayed to
+  access MCP tools within a grace window caused by clock skew or missing
+  CRL/OCSP checks. On easy difficulty the gateway accepts expired certs;
+  on medium there is a 30-second grace window; on hard expired certs are
+  rejected immediately.
+
+objectives:
+  - Obtain a certificate that is at or past its expiry time
+  - Replay the expired cert against the MCP gateway
+  - Demonstrate that strict TTL enforcement blocks the replay
+
+hints:
+  - Check the cert's not_after timestamp against the server's clock
+  - On medium, there is a configurable clock skew tolerance
+  - nullfield's replay detection (integrity.detectReplay) is the defense

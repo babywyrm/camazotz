@@ -1,0 +1,20 @@
+threat_id: "MCP-T04"
+title: "Bot Identity Theft via tbot Credential Exposure"
+difficulty: medium
+category: identity
+description: >
+  A Teleport tbot agent writes short-lived certificates to a Kubernetes
+  Secret for authenticated MCP access. On easy difficulty the secret is
+  mounted into all pods in the namespace; on medium it requires exploiting
+  a misconfigured RBAC binding; on hard the cert has already expired and
+  you must exploit clock skew to replay it.
+
+objectives:
+  - Extract the tbot identity from the exposed secret
+  - Use the stolen identity to call a privileged MCP tool as the bot
+  - Demonstrate that nullfield session binding detects the identity mismatch
+
+hints:
+  - The tbot-out secret contains an identity file with a short-lived X.509 cert
+  - On medium difficulty, check which service accounts can read the secret
+  - The bot's cert carries roles in the Teleport metadata — check what it can access

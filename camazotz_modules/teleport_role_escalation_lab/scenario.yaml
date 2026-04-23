@@ -1,0 +1,20 @@
+threat_id: "MCP-T20"
+title: "Teleport Role Escalation via MCP Tool"
+difficulty: medium
+category: rbac
+description: >
+  A Teleport bot has agent-readonly access but attempts to escalate to
+  agent-ops by exploiting a misconfigured MCP tool that can modify role
+  assignments. On easy difficulty the tool directly grants roles; on
+  medium it requires crafting a convincing justification; on hard the
+  escalation path is blocked and the attempt is logged.
+
+objectives:
+  - Discover the role management tool in the MCP server
+  - Escalate from agent-readonly to agent-ops via tool manipulation
+  - Use the escalated role to access a privileged operation
+
+hints:
+  - Check tools/list for anything related to roles or permissions
+  - The AI evaluates your justification — make it convincing on medium
+  - On hard, nullfield HOLD action requires human approval for role changes
