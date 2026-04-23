@@ -72,6 +72,51 @@ PHASE 0 — BOOTSTRAP (one-time per client install)
        |     New teams: request to Platform Security.    |
 
 
+PHASE 0b — AGENT AUTHENTICATION (MACHINE IDENTITY)
+-------------------------------------------------------------------------------------------------------------
+
+  For non-human callers (bots, CI/CD, autonomous agents), Okta browser
+  flows are not feasible. Teleport Machine & Workload Identity provides
+  the agent-equivalent of Phase 0 + Phase 1:
+
+  [tbot agent]                          [Teleport Auth]              [MCP Gateway]
+       |                                      |                           |
+       |  1. tbot runs in-cluster.           |                           |
+       |     Authenticates via K8s SA JWT.    |                           |
+       |------------------------------------->|                           |
+       |     join_method: kubernetes          |                           |
+       |                                      |                           |
+       |  2. Auth issues short-lived X.509   |                           |
+       |     cert (1h TTL, auto-renewed).    |                           |
+       |<-------------------------------------|                           |
+       |     Cert carries: bot identity,      |                           |
+       |     roles, cluster name              |                           |
+       |                                      |                           |
+       |  3. Agent uses cert to access       |                           |
+       |     MCP server through Teleport     |                           |
+       |     proxy (App Access) or K8s API   |                           |
+       |     (Kube Access).                  |                           |
+       |------------------------------------------------------>         |
+       |     tsh mcp connect / kubeconfig    |                           |
+       |                                      |                           |
+       |  4. nullfield validates the cert-   |                           |
+       |     based identity against policy.  |                           |
+       |     Session binding prevents cert   |                           |
+       |     theft / replay.                 |                           |
+
+  Key differences from the human (Okta) flow:
+  - No browser, no consent screen, no refresh tokens
+  - Identity is X.509 certificate, not JWT (but nullfield handles both)
+  - TTL is 1 hour (vs 15 min for Okta tokens) — renewed automatically
+  - Roles are Teleport roles, mapped to K8s groups via ClusterRoleBindings
+  - Audit trail is in Teleport (session recording) + nullfield (tool-level)
+
+  When to use which:
+  - Human in browser/IDE: Okta flow (Phase 0 + Phase 1)
+  - Bot/agent/CI job: Teleport tbot (Phase 0b)
+  - Both flows converge at Gate 2 (identity validation)
+
+
 PHASE 1 — USER AUTHENTICATION & CONSENT
 -------------------------------------------------------------------------------------------------------------
 
@@ -813,8 +858,8 @@ How each golden path gate defends against the [OWASP MCP Top 10 (2025)](https://
 | MCP-01 | Tool Poisoning | Gate 3 | Signed registry, digest pinning, SBOM |
 | MCP-02 | Rug Pull | Gate 3 | Runtime digest verification, manifest pinning |
 | MCP-03 | Excessive Permissions | Gates 2, 3 | Scope tiers, per-tool allowed_actions |
-| MCP-04 | Server Spoofing | Gates 1, 6 | TLS + mTLS, SPIFFE identity |
-| MCP-05 | Unauthorized Access | Gate 2 | JWT validation, scope enforcement, step-up |
+| MCP-04 | Server Spoofing | Gates 1, 6 | TLS + mTLS, SPIFFE identity. Teleport proxy provides cert-based server identity for agent callers. |
+| MCP-05 | Unauthorized Access | Gate 2 | JWT validation, scope enforcement, step-up. Teleport tbot provides short-lived X.509 certs for machine/agent identity (Phase 0b). |
 | MCP-06 | Data Exfiltration | Gates 4, 5 | Rate limits, egress allowlists, AI eval |
 | MCP-07 | Prompt Injection | Gate 5 + Output | AI policy eval + output sanitization |
 | MCP-08 | Audit & Telemetry | Phase 5 | Structured logging, signal tiers, OBS |
@@ -853,6 +898,9 @@ Each golden path gate maps to specific [Camazotz](https://github.com/babywyrm/ca
 | Notifications | `notification_lab` | MCP-T17 | Malicious server-initiated payloads |
 | Error disclosure | `error_lab` | MCP-T15 | Secrets in tracebacks and debug info |
 | Webhooks | `shadow_lab` | MCP-T14 | Persistent exfiltration via webhooks |
+| Machine identity | `bot_identity_theft_lab` | MCP-T04 | Stolen tbot cert used to impersonate bot |
+| RBAC escalation | `teleport_role_escalation_lab` | MCP-T20 | Bot self-escalates via misconfigured tool |
+| Cert replay | `cert_replay_lab` | MCP-T26 | Expired short-lived cert replayed in grace window |
 
 Run `mcpnuke` against your staging gateway to validate that your gate implementations actually block these attack patterns.
 
