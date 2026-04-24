@@ -1,0 +1,29 @@
+tbotConfig:
+  version: v2
+  auth_server: teleport-cluster-auth.teleport.svc.cluster.local:3025
+  onboarding:
+    join_method: kubernetes
+    token: agent-bot-token
+  storage:
+    type: kubernetes_secret
+    name: tbot
+  outputs:
+    - type: identity
+      destination:
+        type: kubernetes_secret
+        name: tbot-out
+    - type: kubernetes/v2
+      selectors:
+        # Change this to match kubeClusterName from teleport-cluster.yaml
+        - name: nuc-k3s
+      destination:
+        type: kubernetes_secret
+        name: tbot-kube
+
+extraArgs: ["--insecure"]
+
+serviceAccount:
+  create: true
+  name: tbot-agent
+
+persistence: secret

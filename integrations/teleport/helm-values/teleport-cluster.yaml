@@ -1,0 +1,24 @@
+clusterName: teleport.local
+proxyListenerMode: multiplex
+acme: false
+extraArgs: ["--insecure"]
+
+proxy:
+  service:
+    type: NodePort
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 256Mi
+  limits:
+    cpu: "1"
+    memory: 512Mi
+
+persistence:
+  enabled: true
+  storageClassName: local-path
+  volumeSize: 2Gi
+
+# Change this to match your cluster name
+kubeClusterName: nuc-k3s

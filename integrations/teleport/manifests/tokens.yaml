@@ -1,0 +1,26 @@
+kind: token
+version: v2
+metadata:
+  name: agent-bot-token
+  expires: "2050-01-01T00:00:00Z"
+spec:
+  roles: [Bot]
+  bot_name: agent-bot
+  join_method: kubernetes
+  kubernetes:
+    type: in_cluster
+    allow:
+      - service_account: "teleport:tbot-agent"
+---
+kind: token
+version: v2
+metadata:
+  name: app-agent-token
+  expires: "2050-01-01T00:00:00Z"
+spec:
+  roles: [App]
+  join_method: kubernetes
+  kubernetes:
+    type: in_cluster
+    allow:
+      - service_account: "teleport:teleport-app-agent"

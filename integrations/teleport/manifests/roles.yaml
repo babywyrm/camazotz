@@ -1,0 +1,58 @@
+kind: role
+version: v7
+metadata:
+  name: agent-readonly
+spec:
+  allow:
+    kubernetes_groups: ["view"]
+    kubernetes_labels:
+      "*": "*"
+    kubernetes_resources:
+      - kind: pod
+        namespace: "*"
+        name: "*"
+        verbs: ["get", "list", "watch"]
+      - kind: service
+        namespace: "*"
+        name: "*"
+        verbs: ["get", "list"]
+      - kind: configmap
+        namespace: "*"
+        name: "*"
+        verbs: ["get", "list"]
+      - kind: namespace
+        name: "*"
+        verbs: ["get", "list"]
+---
+kind: role
+version: v7
+metadata:
+  name: agent-ops
+spec:
+  allow:
+    kubernetes_groups: ["edit"]
+    kubernetes_labels:
+      "*": "*"
+    kubernetes_resources:
+      - kind: "*"
+        namespace: "camazotz"
+        name: "*"
+      - kind: pod
+        namespace: "*"
+        name: "*"
+        verbs: ["get", "list", "watch"]
+---
+kind: role
+version: v7
+metadata:
+  name: agent-mcp
+spec:
+  allow:
+    app_labels:
+      type: mcp
+    mcp:
+      tools:
+        - "cost.*"
+        - "audit.*"
+        - "attribution.*"
+        - "identity.*"

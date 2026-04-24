@@ -1,0 +1,83 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: teleport-app-agent
+  namespace: teleport
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: teleport-app-agent-config
+  namespace: teleport
+data:
+  teleport.yaml: |
+    version: v3
+    teleport:
+      proxy_server: teleport.local:443
+      data_dir: /var/lib/teleport
+      join_params:
+        method: kubernetes
+        token_name: app-agent-token
+    auth_service:
+      enabled: false
+    proxy_service:
+      enabled: false
+    ssh_service:
+      enabled: false
+    app_service:
+      enabled: true
+      apps:
+        - name: camazotz-mcp
+          uri: http://brain-gateway.camazotz.svc.cluster.local:8080
+          labels:
+            type: mcp
+            environment: lab
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: teleport-app-agent
+  namespace: teleport
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: teleport-app-agent
+  template:
+    metadata:
+      labels:
+        app: teleport-app-agent
+    spec:
+      serviceAccountName: teleport-app-agent
+      containers:
+        - name: teleport
+          image: public.ecr.aws/gravitational/teleport-distroless:18.7.5
+          args: ["-c", "/etc/teleport/teleport.yaml"]
+          env:
+            - name: SSL_CERT_FILE
+              value: /etc/teleport-ca/ca.crt
+          volumeMounts:
+            - name: config
+              mountPath: /etc/teleport
+              readOnly: true
+            - name: proxy-ca
+              mountPath: /etc/teleport-ca
+              readOnly: true
+            - name: data
+              mountPath: /var/lib/teleport
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+      volumes:
+        - name: config
+          configMap:
+            name: teleport-app-agent-config
+        - name: proxy-ca
+          configMap:
+            name: teleport-proxy-ca
+        - name: data
+          emptyDir: {}
