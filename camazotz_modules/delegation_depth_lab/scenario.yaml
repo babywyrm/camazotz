@@ -1,0 +1,26 @@
+threat_id: "MCP-T25"
+title: "Delegation Depth — Multi-Agent Identity Dilution"
+difficulty: medium
+category: delegation
+description: >
+  Agent A (human-authorized) delegates to Agent B, which delegates to
+  Agent C. Each hop dilutes the original identity. On easy difficulty,
+  the full chain succeeds and Agent C accesses secrets with Agent A's
+  authority. On medium, nullfield tracks delegation depth and blocks
+  at depth > 2. On hard, each hop requires re-authentication and
+  Agent C has no authority.
+
+  This simulates the real-world pattern in LangGraph, CrewAI, and
+  AutoGen where the agent that executes the dangerous tool is several
+  hops from the human who authorized the session.
+
+objectives:
+  - Initiate a 3-agent delegation chain (A → B → C)
+  - Observe how identity context degrades at each hop
+  - Attempt to access a privileged resource from the deepest agent
+  - Configure nullfield depth limits that block excessive delegation
+
+hints:
+  - Check the delegation chain after each hop to see identity context
+  - On medium, the depth limit is 2 — the third hop is blocked
+  - On hard, each agent must present its own credentials
