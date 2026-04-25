@@ -5,7 +5,7 @@
 <img src="https://img.shields.io/badge/python-3.12%2B-3776ab?style=flat-square&logo=python&logoColor=white" alt="Python 3.12+">
 <img src="https://img.shields.io/badge/tests-671_passing-10b981?style=flat-square" alt="671 tests">
 <img src="https://img.shields.io/badge/coverage-100%25-10b981?style=flat-square" alt="100% coverage">
-<img src="https://img.shields.io/badge/modules-28_labs-dc2626?style=flat-square" alt="28 labs">
+<img src="https://img.shields.io/badge/modules-31_labs-dc2626?style=flat-square" alt="31 labs">
 <img src="https://img.shields.io/badge/Red_Team_Playbook-14%2F14-10b981?style=flat-square" alt="Playbook 14/14">
 <img src="https://img.shields.io/badge/license-MIT-a89cb8?style=flat-square" alt="MIT License">
 </p>
@@ -526,6 +526,7 @@ make help           # show all targets
 | [docs/module-authoring.md](docs/module-authoring.md) | How to build new vulnerability modules |
 | [kube/README.md](kube/README.md) | Legacy K8s manifests, K3s deploy script |
 | [docs/ecosystem.md](docs/ecosystem.md) | How camazotz, nullfield, Teleport, and mcpnuke fit together |
+| [docs/feedback-loop.md](docs/feedback-loop.md) | The scan -> recommend -> enforce -> validate feedback loop |
 | [docs/mcp-at-scale-golden-path.md](docs/mcp-at-scale-golden-path.md) | Golden path security architecture for production MCP deployments |
 | [integrations/teleport/README.md](integrations/teleport/README.md) | Teleport deployment guide with manifests, roles, and testing |
 | [CHANGELOG.md](CHANGELOG.md) | Release history |
