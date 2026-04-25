@@ -1,0 +1,22 @@
+threat_id: "MCP-T07"
+title: "Response Inspection — Craft Redaction Rules That Catch Leaks"
+difficulty: medium
+category: defense
+description: >
+  Blue team lab. A tool leaks credentials in its response. Write
+  a SCOPE response redaction configuration that catches the leak
+  without breaking the tool's legitimate output. On easy difficulty,
+  the leak is obvious (plain text password). On medium, credentials
+  are embedded in structured data. On hard, secrets are base64-encoded
+  or split across multiple response fields.
+
+objectives:
+  - Call the leaky tool and observe what sensitive data appears in the response
+  - Write SCOPE redactPatterns that match the sensitive content
+  - Submit the patterns and verify they redact without breaking legitimate fields
+  - Earn the flag by achieving full redaction with zero false positives
+
+hints:
+  - Start by examining the raw tool response carefully
+  - Look for patterns like password=, token=, key= in the output
+  - On hard, try base64 decoding parts of the response

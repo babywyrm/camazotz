@@ -1,0 +1,22 @@
+threat_id: "MCP-T03"
+title: "Policy Authoring — Write Rules That Block Attack Chains"
+difficulty: medium
+category: defense
+description: >
+  Blue team lab. Given a set of MCP tools and a known attack chain
+  (from mcpnuke scan output), write a nullfield policy YAML that blocks
+  the chain. Submit the policy, the lab simulates enforcement, re-runs
+  the attack, and reports whether the defense holds. On easy difficulty,
+  hints tell you which action to use. On hard, you must handle
+  multi-step chains where blocking one tool shifts the attack path.
+
+objectives:
+  - Analyze the attack chain report to identify vulnerable tools
+  - Write a nullfield policy with appropriate actions (DENY, HOLD, SCOPE)
+  - Submit the policy and verify the attack chain is blocked
+  - Earn the flag by writing a policy that blocks all attack paths
+
+hints:
+  - Start with DENY for the most dangerous tools, then add SCOPE for leaky ones
+  - The attack chain report tells you exactly which tools are involved
+  - Remember: default deny at the bottom catches anything you missed

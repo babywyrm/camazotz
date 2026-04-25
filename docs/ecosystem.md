@@ -132,14 +132,14 @@ session binding, HOLD gates, and replay detection block them.
                      ┌──────────────────────────────────────────────┐
                      │            Kubernetes Cluster                │
                      │                                              │
-  Agent/Bot ────────▶│  Teleport Proxy (:443)                      │
+  Agent/Bot ────────▶│  Teleport Proxy (:443)                       │
   (with tbot cert)   │       │                                      │
                      │       ├── K8s access (kubeconfig)            │
                      │       │   └── RBAC: agent-readonly           │
                      │       │                                      │
                      │       └── MCP access (App Access agent)      │
                      │           └── Teleport role: agent-mcp       │
-                     │               └── Tool filter: cost.*, audit.*│
+                     │               └── Tool filter: cost.*,audit.*│
                      │                   │                          │
                      │                   ▼                          │
                      │           nullfield sidecar (:9090)          │
@@ -153,7 +153,7 @@ session binding, HOLD gates, and replay detection block them.
                      │           brain-gateway (:8080)              │
                      │           └── 28 vulnerable MCP labs         │
                      │                                              │
-  mcpnuke ──────────▶│  Scans both Teleport infra + MCP tools      │
+  mcpnuke ──────────▶│  Scans both Teleport infra + MCP tools       │
   (scanner)          │  Reports findings + exploit chain results    │
                      └──────────────────────────────────────────────┘
 ```

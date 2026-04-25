@@ -1,0 +1,22 @@
+threat_id: "MCP-T27"
+title: "Budget Tuning — Rate Limits That Stop Attackers Without Blocking Users"
+difficulty: medium
+category: defense
+description: >
+  Blue team lab. A cost exhaustion attack burns through API credits
+  by calling expensive tools repeatedly. Write BUDGET rules that
+  limit the attacker without blocking legitimate users. The lab
+  simulates mixed traffic (legitimate + malicious) and scores your
+  policy on both security (blocks attacker) and usability (allows
+  legitimate calls).
+
+objectives:
+  - Observe the mixed traffic pattern (legitimate vs malicious calls)
+  - Write BUDGET rules with per-identity and per-session limits
+  - Submit the budget config and verify the scoring
+  - Earn the flag by achieving high security score with low false positive rate
+
+hints:
+  - Legitimate users make 5-10 calls per hour. Attackers make 100+.
+  - Per-session limits catch burst attacks. Per-identity limits catch sustained ones.
+  - The onExhausted action matters — DENY blocks, LOG just records

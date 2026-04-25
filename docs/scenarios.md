@@ -133,13 +133,13 @@ Threat Summary Across Patterns
   │                                                                      │
   │  Identity      │  rbac_lab (MCP-T20)         Group boundary bypass   │
   │  Isolation     │  credential_broker_lab (T23) Cross-team vault read  │
-  │                │                                                      │
+  │                │                                                     │
   │  Attribution   │  attribution_lab (MCP-T22)   Execution ctx forgery  │
-  │  Integrity     │  pattern_downgrade_lab (T24) Force A→B downgrade   │
-  │                │                                                      │
+  │  Integrity     │  pattern_downgrade_lab (T24) Force A→B downgrade    │
+  │                │                                                     │
   │  Token         │  oauth_delegation_lab (T21)  Refresh token replay   │
   │  Lifecycle     │  revocation_lab (MCP-T26)    Cached token survives  │
-  │                │                                                      │
+  │                │                                                     │
   │  Chain         │  delegation_chain_lab (T25)  Unbounded agent depth  │
   │  Abuse         │  cost_exhaustion_lab (T27)   Quota bypass / exhaust │
   └──────────────────────────────────────────────────────────────────────┘

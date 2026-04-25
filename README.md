@@ -127,14 +127,14 @@ larger security stack. Three optional integrations add defense, identity, and
 automated testing layers — each is independently deployable.
 
 ```
-                        ┌─────────────────────┐
+                        ┌──────-───────────────┐
                         │    mcpnuke           │
                         │    security scanner  │
-                        │                     │
+                        │                      │
                         │  • 8 Teleport checks │
                         │  • 3 exploit chains  │
                         │  • 30+ MCP probes    │
-                        └──────────┬──────────┘
+                        └────────-──┬──────────┘
                                    │ scans
                                    ▼
 ┌──────────────┐     ┌──────────────────────────────────────┐
@@ -588,6 +588,5 @@ make help           # show all targets
 
 ---
 
-## License
-
-MIT
+##
+##
