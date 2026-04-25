@@ -5,7 +5,7 @@
 <img src="https://img.shields.io/badge/python-3.12%2B-3776ab?style=flat-square&logo=python&logoColor=white" alt="Python 3.12+">
 <img src="https://img.shields.io/badge/tests-671_passing-10b981?style=flat-square" alt="671 tests">
 <img src="https://img.shields.io/badge/coverage-100%25-10b981?style=flat-square" alt="100% coverage">
-<img src="https://img.shields.io/badge/modules-25_labs-dc2626?style=flat-square" alt="25 labs">
+<img src="https://img.shields.io/badge/modules-28_labs-dc2626?style=flat-square" alt="28 labs">
 <img src="https://img.shields.io/badge/Red_Team_Playbook-14%2F14-10b981?style=flat-square" alt="Playbook 14/14">
 <img src="https://img.shields.io/badge/license-MIT-a89cb8?style=flat-square" alt="MIT License">
 </p>
@@ -119,6 +119,54 @@ For Kubernetes deployment: `make helm-deploy` (see [deploy/README.md](deploy/REA
                                              │  introspection, revoke   │
                                              └──────────────────────────┘
 ```
+
+## Integration Architecture
+
+Camazotz works standalone, but it is designed to be the vulnerable target in a
+larger security stack. Three optional integrations add defense, identity, and
+automated testing layers — each is independently deployable.
+
+```
+                        ┌─────────────────────┐
+                        │    mcpnuke           │
+                        │    security scanner  │
+                        │                     │
+                        │  • 8 Teleport checks │
+                        │  • 3 exploit chains  │
+                        │  • 30+ MCP probes    │
+                        └──────────┬──────────┘
+                                   │ scans
+                                   ▼
+┌──────────────┐     ┌──────────────────────────────────────┐
+│  Teleport    │     │  nullfield (arbiter proxy)           │
+│              │     │                                      │
+│  • tbot      │────▶│  ALLOW / DENY / HOLD / SCOPE / BUDGET│
+│  • short-    │     │  per-tool policy from YAML or CRD    │
+│    lived     │     │  identity, registry, circuit breaker │
+│    X.509     │     └──────────────────┬───────────────────┘
+│    certs     │                        │ forwards allowed calls
+│              │                        ▼
+│  K8s access  │     ┌──────────────────────────────────────┐
+│  MCP access  │     │  camazotz brain-gateway              │
+└──────────────┘     │  28 intentionally vulnerable labs    │
+                     │  backed by live LLM                  │
+                     └──────────────────────────────────────┘
+```
+
+| Integration | What It Does | Why You'd Want It |
+|---|---|---|
+| **[nullfield](https://github.com/babywyrm/nullfield)** | Sidecar proxy that intercepts every MCP `tools/call` and enforces ALLOW/DENY/HOLD/SCOPE/BUDGET policy | Test whether your policy rules actually block the attacks camazotz demonstrates |
+| **[Teleport](integrations/teleport/)** | Machine identity for agents — short-lived X.509 certs via tbot, K8s + MCP access through RBAC | Test whether agent-to-cluster auth patterns hold up when the agent is compromised |
+| **[mcpnuke](https://github.com/babywyrm/mcpnuke)** | Automated MCP security scanner with Teleport-aware checks and exploit chain automation | Scan camazotz (or your own MCP server) to validate that defenses actually work |
+
+Each integration has its own deployment docs:
+- **nullfield:** [Helm chart integration](https://github.com/babywyrm/nullfield/tree/main/integrations/camazotz)
+- **Teleport:** [integrations/teleport/README.md](integrations/teleport/README.md) — full step-by-step setup
+- **mcpnuke:** [mcpnuke README](https://github.com/babywyrm/mcpnuke) — `mcpnuke --targets http://localhost:8080/mcp`
+
+For a detailed technical narrative of how the stack fits together, see [docs/ecosystem.md](docs/ecosystem.md).
+
+---
 
 ## How a Vulnerable Tool Call Works
 
@@ -317,6 +365,10 @@ Navigate to **http://localhost:3000/operator** (hidden — no nav link) for:
   security insight callout. Auto-play with pause/step controls.
 - **QA Dashboard** — batch pass/fail grid across all modules and guardrail
   levels. Useful for validating platform health after deployment.
+- **Advanced: Machine Identity** — three Teleport-themed labs
+  (`bot_identity_theft`, `teleport_role_escalation`, `cert_replay`)
+  demonstrate agent credential theft and replay attacks. These require
+  the Teleport integration — see [integrations/teleport/](integrations/teleport/).
 
 ---
 
@@ -473,6 +525,9 @@ make help           # show all targets
 | [docs/scenarios.md](docs/scenarios.md) | Red/blue team exercises for every scenario |
 | [docs/module-authoring.md](docs/module-authoring.md) | How to build new vulnerability modules |
 | [kube/README.md](kube/README.md) | Legacy K8s manifests, K3s deploy script |
+| [docs/ecosystem.md](docs/ecosystem.md) | How camazotz, nullfield, Teleport, and mcpnuke fit together |
+| [docs/mcp-at-scale-golden-path.md](docs/mcp-at-scale-golden-path.md) | Golden path security architecture for production MCP deployments |
+| [integrations/teleport/README.md](integrations/teleport/README.md) | Teleport deployment guide with manifests, roles, and testing |
 | [CHANGELOG.md](CHANGELOG.md) | Release history |
 
 ## Roadmap
@@ -487,9 +542,6 @@ make help           # show all targets
 
 ### Medium-term
 
-- **mcpnuke integration** — automated
-  [mcpnuke](https://github.com/babywyrm/mcpnuke) scan → walkthrough
-  correlation; regression baselines per release
 - **Workshop mode** — timed walkthroughs with completion tracking for
   instructor-led sessions and CTF events
 - **Behavioral validation** — observer detects exploit patterns automatically
@@ -504,7 +556,16 @@ make help           # show all targets
 
 ### Completed (recent)
 
-- **Threat Map** — `/threat-map` page with 7 category groups, 25 lab
+- **Teleport integration** — machine identity for agents (tbot, K8s access,
+  MCP App Access), 3 Teleport-themed vulnerability labs, full deployment
+  guide in `integrations/teleport/`
+- **nullfield integration** — MCP arbiter sidecar with 5-action policy engine,
+  Helm chart integration, per-tool RBAC enforcement
+- **mcpnuke integration** — automated security scanning with 8 Teleport-aware
+  checks, 3 exploit chain automations, regression baselines
+- **Golden path v3** — Machine Identity section (Phase 0b) for agent auth
+  via Teleport, OWASP MCP Top 10 mapping updates
+- **Threat Map** — `/threat-map` page with 7 category groups, 28 lab
   cards, localStorage-based progress tracking, and contextual walkthrough
   links from challenges and scenarios
 - **Observer signal tiers** — `signal_tier`, `reason_code`, tighter
