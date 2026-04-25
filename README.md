@@ -531,6 +531,8 @@ make help           # show all targets
 | [integrations/teleport/README.md](integrations/teleport/README.md) | Teleport deployment guide with manifests, roles, and testing |
 | [CHANGELOG.md](CHANGELOG.md) | Release history |
 
+**Documentation hub:** [agentic-sec](https://github.com/babywyrm/agentic-sec) — walkthroughs, architecture guides, and cross-project reference for the full camazotz + nullfield + mcpnuke stack.
+
 ## Roadmap
 
 ### Near-term
