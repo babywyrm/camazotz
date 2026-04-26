@@ -5,7 +5,7 @@ This runbook assumes a Camazotz deployment via **Helm** (`deploy/helm/camazotz`)
 ## Defaults
 
 - **`scripts/smoke_test.py --target k8s`** uses **`http://<K8S_HOST>:30080`** for the gateway and **`http://<K8S_HOST>:3000`** for the portal (see `SmokeTarget` in `scripts/smoke_test.py`). Map these ports on your node or load balancer to match your chart.
-- Override the default smoke host with `K8S_HOST=<your-node-ip>` (e.g. `K8S_HOST=10.0.0.5`).
+- `K8S_HOST` is required — no default. Set it for every smoke invocation (e.g. `K8S_HOST=10.0.0.5 make smoke-k8s`).
 
 ## Mock mode
 
@@ -22,17 +22,40 @@ make helm-deploy-local
 Smoke **without** LLM (identity probe only hits `/config`):
 
 ```bash
-make smoke-k8s-identity
-# or explicit host:
-make smoke-k8s-identity K8S_HOST=10.0.0.5
+K8S_HOST=<your-node-ip> make smoke-k8s-identity
 ```
 
 Smoke **with** LLM (needs working brain provider from cluster):
 
 ```bash
-make smoke-k8s-llm
-make smoke-k8s-llm K8S_HOST=10.0.0.5
+K8S_HOST=<your-node-ip> make smoke-k8s-llm
 ```
+
+`K8S_HOST` is required — there is no default. The script fails loudly
+with guidance if you forget. This is deliberate: the repo is public, so
+we refuse to ship a network default that would target a stranger's
+infrastructure.
+
+### Verify Agentic Lanes view
+
+After every `helm upgrade` / rollout, confirm the lane view is live:
+
+```bash
+K8S_HOST=<your-node-ip> make smoke-k8s-lanes
+# -> PASS lanes probe (/lanes renders)
+# -> PASS lanes probe (/api/lanes schema=v1, 5 lanes, 32 labs mapped)
+```
+
+Or by hand:
+
+```bash
+curl -s http://<your-node-ip>:3000/api/lanes | python3 -m json.tool | head -20
+# schema v1, five lanes, coverage gaps (the teaching artifact)
+```
+
+Browser check: `http://<your-node-ip>:3000/lanes`. The Threat Map at
+`http://<your-node-ip>:3000/threat-map` must remain byte-identical — a
+spec invariant; any regression there is a deploy blocker.
 
 ## ZITADEL realism mode (cluster)
 
@@ -63,7 +86,7 @@ For the full identity guide, see [guide.md](guide.md).
 3. Wait for pods ready, then:
 
    ```bash
-   make smoke-k8s-identity K8S_HOST=<your-node-ip>
+   K8S_HOST=<your-node-ip> make smoke-k8s-identity
    curl -s http://<your-node-ip>:30080/config   # expect idp_provider zitadel (if using default smoke NodePort)
    ```
 
@@ -98,8 +121,9 @@ helm rollback camazotz -n camazotz
 
 | Command | Purpose |
 |---------|---------|
-| `make smoke-k8s-identity` | K8s smoke + `GET /config` identity probe |
-| `make smoke-k8s-llm` | K8s smoke + LLM probe |
+| `make smoke-k8s-identity` | K8s smoke + `GET /config` identity probe (requires `K8S_HOST`) |
+| `make smoke-k8s-llm` | K8s smoke + LLM probe (requires `K8S_HOST`) |
+| `make smoke-k8s-lanes` | K8s smoke + `/lanes` and `/api/lanes` probe (requires `K8S_HOST`) |
 | `make helm-template` | Render manifests locally for review |
 
 See [configuration.md](configuration.md) and [deploy/README.md](../../deploy/README.md).

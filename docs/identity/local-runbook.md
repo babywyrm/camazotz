@@ -34,6 +34,27 @@ Smoke with LLM (needs working brain provider, e.g. API key for cloud):
 make smoke-local-llm
 ```
 
+### Verify Agentic Lanes view
+
+After every `make up`, confirm the lane view is live:
+
+```bash
+make smoke-local-lanes
+# -> PASS lanes probe (/lanes renders)
+# -> PASS lanes probe (/api/lanes schema=v1, 5 lanes, 32 labs mapped)
+```
+
+Or by hand:
+
+```bash
+curl -s http://localhost:3000/api/lanes | python3 -m json.tool | head -20
+# Expect schema: "v1", five lanes (human-direct, delegated, machine, chain, anonymous)
+```
+
+Browser check: `http://localhost:3000/lanes`. The Threat Map at
+`http://localhost:3000/threat-map` must remain byte-identical — it is a
+spec invariant that the lane view never regresses the existing map.
+
 ## ZITADEL realism mode (local)
 
 **Expectation:** This turns on **`zitadel` provider selection** and **IDP-backed trio labs** (oauth_delegation, revocation, rbac). Compose deploys `zitadel` and `zitadel-postgres` services by default.
@@ -114,5 +135,6 @@ Fallback behavior:
 | `make status` | curl health endpoints (gateway, portal, Ollama) |
 | `make smoke-local-identity` | `scripts/smoke_test.py --target local --require-identity` |
 | `make smoke-local-llm` | Local smoke + LLM probe |
+| `make smoke-local-lanes` | Local smoke + `/lanes` and `/api/lanes` probe |
 
 See also [configuration.md](configuration.md) and [QUICKSTART.md](../../QUICKSTART.md).
