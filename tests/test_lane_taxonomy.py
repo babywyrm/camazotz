@@ -146,3 +146,54 @@ def test_discover_handles_gateway_unreachable(monkeypatch):
     monkeypatch.setattr(lane_taxonomy, "_fetch_scenarios", lambda: [])
     index = lane_taxonomy.discover_lab_metadata()
     assert index == {}
+
+
+def test_coverage_summary_counts_primary_and_secondary(monkeypatch):
+    import lane_taxonomy
+
+    monkeypatch.setattr(
+        lane_taxonomy,
+        "_fetch_scenarios",
+        lambda: [
+            {"module_name": "a", "threat_id": "A", "title": "", "description": "",
+             "difficulty": "easy",
+             "agentic": {"primary_lane": 2, "secondary_lanes": [1], "transport": "A"}},
+            {"module_name": "b", "threat_id": "B", "title": "", "description": "",
+             "difficulty": "easy",
+             "agentic": {"primary_lane": 2, "transport": "A"}},
+            {"module_name": "c", "threat_id": "C", "title": "", "description": "",
+             "difficulty": "easy",
+             "agentic": {"primary_lane": 1, "transport": "A"}},
+        ],
+    )
+
+    summary = lane_taxonomy.coverage_summary()
+
+    assert summary[1].primary_count == 1
+    assert summary[1].secondary_count == 1
+    assert summary[2].primary_count == 2
+    assert summary[2].secondary_count == 0
+    assert summary[5].primary_count == 0
+    assert "no primary labs" in summary[5].gaps[0].lower()
+
+
+def test_coverage_summary_flags_transport_gap(monkeypatch):
+    import lane_taxonomy
+
+    monkeypatch.setattr(
+        lane_taxonomy,
+        "_fetch_scenarios",
+        lambda: [
+            {"module_name": "a", "threat_id": "A", "title": "", "description": "",
+             "difficulty": "easy",
+             "agentic": {"primary_lane": 2, "transport": "A"}},
+            {"module_name": "b", "threat_id": "B", "title": "", "description": "",
+             "difficulty": "easy",
+             "agentic": {"primary_lane": 2, "transport": "A"}},
+        ],
+    )
+
+    summary = lane_taxonomy.coverage_summary()
+    gap_text = " ".join(summary[2].gaps).lower()
+    assert "transport b" in gap_text
+    assert "transport c" in gap_text

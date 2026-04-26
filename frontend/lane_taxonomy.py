@@ -215,3 +215,50 @@ def discover_lab_metadata() -> dict[str, LabMetadata]:
             blurb=agentic.get("blurb", ""),
         )
     return index
+
+
+TRANSPORTS: tuple[str, ...] = ("A", "B", "C")
+
+
+@dataclass(frozen=True)
+class LaneCoverage:
+    lane_id: int
+    primary_count: int
+    secondary_count: int
+    transports_present: frozenset[str]
+    gaps: list[str]
+
+
+def coverage_summary(
+    labs: dict[str, LabMetadata] | None = None,
+) -> dict[int, LaneCoverage]:
+    """For each lane, compute primary/secondary counts, transport coverage, gaps.
+
+    If ``labs`` is None, discovery is performed. Pass an explicit map in tests
+    that want deterministic input.
+    """
+    if labs is None:
+        labs = discover_lab_metadata()
+
+    summary: dict[int, LaneCoverage] = {}
+    for lane in LANES:
+        primary = [m for m in labs.values() if m.primary_lane == lane.id]
+        secondary = [m for m in labs.values() if lane.id in m.secondary_lanes]
+        transports = frozenset(m.transport for m in primary if m.transport)
+
+        gaps: list[str] = []
+        if not primary:
+            gaps.append("No primary labs yet")
+        if lane.id != 5:  # Anonymous lane intentionally has no transport notion
+            for t in TRANSPORTS:
+                if t not in transports and primary:
+                    gaps.append(f"Transport {t} not covered")
+
+        summary[lane.id] = LaneCoverage(
+            lane_id=lane.id,
+            primary_count=len(primary),
+            secondary_count=len(secondary),
+            transports_present=transports,
+            gaps=gaps,
+        )
+    return summary
