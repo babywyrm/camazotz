@@ -157,6 +157,51 @@ def threat_map() -> str:
     )
 
 
+@app.route("/api/lanes")
+def api_lanes():
+    from lane_taxonomy import LANES, coverage_summary, discover_lab_metadata
+
+    labs = discover_lab_metadata()
+    coverage = coverage_summary(labs)
+
+    return jsonify({
+        "schema": "v1",
+        "lanes": [
+            {
+                "id": lane.id,
+                "slug": lane.slug,
+                "name": lane.name,
+                "blurb": lane.blurb,
+                "accent": lane.accent,
+                "rfcs": lane.rfcs,
+                "flow": [{"role": s.role, "token": s.token} for s in lane.flow],
+                "default_nullfield_action": lane.default_nullfield_action,
+                "identity_provider": lane.identity_provider,
+            }
+            for lane in LANES
+        ],
+        "coverage": {
+            str(lane_id): {
+                "primary_count": c.primary_count,
+                "secondary_count": c.secondary_count,
+                "transports_present": sorted(c.transports_present),
+                "gaps": c.gaps,
+            }
+            for lane_id, c in coverage.items()
+        },
+        "labs": [
+            {
+                "module_name": m.module_name,
+                "threat_id": m.threat_id,
+                "primary_lane": m.primary_lane,
+                "secondary_lanes": m.secondary_lanes,
+                "transport": m.transport,
+            }
+            for m in labs.values()
+        ],
+    })
+
+
 @app.route("/api/tools", methods=["GET"])
 def api_tools():
     data = _mcp_call("tools/list")

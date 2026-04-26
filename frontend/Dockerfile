@@ -9,6 +9,7 @@ COPY --from=builder /install /usr/local
 WORKDIR /app
 COPY frontend/app.py .
 COPY frontend/threat_map.py .
+COPY frontend/lane_taxonomy.py .
 COPY frontend/templates/ ./templates/
 COPY scripts/qa_runner/ ./qa_runner/
 USER camazotz
