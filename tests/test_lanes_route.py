@@ -2,15 +2,19 @@ from __future__ import annotations
 
 import importlib
 import sys
+from pathlib import Path
 
 import pytest
 
 
 @pytest.fixture
 def flask_client(monkeypatch):
-    sys.path.insert(0, "frontend")
-    if "app" in sys.modules:
-        importlib.reload(sys.modules["app"])
+    frontend_dir = str(Path(__file__).resolve().parents[1] / "frontend")
+    inserted = frontend_dir not in sys.path
+    if inserted:
+        sys.path.insert(0, frontend_dir)
+    sys.modules.pop("app", None)
+    sys.modules.pop("lane_taxonomy", None)
     import app as frontend_app
 
     monkeypatch.setattr(
@@ -28,6 +32,10 @@ def flask_client(monkeypatch):
     frontend_app.app.testing = True
     with frontend_app.app.test_client() as client:
         yield client
+    if inserted:
+        sys.path.remove(frontend_dir)
+    sys.modules.pop("app", None)
+    sys.modules.pop("lane_taxonomy", None)
 
 
 def test_api_lanes_returns_versioned_json(flask_client):

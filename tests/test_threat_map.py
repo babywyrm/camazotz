@@ -7,26 +7,30 @@ import pytest
 @pytest.fixture()
 def frontend_client():
     frontend_dir = str(__import__("pathlib").Path(__file__).resolve().parents[1] / "frontend")
-    if frontend_dir not in sys.path:
+    inserted = frontend_dir not in sys.path
+    if inserted:
         sys.path.insert(0, frontend_dir)
     sys.modules.pop("app", None)
     mod = importlib.import_module("app")
     mod.app.config["TESTING"] = True
     with mod.app.test_client() as client:
         yield client, mod
-    sys.path.remove(frontend_dir)
+    if inserted:
+        sys.path.remove(frontend_dir)
     sys.modules.pop("app", None)
 
 
 @pytest.fixture()
 def threat_map_mod():
     frontend_dir = str(__import__("pathlib").Path(__file__).resolve().parents[1] / "frontend")
-    if frontend_dir not in sys.path:
+    inserted = frontend_dir not in sys.path
+    if inserted:
         sys.path.insert(0, frontend_dir)
     sys.modules.pop("threat_map", None)
     mod = importlib.import_module("threat_map")
     yield mod
-    sys.path.remove(frontend_dir)
+    if inserted:
+        sys.path.remove(frontend_dir)
     sys.modules.pop("threat_map", None)
 
 

@@ -13,14 +13,16 @@ import pytest
 def frontend_client():
     """Import the frontend Flask app and return a test client."""
     frontend_dir = str(__import__("pathlib").Path(__file__).resolve().parents[1] / "frontend")
-    if frontend_dir not in sys.path:
+    inserted = frontend_dir not in sys.path
+    if inserted:
         sys.path.insert(0, frontend_dir)
     sys.modules.pop("app", None)
     mod = importlib.import_module("app")
     mod.app.config["TESTING"] = True
     with mod.app.test_client() as client:
         yield client, mod
-    sys.path.remove(frontend_dir)
+    if inserted:
+        sys.path.remove(frontend_dir)
     sys.modules.pop("app", None)
 
 
