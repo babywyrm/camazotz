@@ -54,3 +54,25 @@ def test_api_lanes_coverage_reflects_fake_labs(flask_client):
     assert coverage["1"]["primary_count"] == 1
     assert coverage["1"]["secondary_count"] == 1
     assert coverage["2"]["primary_count"] == 1
+
+
+def test_lanes_route_renders_200_with_all_lane_names(flask_client):
+    resp = flask_client.get("/lanes")
+    assert resp.status_code == 200
+    body = resp.get_data(as_text=True)
+    for name in ("Human Direct", "Human \u2192 Agent", "Machine Identity",
+                 "Agent \u2192 Agent", "Anonymous"):
+        assert name in body
+
+
+def test_lanes_route_links_to_challenge_detail(flask_client):
+    resp = flask_client.get("/lanes")
+    body = resp.get_data(as_text=True)
+    assert "/challenges/MCP-T21" in body
+
+
+def test_lanes_route_does_not_crash_when_gateway_empty(monkeypatch, flask_client):
+    monkeypatch.setattr("lane_taxonomy._fetch_scenarios", lambda: [])
+    resp = flask_client.get("/lanes")
+    assert resp.status_code == 200
+    assert "No primary labs yet" in resp.get_data(as_text=True)

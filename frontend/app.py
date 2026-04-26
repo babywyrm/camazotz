@@ -157,6 +157,33 @@ def threat_map() -> str:
     )
 
 
+@app.route("/lanes")
+def lanes_view():
+    from lane_taxonomy import LANES, coverage_summary, discover_lab_metadata
+
+    labs = discover_lab_metadata()
+    coverage = coverage_summary(labs)
+
+    lane_rows = []
+    for lane in LANES:
+        primary_labs = sorted(
+            [m for m in labs.values() if m.primary_lane == lane.id],
+            key=lambda m: m.threat_id,
+        )
+        secondary_labs = sorted(
+            [m for m in labs.values() if lane.id in m.secondary_lanes],
+            key=lambda m: m.threat_id,
+        )
+        lane_rows.append({
+            "lane": lane,
+            "primary_labs": primary_labs,
+            "secondary_labs": secondary_labs,
+            "coverage": coverage[lane.id],
+        })
+
+    return render_template("lanes.html", lane_rows=lane_rows)
+
+
 @app.route("/api/lanes")
 def api_lanes():
     from lane_taxonomy import LANES, coverage_summary, discover_lab_metadata

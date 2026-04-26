@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Agentic Identity Lanes — Camazotz{% endblock %}
+{% block content %}
+<section class="section"><div class="container">
+<h1>Agentic Identity Lanes</h1>
+{% for row in lane_rows %}
+  <div class="lane-strip {{ row.lane.css_class }}" id="lane-{{ row.lane.id }}">
+    <h2>LANE {{ row.lane.id }} — {{ row.lane.name }}</h2>
+    <p>{{ row.lane.blurb }}</p>
+    {% for lab in row.primary_labs %}
+      <a href="/challenges/{{ lab.threat_id }}">{{ lab.title }}</a>
+    {% endfor %}
+    {% if not row.primary_labs %}<p>No primary labs yet</p>{% endif %}
+  </div>
+{% endfor %}
+</div></section>
+{% endblock %}
