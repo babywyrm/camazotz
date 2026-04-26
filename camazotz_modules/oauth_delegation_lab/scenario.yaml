@@ -25,3 +25,9 @@ tools:
 references:
   - title: "OWASP MCP Top 10 — Token Theft"
     url: "https://owasp.org/www-project-machine-learning-security-top-10/"
+
+agentic:
+  primary_lane: 2
+  secondary_lanes: [1]
+  transport: "A"
+  blurb: "Audience confusion in token exchange"

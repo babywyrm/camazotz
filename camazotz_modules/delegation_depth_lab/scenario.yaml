@@ -24,3 +24,8 @@ hints:
   - Check the delegation chain after each hop to see identity context
   - On medium, the depth limit is 2 — the third hop is blocked
   - On hard, each agent must present its own credentials
+
+agentic:
+  primary_lane: 4
+  transport: "A"
+  blurb: "act-chain depth bypass"

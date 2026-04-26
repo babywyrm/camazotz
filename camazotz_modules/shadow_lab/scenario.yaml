@@ -29,3 +29,8 @@ owasp_mcp: "MCP14"
 references:
   - title: "OWASP MCP Top 10 — Persistence via Webhook/Callback"
     url: "https://owasp.org/www-project-top-10-for-large-language-model-applications/"
+
+agentic:
+  primary_lane: 5
+  transport: "A"
+  blurb: "Unauthenticated webhook registration"

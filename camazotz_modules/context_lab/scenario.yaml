@@ -27,3 +27,8 @@ owasp_mcp: "MCP01"
 references:
   - title: "OWASP MCP Top 10 — Prompt Injection"
     url: "https://owasp.org/www-project-top-10-for-large-language-model-applications/"
+
+agentic:
+  primary_lane: 2
+  transport: "A"
+  blurb: "Context poisoning in delegation"

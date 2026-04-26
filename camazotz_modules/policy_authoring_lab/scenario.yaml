@@ -20,3 +20,8 @@ hints:
   - Start with DENY for the most dangerous tools, then add SCOPE for leaky ones
   - The attack chain report tells you exactly which tools are involved
   - Remember: default deny at the bottom catches anything you missed
+
+agentic:
+  primary_lane: 2
+  transport: "A"
+  blurb: "Policy authoring defense-mode lab"

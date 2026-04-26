@@ -27,3 +27,8 @@ owasp_mcp: "MCP07"
 references:
   - title: "OWASP MCP Top 10 — Secrets in Tool Output"
     url: "https://owasp.org/www-project-top-10-for-large-language-model-applications/"
+
+agentic:
+  primary_lane: 1
+  transport: "B"
+  blurb: "Secret exfiltration via direct API"

@@ -23,3 +23,9 @@ tools:
 references:
   - title: "OWASP MCP Top 10 — Delegation Chains"
     url: "https://owasp.org/www-project-machine-learning-security-top-10/"
+
+agentic:
+  primary_lane: 4
+  secondary_lanes: [2]
+  transport: "A"
+  blurb: "Multi-hop identity dilution"

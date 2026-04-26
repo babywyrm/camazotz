@@ -18,3 +18,8 @@ hints:
   - Check tools/list for anything related to roles or permissions
   - The AI evaluates your justification — make it convincing on medium
   - On hard, nullfield HOLD action requires human approval for role changes
+
+agentic:
+  primary_lane: 3
+  transport: "A"
+  blurb: "Teleport role bundle escalation"

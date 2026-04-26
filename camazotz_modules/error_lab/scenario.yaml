@@ -26,3 +26,8 @@ tools:
 
 canary_location: "traceback and debug output contain DATABASE_URL, SECRET_KEY, and internal IPs"
 owasp_mcp: "MCP07"
+
+agentic:
+  primary_lane: 5
+  transport: "A"
+  blurb: "Error-message information disclosure"

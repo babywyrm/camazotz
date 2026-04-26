@@ -24,3 +24,8 @@ tools:
 references:
   - title: "OWASP MCP Top 10 — MCP11 Cross-Tenant Isolation"
     url: "https://owasp.org/www-project-machine-learning-security-top-10/"
+
+agentic:
+  primary_lane: 1
+  transport: "A"
+  blurb: "Tenant isolation via sub claim"

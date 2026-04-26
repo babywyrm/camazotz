@@ -197,3 +197,53 @@ def test_coverage_summary_flags_transport_gap(monkeypatch):
     gap_text = " ".join(summary[2].gaps).lower()
     assert "transport b" in gap_text
     assert "transport c" in gap_text
+
+
+def test_all_32_labs_have_agentic_metadata():
+    """Every lab module must declare an agentic block after migration."""
+    from pathlib import Path
+    import yaml
+
+    modules = Path(__file__).parent.parent / "camazotz_modules"
+    missing = []
+    for yaml_path in sorted(modules.glob("*/scenario.yaml")):
+        raw = yaml.safe_load(yaml_path.read_text())
+        agentic = (raw or {}).get("agentic") or {}
+        if not agentic or "primary_lane" not in agentic:
+            missing.append(yaml_path.parent.name)
+    assert not missing, f"labs missing agentic metadata: {missing}"
+
+
+def test_all_lanes_have_at_least_one_primary_lab():
+    """Every lane (1-5) must end up with at least one primary lab after migration."""
+    from pathlib import Path
+    import yaml
+
+    modules = Path(__file__).parent.parent / "camazotz_modules"
+    by_lane: dict[int, list[str]] = {i: [] for i in range(1, 6)}
+    for yaml_path in sorted(modules.glob("*/scenario.yaml")):
+        raw = yaml.safe_load(yaml_path.read_text())
+        agentic = (raw or {}).get("agentic") or {}
+        primary = agentic.get("primary_lane")
+        if primary in by_lane:
+            by_lane[primary].append(yaml_path.parent.name)
+    empty = [lane for lane, labs in by_lane.items() if not labs]
+    assert not empty, f"lanes with no primary labs: {empty}; distribution: { {k: len(v) for k, v in by_lane.items()} }"
+
+
+def test_migration_transport_distribution_hits_a_b_c():
+    """Verify the three transports are all represented — anchors the lane-view teaching point."""
+    from pathlib import Path
+    import yaml
+
+    modules = Path(__file__).parent.parent / "camazotz_modules"
+    transports: set[str] = set()
+    for yaml_path in sorted(modules.glob("*/scenario.yaml")):
+        raw = yaml.safe_load(yaml_path.read_text())
+        agentic = (raw or {}).get("agentic") or {}
+        t = agentic.get("transport")
+        if t:
+            transports.add(t)
+    assert transports == {"A", "B", "C"}, (
+        f"expected transports A, B, C all represented; got {sorted(transports)}"
+    )

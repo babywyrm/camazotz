@@ -19,3 +19,8 @@ hints:
   - Check the cert's not_after timestamp against the server's clock
   - On medium, there is a configurable clock skew tolerance
   - nullfield's replay detection (integrity.detectReplay) is the defense
+
+agentic:
+  primary_lane: 3
+  transport: "A"
+  blurb: "SPIFFE/X.509 replay window"

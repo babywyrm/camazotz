@@ -24,3 +24,8 @@ tools:
 references:
   - title: "OWASP MCP Top 10 — Token Lifecycle"
     url: "https://owasp.org/www-project-machine-learning-security-top-10/"
+
+agentic:
+  primary_lane: 2
+  transport: "A"
+  blurb: "Refresh-token revocation propagation"

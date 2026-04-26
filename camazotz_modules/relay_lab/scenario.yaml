@@ -29,3 +29,9 @@ owasp_mcp: "MCP05"
 references:
   - title: "OWASP MCP Top 10 — Cross-Tool Context Poisoning"
     url: "https://owasp.org/www-project-top-10-for-large-language-model-applications/"
+
+agentic:
+  primary_lane: 4
+  secondary_lanes: [2]
+  transport: "A"
+  blurb: "Relay context-buffer abuse"

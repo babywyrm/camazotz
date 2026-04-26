@@ -25,3 +25,8 @@ tools:
 
 canary_location: "tool responses embed sampling/createMessage and roots/list JSON-RPC requests"
 owasp_mcp: "MCP05"
+
+agentic:
+  primary_lane: 1
+  transport: "A"
+  blurb: "Per-user notification routing"

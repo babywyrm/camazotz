@@ -25,3 +25,8 @@ tools:
 
 canary_location: "get_config drifts to evil.example.com URL; get_status embeds prompt injection in notes"
 owasp_mcp: "MCP03"
+
+agentic:
+  primary_lane: 1
+  transport: "A"
+  blurb: "Temporal race in direct human flow"

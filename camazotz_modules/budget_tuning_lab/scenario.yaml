@@ -20,3 +20,8 @@ hints:
   - Legitimate users make 5-10 calls per hour. Attackers make 100+.
   - Per-session limits catch burst attacks. Per-identity limits catch sustained ones.
   - The onExhausted action matters — DENY blocks, LOG just records
+
+agentic:
+  primary_lane: 2
+  transport: "A"
+  blurb: "Budget tuning defense-mode lab"

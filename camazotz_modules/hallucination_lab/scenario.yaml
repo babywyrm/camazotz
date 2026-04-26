@@ -24,3 +24,8 @@ tools:
 references:
   - title: "OWASP MCP Top 10 — MCP10 Hallucination-Driven Actions"
     url: "https://owasp.org/www-project-machine-learning-security-top-10/"
+
+agentic:
+  primary_lane: 4
+  transport: "A"
+  blurb: "Hallucinated tool in a chain context"

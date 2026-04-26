@@ -29,3 +29,8 @@ owasp_mcp: "MCP08"
 references:
   - title: "OWASP MCP Top 10 — Supply Chain via Content"
     url: "https://owasp.org/www-project-top-10-for-large-language-model-applications/"
+
+agentic:
+  primary_lane: 3
+  transport: "C"
+  blurb: "SDK/package supply chain tamper"

@@ -25,3 +25,9 @@ tools:
 references:
   - title: "OWASP MCP Top 10 — Credential Isolation"
     url: "https://owasp.org/www-project-machine-learning-security-top-10/"
+
+agentic:
+  primary_lane: 2
+  secondary_lanes: [3]
+  transport: "A"
+  blurb: "Token broker leak path"

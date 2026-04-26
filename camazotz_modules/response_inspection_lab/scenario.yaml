@@ -20,3 +20,8 @@ hints:
   - Start by examining the raw tool response carefully
   - Look for patterns like password=, token=, key= in the output
   - On hard, try base64 decoding parts of the response
+
+agentic:
+  primary_lane: 2
+  transport: "A"
+  blurb: "Response inspection defense-mode lab"

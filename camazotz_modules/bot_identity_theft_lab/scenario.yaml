@@ -18,3 +18,9 @@ hints:
   - The tbot-out secret contains an identity file with a short-lived X.509 cert
   - On medium difficulty, check which service accounts can read the secret
   - The bot's cert carries roles in the Teleport metadata — check what it can access
+
+agentic:
+  primary_lane: 3
+  secondary_lanes: [4]
+  transport: "A"
+  blurb: "Bot certificate theft and replay"

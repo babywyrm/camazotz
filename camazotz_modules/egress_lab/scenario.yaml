@@ -28,3 +28,8 @@ owasp_mcp: "MCP06"
 references:
   - title: "OWASP MCP Top 10 — SSRF via Tool"
     url: "https://owasp.org/www-project-top-10-for-large-language-model-applications/"
+
+agentic:
+  primary_lane: 2
+  transport: "B"
+  blurb: "Egress over Direct API (Transport B)"
