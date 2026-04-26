@@ -96,3 +96,14 @@ def test_navbar_includes_lanes_link(flask_client):
     assert tm > 0 and ln > tm and ob > ln, (
         f"expected nav order Threat Map({tm}) < Lanes({ln}) < Observer({ob})"
     )
+
+
+def test_lanes_page_has_jump_navigation_bar(flask_client):
+    """The /lanes page must expose a sticky jump-to-lane nav for fast review."""
+    resp = flask_client.get("/lanes")
+    body = resp.get_data(as_text=True)
+    assert 'class="lane-nav"' in body, "lane-nav selector bar missing from /lanes"
+    for lane_id in (1, 2, 3, 4, 5):
+        assert f'href="#lane-{lane_id}"' in body, (
+            f"jump link to lane {lane_id} missing"
+        )
