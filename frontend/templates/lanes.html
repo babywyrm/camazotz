@@ -1,17 +1,170 @@
 {% extends "base.html" %}
 {% block title %}Agentic Identity Lanes — Camazotz{% endblock %}
+
+{% block extra_css %}
+<style>
+.lane-page-header{padding:3rem 0 2rem;text-align:center}
+.lane-page-header h1{font-size:2.1rem;letter-spacing:-.02em;margin-bottom:.6rem}
+.lane-page-header p.lead{color:var(--text2);max-width:720px;margin:0 auto;font-size:.95rem}
+.lane-page-header a{color:var(--accent2)}
+
+.lane-strip{border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--surface);margin:1.2rem 0;overflow:hidden}
+.lane-strip .lane-accent{height:3px}
+.lane-strip.lane-human .lane-accent{background:#60a5fa}
+.lane-strip.lane-delegated .lane-accent{background:#a78bfa}
+.lane-strip.lane-machine .lane-accent{background:#34d399}
+.lane-strip.lane-chain .lane-accent{background:#fb923c}
+.lane-strip.lane-anonymous .lane-accent{background:#94a3b8}
+
+.lane-head{display:flex;align-items:flex-start;justify-content:space-between;
+  gap:1.5rem;padding:1.2rem 1.4rem .6rem}
+.lane-head-left .lane-id{font:600 10px system-ui;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--muted);margin-bottom:.25rem}
+.lane-head-left h2{font-size:1.15rem;margin-bottom:.3rem}
+.lane-head-left p.blurb{color:var(--text2);font-size:.85rem;max-width:52ch}
+.rfc-pills{display:flex;flex-wrap:wrap;gap:.3rem;justify-content:flex-end;max-width:260px}
+.rfc-pill{font:600 10px var(--font-mono);padding:.2rem .5rem;border-radius:4px;
+  background:var(--surface2);color:var(--text2);border:1px solid var(--border2);letter-spacing:.04em}
+
+.flow-diagram{display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;
+  padding:.4rem 1.4rem 1rem;overflow-x:auto}
+.flow-stage{display:flex;flex-direction:column;align-items:center;
+  padding:.5rem .8rem;border:1px solid var(--border2);border-radius:8px;
+  background:var(--surface2);min-width:110px}
+.flow-stage .role{font:600 .8rem system-ui;color:var(--text);letter-spacing:-.01em}
+.flow-stage .token{font:500 .65rem var(--font-mono);color:var(--text2);margin-top:.15rem;
+  letter-spacing:.02em}
+.flow-arrow{color:var(--muted);font-size:.9rem}
+
+.context-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:0;
+  border-top:1px solid var(--border);border-bottom:1px solid var(--border);
+  background:var(--bg2)}
+.context-col{padding:.75rem 1.1rem;border-right:1px solid var(--border)}
+.context-col:last-child{border-right:none}
+.context-col .label{font:600 9px system-ui;letter-spacing:.1em;color:var(--muted);
+  text-transform:uppercase;margin-bottom:.2rem}
+.context-col .value{font-size:.82rem;color:var(--text);font-weight:500}
+.context-col.gap{background:rgba(234,179,8,.08)}
+.context-col.gap .value{color:var(--yellow)}
+
+.tile-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
+  gap:.8rem;padding:1rem 1.4rem 1.4rem}
+.tile-primary{background:var(--surface2);border:1px solid var(--border2);
+  border-radius:8px;padding:.85rem;transition:border-color .2s,transform .15s;display:block;color:var(--text)}
+.tile-primary:hover{border-color:var(--text2);transform:translateY(-1px);color:var(--text)}
+.tile-primary .tile-top{display:flex;justify-content:space-between;align-items:center;
+  margin-bottom:.35rem;gap:.4rem}
+.tile-primary h3{font-size:.88rem;font-weight:600;letter-spacing:-.01em}
+.tile-primary .threat-id{font:600 10px var(--font-mono);color:var(--accent2);letter-spacing:.04em}
+.tile-primary p{font-size:.74rem;color:var(--text2);line-height:1.45;margin-bottom:.45rem;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.tile-primary .diff{font:600 9px system-ui;letter-spacing:.08em;text-transform:uppercase}
+.tile-primary .diff.easy{color:var(--green)}
+.tile-primary .diff.medium{color:var(--yellow)}
+.tile-primary .diff.hard{color:var(--red)}
+
+.tile-secondary{background:var(--bg2);border:1px dashed var(--border2);
+  border-radius:8px;padding:.6rem .75rem;display:flex;align-items:center;
+  justify-content:space-between;gap:.4rem;color:var(--text2);font-size:.78rem}
+.tile-secondary a{color:var(--text2);font-weight:500}
+.tile-secondary a:hover{color:var(--text)}
+.secondary-badge{font:600 9px system-ui;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--muted);border:1px solid var(--border2);padding:.1rem .35rem;border-radius:3px}
+
+.empty-note{padding:1rem 1.4rem 1.4rem;color:var(--muted);font-size:.82rem;font-style:italic}
+
+@media(max-width:900px){.context-strip{grid-template-columns:repeat(2,1fr)}
+  .context-col:nth-child(2n){border-right:none}}
+@media(max-width:600px){.context-strip{grid-template-columns:1fr}
+  .context-col{border-right:none;border-bottom:1px solid var(--border)}
+  .lane-head{flex-direction:column}.rfc-pills{justify-content:flex-start;max-width:none}}
+</style>
+{% endblock %}
+
 {% block content %}
-<section class="section"><div class="container">
-<h1>Agentic Identity Lanes</h1>
+<section class="lane-page-header">
+  <h1>Agentic Identity Lanes</h1>
+  <p class="lead">
+    Five identity flows. Three transport surfaces. Every camazotz lab exercises
+    one lane primarily and may touch others. A parallel lens to the
+    <a href="/threat-map">Threat Map</a>.
+    Source: <a href="https://github.com/babywyrm/agentic-sec/blob/main/docs/identity-flows.md" target="_blank" rel="noopener">Identity Flow Framework</a>.
+  </p>
+</section>
+
+<div class="container">
 {% for row in lane_rows %}
-  <div class="lane-strip {{ row.lane.css_class }}" id="lane-{{ row.lane.id }}">
-    <h2>LANE {{ row.lane.id }} — {{ row.lane.name }}</h2>
-    <p>{{ row.lane.blurb }}</p>
-    {% for lab in row.primary_labs %}
-      <a href="/challenges/{{ lab.threat_id }}">{{ lab.title }}</a>
-    {% endfor %}
-    {% if not row.primary_labs %}<p>No primary labs yet</p>{% endif %}
+  {% set lane = row.lane %}
+  <div class="lane-strip {{ lane.css_class }}" id="lane-{{ lane.id }}">
+    <div class="lane-accent"></div>
+
+    <div class="lane-head">
+      <div class="lane-head-left">
+        <div class="lane-id">Lane {{ lane.id }}</div>
+        <h2>{{ lane.name }}</h2>
+        <p class="blurb">{{ lane.blurb }}</p>
+      </div>
+      <div class="rfc-pills">
+        {% for rfc in lane.rfcs %}<span class="rfc-pill">{{ rfc }}</span>{% endfor %}
+      </div>
+    </div>
+
+    <div class="flow-diagram">
+      {% for stage in lane.flow %}
+        <div class="flow-stage">
+          <div class="role">{{ stage.role }}</div>
+          {% if stage.token %}<div class="token">{{ stage.token }}</div>{% endif %}
+        </div>
+        {% if not loop.last %}<span class="flow-arrow">&rarr;</span>{% endif %}
+      {% endfor %}
+    </div>
+
+    <div class="context-strip">
+      <div class="context-col">
+        <div class="label">Default nullfield</div>
+        <div class="value">{{ lane.default_nullfield_action }}</div>
+      </div>
+      <div class="context-col">
+        <div class="label">Identity provider</div>
+        <div class="value">{{ lane.identity_provider }}</div>
+      </div>
+      <div class="context-col">
+        <div class="label">mcpnuke coverage</div>
+        <div class="value">{{ row.coverage.primary_count }} primary
+          {% if row.coverage.secondary_count %}+ {{ row.coverage.secondary_count }} secondary{% endif %}</div>
+      </div>
+      <div class="context-col {% if row.coverage.gaps %}gap{% endif %}">
+        <div class="label">Gaps</div>
+        <div class="value">
+          {% if row.coverage.gaps %}{{ row.coverage.gaps | join(', ') }}
+          {% else %}&mdash;{% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="tile-grid">
+      {% for lab in row.primary_labs %}
+        <a href="/challenges/{{ lab.threat_id }}" class="tile-primary">
+          <div class="tile-top">
+            <h3>{{ lab.title }}</h3>
+            <span class="threat-id">{{ lab.threat_id }}</span>
+          </div>
+          <p>{{ lab.blurb or lab.description }}</p>
+          <span class="diff {{ lab.difficulty }}">{{ lab.difficulty }}</span>
+        </a>
+      {% endfor %}
+      {% for lab in row.secondary_labs %}
+        <div class="tile-secondary">
+          <a href="/lanes#lane-{{ lab.primary_lane }}">{{ lab.title }}</a>
+          <span class="secondary-badge">secondary</span>
+        </div>
+      {% endfor %}
+    </div>
+    {% if not row.primary_labs %}
+      <div class="empty-note">No primary labs yet &mdash; coverage gap.</div>
+    {% endif %}
   </div>
 {% endfor %}
-</div></section>
+</div>
 {% endblock %}
