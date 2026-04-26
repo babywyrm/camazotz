@@ -1710,3 +1710,22 @@ Every `tools/call` emits a structured event at `GET /_observer/last-event`:
 The observer sidecar polls this endpoint and emits structured JSON logs.
 This is intentionally weak (OWASP MCP08) — no persistent log, no user
 attribution, no tamper protection.
+
+---
+
+## Two Lenses for Browsing Labs
+
+Camazotz now offers two complementary views of the lab catalog:
+
+- **[Threat Map](/threat-map)** — groups labs by attack category. Best for
+  learning "what kind of attack is this?"
+- **[Agentic Lanes](/lanes)** — groups labs by identity flow. Best for
+  practitioners asking "who is the actor in this flow?" The five lanes are
+  defined in the [Identity Flow Framework](https://github.com/babywyrm/agentic-sec/blob/main/docs/identity-flows.md).
+
+Both views render the same lab catalog; coverage gaps on the lane view are a
+teaching artifact — they reveal where MCP defenses are blind today.
+
+See also: `GET /api/lanes` publishes the lane taxonomy and per-lane coverage
+as versioned JSON (`schema: "v1"`) for scripts and sibling tools
+(`nullfield`, `mcpnuke`).
