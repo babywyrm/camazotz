@@ -148,6 +148,74 @@ def test_discover_handles_gateway_unreachable(monkeypatch):
     assert index == {}
 
 
+def test_fetch_scenarios_returns_list_from_gateway(monkeypatch):
+    """Exercise the real _fetch_scenarios HTTP path (not monkeypatched)."""
+    import httpx
+    import lane_taxonomy
+
+    payload = [{"module_name": "x", "threat_id": "X", "agentic": {}}]
+
+    class _Resp:
+        status_code = 200
+        def raise_for_status(self):
+            pass
+        def json(self):
+            return payload
+
+    monkeypatch.setattr(httpx, "get", lambda *a, **kw: _Resp())
+    assert lane_taxonomy._fetch_scenarios() == payload
+
+
+def test_fetch_scenarios_swallows_http_error(monkeypatch):
+    """HTTP failure must be logged and return [] — portal stays up if gateway is down."""
+    import httpx
+    import lane_taxonomy
+
+    def _boom(*a, **kw):
+        raise httpx.ConnectError("gateway unreachable")
+
+    monkeypatch.setattr(httpx, "get", _boom)
+    assert lane_taxonomy._fetch_scenarios() == []
+
+
+def test_fetch_scenarios_swallows_json_error(monkeypatch):
+    """Non-list JSON payloads fall through to the empty-list default."""
+    import httpx
+    import lane_taxonomy
+
+    class _BadResp:
+        status_code = 200
+        def raise_for_status(self):
+            pass
+        def json(self):
+            return {"not": "a list"}
+
+    monkeypatch.setattr(httpx, "get", lambda *a, **kw: _BadResp())
+    assert lane_taxonomy._fetch_scenarios() == []
+
+
+def test_discover_raises_when_primary_overlaps_secondary(monkeypatch):
+    """A lab cannot list its primary lane in secondary_lanes — catch at discovery."""
+    import lane_taxonomy
+
+    monkeypatch.setattr(
+        lane_taxonomy,
+        "_fetch_scenarios",
+        lambda: [
+            {
+                "module_name": "conflicted_lab",
+                "threat_id": "MCP-T00",
+                "title": "Conflicted",
+                "description": "",
+                "difficulty": "easy",
+                "agentic": {"primary_lane": 2, "secondary_lanes": [2, 3]},
+            }
+        ],
+    )
+    with pytest.raises(ValueError, match="must not appear in secondary_lanes"):
+        lane_taxonomy.discover_lab_metadata()
+
+
 def test_coverage_summary_counts_primary_and_secondary(monkeypatch):
     import lane_taxonomy
 
@@ -209,7 +277,7 @@ def test_all_32_labs_have_agentic_metadata():
     for yaml_path in sorted(modules.glob("*/scenario.yaml")):
         raw = yaml.safe_load(yaml_path.read_text())
         agentic = (raw or {}).get("agentic") or {}
-        if not agentic or "primary_lane" not in agentic:
+        if not agentic or "primary_lane" not in agentic:  # pragma: no cover — guard; post-migration all 32 have agentic
             missing.append(yaml_path.parent.name)
     assert not missing, f"labs missing agentic metadata: {missing}"
 

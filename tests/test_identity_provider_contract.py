@@ -323,3 +323,117 @@ def test_zitadel_provider_introspection_uses_endpoint(monkeypatch) -> None:
         "client_id": "cid",
         "client_secret": "secret",
     }
+
+
+# --- Coverage fill for defensive paths ---
+
+
+def test_host_probe_url_returns_input_when_missing_scheme_or_netloc() -> None:
+    """URLs that don't parse into scheme+netloc fall through unchanged."""
+    from brain_gateway.app.identity.service import _host_probe_url
+
+    assert _host_probe_url("not-a-url") == "not-a-url"
+    assert _host_probe_url("") == ""
+
+
+def test_zitadel_is_reachable_caches_recent_result(monkeypatch) -> None:
+    """Two calls within the TTL window reuse the cached health status."""
+    import brain_gateway.app.identity.service as svc
+
+    monkeypatch.setattr(svc, "_zitadel_health_ok", True)
+    monkeypatch.setattr(svc, "_zitadel_health_checked_at", __import__("time").monotonic())
+
+    sentinel = object()
+
+    def _should_not_be_called(*a, **kw):  # pragma: no cover — asserts below guarantee it isn't
+        raise AssertionError("urlopen must not be called when cache is fresh")
+
+    monkeypatch.setattr(svc, "urlopen", _should_not_be_called)
+
+    provider = ZitadelIdentityProvider(
+        issuer_url="https://zitadel.example",
+        token_endpoint="https://zitadel.example/token",
+        introspection_endpoint="https://zitadel.example/introspect",
+        revocation_endpoint="https://zitadel.example/revoke",
+        client_id="c",
+        client_secret="s",
+    )
+    assert svc._zitadel_is_reachable(provider) is True
+
+
+def test_zitadel_is_reachable_success_path(monkeypatch) -> None:
+    """Fresh cache + successful urlopen sets health to True."""
+    import brain_gateway.app.identity.service as svc
+
+    monkeypatch.setattr(svc, "_zitadel_health_ok", None)
+    monkeypatch.setattr(svc, "_zitadel_health_checked_at", 0.0)
+
+    class _FakeConn:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    monkeypatch.setattr(svc, "urlopen", lambda *a, **kw: _FakeConn())
+
+    provider = ZitadelIdentityProvider(
+        issuer_url="https://zitadel.example",
+        token_endpoint="https://zitadel.example/token",
+        introspection_endpoint="https://zitadel.example/introspect",
+        revocation_endpoint="https://zitadel.example/revoke",
+        client_id="c",
+        client_secret="s",
+    )
+    assert svc._zitadel_is_reachable(provider) is True
+
+
+def test_client_credentials_raises_when_access_token_missing(monkeypatch) -> None:
+    """Zitadel token endpoint returning no access_token must raise ValueError."""
+    provider = ZitadelIdentityProvider(
+        issuer_url="https://example",
+        token_endpoint="https://example/token",
+        introspection_endpoint="https://example/introspect",
+        revocation_endpoint="https://example/revoke",
+        client_id="cid",
+        client_secret="secret",
+    )
+
+    class _EmptyResp:
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict[str, object]:
+            return {"token_type": "Bearer"}
+
+    monkeypatch.setattr(httpx, "post", lambda *a, **kw: _EmptyResp())
+    with pytest.raises(ValueError, match="no access token"):
+        provider.client_credentials_token(audience="aud", scope="s")
+
+
+def test_exchange_token_raises_when_access_token_missing(monkeypatch) -> None:
+    """Zitadel token exchange returning no access_token must raise ValueError."""
+    provider = ZitadelIdentityProvider(
+        issuer_url="https://example",
+        token_endpoint="https://example/token",
+        introspection_endpoint="https://example/introspect",
+        revocation_endpoint="https://example/revoke",
+        client_id="cid",
+        client_secret="secret",
+    )
+
+    class _EmptyResp:
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict[str, object]:
+            return {}
+
+    monkeypatch.setattr(httpx, "post", lambda *a, **kw: _EmptyResp())
+    with pytest.raises(ValueError, match="token exchange returned no access token"):
+        provider.exchange_token(
+            subject_token="alice@example.com",
+            actor_token="agent-1",
+            audience="mcp",
+            scope="read",
+        )

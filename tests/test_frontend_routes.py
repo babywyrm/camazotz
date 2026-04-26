@@ -12,14 +12,14 @@ def frontend_client():
     """Import the frontend Flask app and return a test client."""
     frontend_dir = str(__import__("pathlib").Path(__file__).resolve().parents[1] / "frontend")
     inserted = frontend_dir not in sys.path
-    if inserted:
+    if inserted:  # pragma: no cover — pyproject pythonpath pre-seeds this
         sys.path.insert(0, frontend_dir)
     sys.modules.pop("app", None)
     mod = importlib.import_module("app")
     mod.app.config["TESTING"] = True
     with mod.app.test_client() as client:
         yield client, mod
-    if inserted:
+    if inserted:  # pragma: no cover — mirrors the defensive insert above
         sys.path.remove(frontend_dir)
     sys.modules.pop("app", None)
 
@@ -266,3 +266,20 @@ def test_scenarios_page_has_walkthrough_pills(frontend_client) -> None:
     resp = client.get("/scenarios")
     html = resp.data.decode()
     assert "walkthrough" in html.lower()
+
+
+def test_fetch_gateway_config_falls_back_on_httpx_error(frontend_client) -> None:
+    """When /config is unreachable the portal returns the default dict instead of crashing."""
+    _, mod = frontend_client
+
+    def _boom(*a, **kw):
+        raise httpx.ConnectError("gateway unreachable")
+
+    with patch.object(mod.httpx, "get", side_effect=_boom):
+        fallback = mod._fetch_gateway_config()
+
+    assert fallback == {
+        "idp_provider": "mock",
+        "idp_backed_labs": [],
+        "idp_backed_tools": [],
+    }

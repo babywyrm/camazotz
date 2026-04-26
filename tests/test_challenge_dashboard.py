@@ -42,14 +42,14 @@ def frontend_client():
     """Import the frontend Flask app and return a test client."""
     frontend_dir = str(__import__("pathlib").Path(__file__).resolve().parents[1] / "frontend")
     inserted = frontend_dir not in sys.path
-    if inserted:
+    if inserted:  # pragma: no cover — pyproject pythonpath pre-seeds this
         sys.path.insert(0, frontend_dir)
     sys.modules.pop("app", None)
     mod = importlib.import_module("app")
     mod.app.config["TESTING"] = True
     with mod.app.test_client() as client:
         yield client, mod
-    if inserted:
+    if inserted:  # pragma: no cover — mirrors the defensive insert above
         sys.path.remove(frontend_dir)
     sys.modules.pop("app", None)
 

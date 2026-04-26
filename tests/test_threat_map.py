@@ -8,14 +8,14 @@ import pytest
 def frontend_client():
     frontend_dir = str(__import__("pathlib").Path(__file__).resolve().parents[1] / "frontend")
     inserted = frontend_dir not in sys.path
-    if inserted:
+    if inserted:  # pragma: no cover — pyproject pythonpath pre-seeds this
         sys.path.insert(0, frontend_dir)
     sys.modules.pop("app", None)
     mod = importlib.import_module("app")
     mod.app.config["TESTING"] = True
     with mod.app.test_client() as client:
         yield client, mod
-    if inserted:
+    if inserted:  # pragma: no cover — mirrors the defensive insert above
         sys.path.remove(frontend_dir)
     sys.modules.pop("app", None)
 
@@ -24,12 +24,12 @@ def frontend_client():
 def threat_map_mod():
     frontend_dir = str(__import__("pathlib").Path(__file__).resolve().parents[1] / "frontend")
     inserted = frontend_dir not in sys.path
-    if inserted:
+    if inserted:  # pragma: no cover — pyproject pythonpath pre-seeds this
         sys.path.insert(0, frontend_dir)
     sys.modules.pop("threat_map", None)
     mod = importlib.import_module("threat_map")
     yield mod
-    if inserted:
+    if inserted:  # pragma: no cover — mirrors the defensive insert above
         sys.path.remove(frontend_dir)
     sys.modules.pop("threat_map", None)
 

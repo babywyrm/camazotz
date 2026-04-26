@@ -11,7 +11,7 @@ import pytest
 def flask_client(monkeypatch):
     frontend_dir = str(Path(__file__).resolve().parents[1] / "frontend")
     inserted = frontend_dir not in sys.path
-    if inserted:
+    if inserted:  # pragma: no cover — pyproject pythonpath pre-seeds this
         sys.path.insert(0, frontend_dir)
     sys.modules.pop("app", None)
     sys.modules.pop("lane_taxonomy", None)
@@ -32,7 +32,7 @@ def flask_client(monkeypatch):
     frontend_app.app.testing = True
     with frontend_app.app.test_client() as client:
         yield client
-    if inserted:
+    if inserted:  # pragma: no cover — mirrors the defensive insert above
         sys.path.remove(frontend_dir)
     sys.modules.pop("app", None)
     sys.modules.pop("lane_taxonomy", None)
