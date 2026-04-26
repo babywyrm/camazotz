@@ -189,6 +189,7 @@ def list_scenarios() -> list[dict[str, object]]:
             "tools": s.tools,
             "owasp_mcp": s.owasp_mcp,
             "module_name": s.module_name,
+            "agentic": s.agentic,
         }
         for s in loader.all()
     ]

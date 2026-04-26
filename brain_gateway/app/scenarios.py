@@ -33,6 +33,7 @@ class Scenario:
     owasp_mcp: str = ""
     references: list[dict[str, str]] = field(default_factory=list)
     module_name: str = ""
+    agentic: dict[str, object] = field(default_factory=dict)
 
 
 VALID_DIFFICULTIES = {"easy", "medium", "hard"}
@@ -87,6 +88,7 @@ class ScenarioLoader:
                 owasp_mcp=raw.get("owasp_mcp", ""),
                 references=raw.get("references", []),
                 module_name=module_name,
+                agentic=raw.get("agentic") or {},
             )
             self._scenarios.append(scenario)
             self._by_threat[scenario.threat_id] = scenario
