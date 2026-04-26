@@ -76,3 +76,15 @@ def test_lanes_route_does_not_crash_when_gateway_empty(monkeypatch, flask_client
     resp = flask_client.get("/lanes")
     assert resp.status_code == 200
     assert "No primary labs yet" in resp.get_data(as_text=True)
+
+
+def test_navbar_includes_lanes_link(flask_client):
+    resp = flask_client.get("/")
+    body = resp.get_data(as_text=True)
+    assert 'href="/lanes"' in body
+    tm = body.find('href="/threat-map"')
+    ln = body.find('href="/lanes"')
+    ob = body.find('href="/observer"')
+    assert tm > 0 and ln > tm and ob > ln, (
+        f"expected nav order Threat Map({tm}) < Lanes({ln}) < Observer({ob})"
+    )
