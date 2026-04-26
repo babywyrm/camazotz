@@ -53,7 +53,7 @@ SENSITIVE_KEYS = {
 
 class ResponseInspectionLab(LabModule):
     name = "response_inspection"
-    threat_id = "MCP-T07"
+    threat_id = "MCP-T30"
     title = "Response Inspection — Craft Redaction Rules"
     category = "defense"
 

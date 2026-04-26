@@ -22,7 +22,7 @@ _BOT_IDENTITY = f"bot-agent-bot-{secrets.token_hex(4)}"
 
 class BotIdentityTheftLab(LabModule):
     name = "bot_identity_theft"
-    threat_id = "MCP-T04"
+    threat_id = "MCP-T18"
     title = "Bot Identity Theft via tbot Credential Exposure"
     category = "identity"
 
@@ -64,6 +64,7 @@ class BotIdentityTheftLab(LabModule):
                         "namespace": {
                             "type": "string",
                             "description": "Kubernetes namespace to read from",
+                            "maxLength": 253,
                         },
                     },
                 },
@@ -81,6 +82,7 @@ class BotIdentityTheftLab(LabModule):
                         "cert_serial": {
                             "type": "string",
                             "description": "Certificate serial from the stolen tbot identity",
+                            "maxLength": 128,
                         },
                     },
                 },
@@ -94,8 +96,8 @@ class BotIdentityTheftLab(LabModule):
                 "inputSchema": {
                     "type": "object",
                     "properties": {
-                        "original_identity": {"type": "string"},
-                        "presented_identity": {"type": "string"},
+                        "original_identity": {"type": "string", "maxLength": 256},
+                        "presented_identity": {"type": "string", "maxLength": 256},
                     },
                 },
             },

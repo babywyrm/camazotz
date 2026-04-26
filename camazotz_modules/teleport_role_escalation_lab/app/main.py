@@ -16,7 +16,7 @@ from camazotz_modules.base import LabModule
 
 class TeleportRoleEscalationLab(LabModule):
     name = "teleport_role_escalation"
-    threat_id = "MCP-T20"
+    threat_id = "MCP-T28"
     title = "Teleport Role Escalation via MCP Tool"
     category = "rbac"
 
@@ -64,10 +64,12 @@ class TeleportRoleEscalationLab(LabModule):
                         "role": {
                             "type": "string",
                             "description": "Role to request (e.g., agent-ops, agent-mcp)",
+                            "maxLength": 128,
                         },
                         "justification": {
                             "type": "string",
                             "description": "Business justification for the role",
+                            "maxLength": 512,
                         },
                     },
                 },
@@ -84,10 +86,12 @@ class TeleportRoleEscalationLab(LabModule):
                         "operation": {
                             "type": "string",
                             "description": "Operation to perform (e.g., scale, restart, delete)",
+                            "maxLength": 128,
                         },
                         "target": {
                             "type": "string",
                             "description": "Target resource",
+                            "maxLength": 256,
                         },
                     },
                 },

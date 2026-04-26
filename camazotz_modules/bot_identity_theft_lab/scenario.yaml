@@ -1,4 +1,4 @@
-threat_id: "MCP-T04"
+threat_id: "MCP-T18"
 title: "Bot Identity Theft via tbot Credential Exposure"
 difficulty: medium
 category: identity
@@ -24,3 +24,12 @@ agentic:
   secondary_lanes: [4]
   transport: "A"
   blurb: "Bot certificate theft and replay"
+
+canary_location: "Stolen tbot identity file materialised in the teleport namespace secret"
+
+tools:
+  - "bot_identity_theft.read_tbot_secret"
+  - "bot_identity_theft.replay_identity"
+  - "bot_identity_theft.check_session_binding"
+
+owasp_mcp: "MCP18"

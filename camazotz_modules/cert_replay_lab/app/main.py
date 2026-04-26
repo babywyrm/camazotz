@@ -21,7 +21,7 @@ _CERT_ID = secrets.token_hex(8)
 
 class CertReplayLab(LabModule):
     name = "cert_replay"
-    threat_id = "MCP-T26"
+    threat_id = "MCP-T19"
     title = "Short-Lived Certificate Replay Attack"
     category = "identity"
 
@@ -82,6 +82,7 @@ class CertReplayLab(LabModule):
                         "cert_id": {
                             "type": "string",
                             "description": "Certificate ID from the expired cert",
+                            "maxLength": 128,
                         },
                         "not_after": {
                             "type": "number",
@@ -103,6 +104,7 @@ class CertReplayLab(LabModule):
                         "cert_id": {
                             "type": "string",
                             "description": "Certificate ID to check",
+                            "maxLength": 128,
                         },
                     },
                 },

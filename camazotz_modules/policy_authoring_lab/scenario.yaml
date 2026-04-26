@@ -1,4 +1,4 @@
-threat_id: "MCP-T03"
+threat_id: "MCP-T29"
 title: "Policy Authoring — Write Rules That Block Attack Chains"
 difficulty: medium
 category: defense
@@ -25,3 +25,12 @@ agentic:
   primary_lane: 2
   transport: "A"
   blurb: "Policy authoring defense-mode lab"
+
+canary_location: "Weak policy that should have HOLD/DENY but was submitted as ALLOW"
+
+tools:
+  - "policy_authoring.get_attack_chain"
+  - "policy_authoring.submit_policy"
+  - "policy_authoring.get_hint"
+
+owasp_mcp: "MCP29"

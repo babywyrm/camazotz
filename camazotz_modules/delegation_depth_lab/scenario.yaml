@@ -1,4 +1,4 @@
-threat_id: "MCP-T25"
+threat_id: "MCP-T32"
 title: "Delegation Depth — Multi-Agent Identity Dilution"
 difficulty: medium
 category: delegation
@@ -29,3 +29,13 @@ agentic:
   primary_lane: 4
   transport: "A"
   blurb: "act-chain depth bypass"
+
+canary_location: "Resource accessed by an agent beyond the allowed act-chain depth"
+
+tools:
+  - "delegation_depth.start_chain"
+  - "delegation_depth.delegate"
+  - "delegation_depth.access_resource"
+  - "delegation_depth.inspect_chain"
+
+owasp_mcp: "MCP32"

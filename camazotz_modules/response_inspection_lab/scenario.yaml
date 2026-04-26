@@ -1,4 +1,4 @@
-threat_id: "MCP-T07"
+threat_id: "MCP-T30"
 title: "Response Inspection — Craft Redaction Rules That Catch Leaks"
 difficulty: medium
 category: defense
@@ -25,3 +25,11 @@ agentic:
   primary_lane: 2
   transport: "A"
   blurb: "Response inspection defense-mode lab"
+
+canary_location: "Sensitive payload leaking through a tool response that should have been redacted"
+
+tools:
+  - "response_inspection.call_leaky_tool"
+  - "response_inspection.submit_redaction"
+
+owasp_mcp: "MCP30"

@@ -1,4 +1,4 @@
-threat_id: "MCP-T26"
+threat_id: "MCP-T19"
 title: "Short-Lived Certificate Replay Attack"
 difficulty: medium
 category: identity
@@ -24,3 +24,12 @@ agentic:
   primary_lane: 3
   transport: "A"
   blurb: "SPIFFE/X.509 replay window"
+
+canary_location: "Expired-but-replayable certificate within the short-lived-cert grace window"
+
+tools:
+  - "cert_replay.get_expired_cert"
+  - "cert_replay.replay_cert"
+  - "cert_replay.check_replay_detection"
+
+owasp_mcp: "MCP19"

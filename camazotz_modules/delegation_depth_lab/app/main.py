@@ -21,7 +21,7 @@ _CHAIN_SECRET = secrets.token_hex(8)
 
 class DelegationDepthLab(LabModule):
     name = "delegation_depth"
-    threat_id = "MCP-T25"
+    threat_id = "MCP-T32"
     title = "Delegation Depth — Multi-Agent Identity Dilution"
     category = "delegation"
 
@@ -62,8 +62,8 @@ class DelegationDepthLab(LabModule):
                     "type": "object",
                     "required": ["agent_name", "human_principal"],
                     "properties": {
-                        "agent_name": {"type": "string", "description": "Name of the starting agent"},
-                        "human_principal": {"type": "string", "description": "Human who authorized this session"},
+                        "agent_name": {"type": "string", "description": "Name of the starting agent", "maxLength": 256},
+                        "human_principal": {"type": "string", "description": "Human who authorized this session", "maxLength": 256},
                     },
                 },
             },
@@ -77,10 +77,10 @@ class DelegationDepthLab(LabModule):
                     "type": "object",
                     "required": ["chain_id", "from_agent", "to_agent", "reason"],
                     "properties": {
-                        "chain_id": {"type": "string"},
-                        "from_agent": {"type": "string"},
-                        "to_agent": {"type": "string"},
-                        "reason": {"type": "string", "description": "Why this delegation is needed"},
+                        "chain_id": {"type": "string", "maxLength": 128},
+                        "from_agent": {"type": "string", "maxLength": 256},
+                        "to_agent": {"type": "string", "maxLength": 256},
+                        "reason": {"type": "string", "description": "Why this delegation is needed", "maxLength": 512},
                     },
                 },
             },
@@ -95,9 +95,9 @@ class DelegationDepthLab(LabModule):
                     "type": "object",
                     "required": ["chain_id", "agent_name", "resource"],
                     "properties": {
-                        "chain_id": {"type": "string"},
-                        "agent_name": {"type": "string"},
-                        "resource": {"type": "string", "description": "Resource to access (e.g., secrets, config, deploy)"},
+                        "chain_id": {"type": "string", "maxLength": 128},
+                        "agent_name": {"type": "string", "maxLength": 256},
+                        "resource": {"type": "string", "description": "Resource to access (e.g., secrets, config, deploy)", "maxLength": 512},
                     },
                 },
             },
@@ -111,7 +111,7 @@ class DelegationDepthLab(LabModule):
                     "type": "object",
                     "required": ["chain_id"],
                     "properties": {
-                        "chain_id": {"type": "string"},
+                        "chain_id": {"type": "string", "maxLength": 128},
                     },
                 },
             },

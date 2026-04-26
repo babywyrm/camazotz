@@ -1,4 +1,4 @@
-threat_id: "MCP-T20"
+threat_id: "MCP-T28"
 title: "Teleport Role Escalation via MCP Tool"
 difficulty: medium
 category: rbac
@@ -23,3 +23,12 @@ agentic:
   primary_lane: 3
   transport: "A"
   blurb: "Teleport role bundle escalation"
+
+canary_location: "Elevated role granted by a missing JIT access-request check"
+
+tools:
+  - "teleport_role_escalation.get_current_roles"
+  - "teleport_role_escalation.request_role"
+  - "teleport_role_escalation.privileged_operation"
+
+owasp_mcp: "MCP28"

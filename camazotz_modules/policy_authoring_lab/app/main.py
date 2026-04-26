@@ -28,7 +28,7 @@ ATTACK_CHAIN = {
 
 class PolicyAuthoringLab(LabModule):
     name = "policy_authoring"
-    threat_id = "MCP-T03"
+    threat_id = "MCP-T29"
     title = "Policy Authoring — Write Rules That Block Attack Chains"
     category = "defense"
 
@@ -83,6 +83,7 @@ class PolicyAuthoringLab(LabModule):
                         "policy_yaml": {
                             "type": "string",
                             "description": "The nullfield policy YAML to validate",
+                            "maxLength": 8192,
                         },
                     },
                 },
@@ -96,6 +97,7 @@ class PolicyAuthoringLab(LabModule):
                         "tool_name": {
                             "type": "string",
                             "description": "The tool to get a hint for",
+                            "maxLength": 256,
                         },
                     },
                 },

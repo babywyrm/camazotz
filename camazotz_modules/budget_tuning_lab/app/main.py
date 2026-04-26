@@ -27,7 +27,7 @@ TRAFFIC_PATTERN = {
 
 class BudgetTuningLab(LabModule):
     name = "budget_tuning"
-    threat_id = "MCP-T27"
+    threat_id = "MCP-T31"
     title = "Budget Tuning — Rate Limits That Stop Attackers Without Blocking Users"
     category = "defense"
 

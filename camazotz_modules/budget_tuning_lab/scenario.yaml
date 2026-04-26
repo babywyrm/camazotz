@@ -1,4 +1,4 @@
-threat_id: "MCP-T27"
+threat_id: "MCP-T31"
 title: "Budget Tuning — Rate Limits That Stop Attackers Without Blocking Users"
 difficulty: medium
 category: defense
@@ -25,3 +25,12 @@ agentic:
   primary_lane: 2
   transport: "A"
   blurb: "Budget tuning defense-mode lab"
+
+canary_location: "Budget that over- or under-blocks legitimate vs attack traffic patterns"
+
+tools:
+  - "budget_tuning.get_traffic_pattern"
+  - "budget_tuning.submit_budget"
+  - "budget_tuning.simulate"
+
+owasp_mcp: "MCP31"
