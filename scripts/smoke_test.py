@@ -22,7 +22,15 @@ def _resolve_target(args: argparse.Namespace) -> SmokeTarget:
         return SmokeTarget(args.gateway_url.rstrip("/"), args.portal_url.rstrip("/"))
 
     if args.target == "k8s":
-        host = args.k8s_host
+        import os
+
+        host = args.k8s_host or os.environ.get("K8S_HOST")
+        if not host:
+            raise SystemExit(
+                "smoke_test: --target k8s requires a cluster node IP/hostname. "
+                "Pass --k8s-host <host> or set the K8S_HOST environment variable "
+                "(e.g. `K8S_HOST=10.0.0.5 make smoke-k8s`)."
+            )
         return SmokeTarget(f"http://{host}:30080", f"http://{host}:3000")
 
     return SmokeTarget("http://localhost:8080", "http://localhost:3000")
@@ -107,10 +115,48 @@ def _check_identity_probe(client: httpx.Client, gateway_url: str) -> None:
     print(f"PASS identity probe (/config idp_provider={provider})")
 
 
+_EXPECTED_LANE_SLUGS = ("human-direct", "delegated", "machine", "chain", "anonymous")
+
+
+def _check_lanes_probe(client: httpx.Client, portal_url: str) -> None:
+    """Verify the Agentic Lane View is live: HTML page, JSON endpoint, real labs."""
+    html = client.get(f"{portal_url}/lanes")
+    html.raise_for_status()
+    if "Agentic Identity Lanes" not in html.text:
+        raise RuntimeError("lanes probe: GET /lanes did not contain 'Agentic Identity Lanes'")
+    print("PASS lanes probe (/lanes renders)")
+
+    api = client.get(f"{portal_url}/api/lanes")
+    api.raise_for_status()
+    body = api.json()
+    schema = body.get("schema")
+    if schema != "v1":
+        raise RuntimeError(f"lanes probe: /api/lanes schema must be 'v1', got {schema!r}")
+    slugs = tuple(lane.get("slug") for lane in body.get("lanes", []))
+    if slugs != _EXPECTED_LANE_SLUGS:
+        raise RuntimeError(
+            f"lanes probe: /api/lanes slugs must be {_EXPECTED_LANE_SLUGS}, got {slugs}"
+        )
+    labs = body.get("labs", [])
+    if not labs:
+        raise RuntimeError(
+            "lanes probe: /api/lanes returned zero labs — migration likely regressed "
+            "or gateway /api/scenarios is not surfacing the agentic field"
+        )
+    print(f"PASS lanes probe (/api/lanes schema=v1, 5 lanes, {len(labs)} labs mapped)")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Smoke checks for Camazotz gateway + portal")
     parser.add_argument("--target", choices=["local", "k8s"], default="local", help="Preset target profile")
-    parser.add_argument("--k8s-host", default="192.168.1.114", help="K8s host/IP when target is k8s")
+    parser.add_argument(
+        "--k8s-host",
+        default=None,
+        help=(
+            "K8s node host/IP when --target k8s. If omitted, falls back to the "
+            "K8S_HOST env var; if both are unset the script exits with guidance."
+        ),
+    )
     parser.add_argument("--gateway-url", help="Override gateway base URL")
     parser.add_argument("--portal-url", help="Override portal base URL")
     parser.add_argument("--timeout", type=float, default=20, help="HTTP timeout in seconds")
@@ -119,6 +165,11 @@ def main() -> int:
         "--require-identity",
         action="store_true",
         help="Also verify GET /config exposes idp_provider (mock or zitadel)",
+    )
+    parser.add_argument(
+        "--require-lanes",
+        action="store_true",
+        help="Also verify GET /lanes renders and /api/lanes returns schema v1 with 5 lanes",
     )
     args = parser.parse_args()
 
@@ -132,6 +183,8 @@ def main() -> int:
             _mcp_tools_list(client, target.gateway_url, session_id)
             if args.require_identity:
                 _check_identity_probe(client, target.gateway_url)
+            if args.require_lanes:
+                _check_lanes_probe(client, target.portal_url)
             if args.require_llm:
                 _check_llm_probe(client, target.gateway_url, session_id)
     except (httpx.HTTPError, RuntimeError, ValueError, KeyError) as exc:

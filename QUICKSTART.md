@@ -147,9 +147,11 @@ After deploying, verify the stack is healthy:
 ```bash
 make smoke-local          # Docker Compose: health + MCP init + tools/list
 make smoke-local-llm      # same + LLM-backed tool call (needs ANTHROPIC_API_KEY)
+make smoke-local-lanes    # same + /lanes and /api/lanes probe
 
-make smoke-k8s            # K8s cluster (default K8S_HOST=192.168.1.114)
-make smoke-k8s-llm        # same + LLM probe
+K8S_HOST=<node-ip> make smoke-k8s        # K8s cluster — K8S_HOST required (no default)
+K8S_HOST=<node-ip> make smoke-k8s-llm    # same + LLM probe
+K8S_HOST=<node-ip> make smoke-k8s-lanes  # same + /lanes and /api/lanes probe
 ```
 
 Identity probe (checks `GET /config` returns `idp_provider` of `mock` or `zitadel`; **does not** call ZITADEL over HTTP):

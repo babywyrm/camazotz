@@ -143,9 +143,11 @@ sudo helm upgrade --install camazotz /opt/camazotz/deploy/helm/camazotz \
 | `make down` | Stop all services |
 | `make test` | Run pytest with 100% coverage |
 | `make smoke-local` | Smoke test local Docker Compose deployment |
-| `make smoke-k8s` | Smoke test K8s cluster (`K8S_HOST=192.168.1.114`) |
+| `make smoke-k8s` | Smoke test K8s cluster — requires `K8S_HOST=<node-ip>` |
 | `make smoke-local-llm` | Smoke test local + LLM-backed probe |
-| `make smoke-k8s-llm` | Smoke test K8s + LLM-backed probe |
+| `make smoke-k8s-llm` | Smoke test K8s + LLM-backed probe (requires `K8S_HOST`) |
+| `make smoke-local-lanes` | Smoke test local + `/lanes` / `/api/lanes` probe |
+| `make smoke-k8s-lanes` | Smoke test K8s + `/lanes` / `/api/lanes` probe (requires `K8S_HOST`) |
 
 ## Key Principle
 

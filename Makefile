@@ -1,4 +1,4 @@
-.PHONY: help up up-local down logs test test-zitadel-flows build clean status ps env compose-gen helm-template qa qa-json smoke-local smoke-k8s smoke-local-llm smoke-k8s-llm smoke-local-identity smoke-k8s-identity smoke-local-identity-llm smoke-k8s-identity-llm
+.PHONY: help up up-local down logs test test-zitadel-flows build clean status ps env compose-gen helm-template qa qa-json smoke-local smoke-k8s smoke-local-llm smoke-k8s-llm smoke-local-identity smoke-k8s-identity smoke-local-identity-llm smoke-k8s-identity-llm smoke-local-lanes smoke-k8s-lanes
 
 COMPOSE := docker compose -f compose/docker-compose.yml
 ENV_FILE := compose/.env
@@ -83,23 +83,29 @@ smoke-local: ## Smoke test local Docker Compose target
 smoke-local-llm: ## Smoke test local target including LLM-backed probe
 	uv run python scripts/smoke_test.py --target local --require-llm
 
-smoke-k8s: ## Smoke test k8s target (set K8S_HOST=ip if needed)
-	uv run python scripts/smoke_test.py --target k8s --k8s-host $${K8S_HOST:-192.168.1.114}
+smoke-k8s: ## Smoke test k8s target (set K8S_HOST=<node-ip> first)
+	uv run python scripts/smoke_test.py --target k8s
 
-smoke-k8s-llm: ## Smoke test k8s target including LLM-backed probe
-	uv run python scripts/smoke_test.py --target k8s --k8s-host $${K8S_HOST:-192.168.1.114} --require-llm
+smoke-k8s-llm: ## Smoke test k8s target including LLM-backed probe (requires K8S_HOST)
+	uv run python scripts/smoke_test.py --target k8s --require-llm
 
 smoke-local-identity: ## Smoke test local target including identity (/config) probe
 	uv run python scripts/smoke_test.py --target local --require-identity
 
-smoke-k8s-identity: ## Smoke test k8s target including identity (/config) probe
-	uv run python scripts/smoke_test.py --target k8s --k8s-host $${K8S_HOST:-192.168.1.114} --require-identity
+smoke-k8s-identity: ## Smoke test k8s target including identity (/config) probe (requires K8S_HOST)
+	uv run python scripts/smoke_test.py --target k8s --require-identity
 
 smoke-local-identity-llm: ## Smoke local target including identity and LLM probe
 	uv run python scripts/smoke_test.py --target local --require-identity --require-llm
 
-smoke-k8s-identity-llm: ## Smoke k8s target including identity and LLM probe
-	uv run python scripts/smoke_test.py --target k8s --k8s-host $${K8S_HOST:-192.168.1.114} --require-identity --require-llm
+smoke-k8s-identity-llm: ## Smoke k8s target including identity and LLM probe (requires K8S_HOST)
+	uv run python scripts/smoke_test.py --target k8s --require-identity --require-llm
+
+smoke-local-lanes: ## Smoke test local target including /lanes + /api/lanes probe
+	uv run python scripts/smoke_test.py --target local --require-lanes
+
+smoke-k8s-lanes: ## Smoke test k8s target including /lanes + /api/lanes probe (requires K8S_HOST)
+	uv run python scripts/smoke_test.py --target k8s --require-lanes
 
 zitadel-bootstrap: ## Bootstrap ZITADEL service user for non-degraded IDP operation
 	uv run python scripts/zitadel_bootstrap.py --write-env

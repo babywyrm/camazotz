@@ -498,11 +498,13 @@ make test           # run 671 tests (100% coverage)
 make qa             # E2E QA harness against live gateway
 make qa-json        # QA harness with machine-readable JSON output
 make smoke-local    # smoke test local Docker Compose target
-make smoke-k8s      # smoke test k8s target (K8S_HOST=192.168.1.114)
+make smoke-k8s      # smoke test k8s target (set K8S_HOST=<node-ip> first)
 make smoke-local-llm  # smoke test local + LLM probe
-make smoke-k8s-llm    # smoke test k8s + LLM probe
+make smoke-k8s-llm    # smoke test k8s + LLM probe (needs K8S_HOST)
 make smoke-local-identity   # local smoke + GET /config idp_provider probe
-make smoke-k8s-identity     # k8s smoke + GET /config idp_provider probe
+make smoke-k8s-identity     # k8s smoke + GET /config idp_provider probe (needs K8S_HOST)
+make smoke-local-lanes      # local smoke + /lanes and /api/lanes probe
+make smoke-k8s-lanes        # k8s smoke + /lanes and /api/lanes probe (needs K8S_HOST)
 make status         # health check all services
 make compose-gen    # regenerate docker-compose.yml from Helm values
 make helm-deploy    # deploy to K8s

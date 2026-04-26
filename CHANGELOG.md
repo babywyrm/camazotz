@@ -140,7 +140,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **`scripts/smoke_test.py`** — lightweight deployment verifier with two
   profiles: `--target local` (Docker Compose) and `--target k8s`
-  (cluster, default host `192.168.1.114`).
+  (cluster, pass `--k8s-host <ip>` or set the `K8S_HOST` env var).
 - Checks: gateway `/health`, portal `/health`, MCP `initialize`,
   `tools/list`, optional `--require-llm` probe via `config.ask_agent`.
 - **Makefile targets:** `make smoke-local`, `make smoke-k8s`,
