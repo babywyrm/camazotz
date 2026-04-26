@@ -45,3 +45,104 @@ def test_get_lane_raises_on_unknown_id():
     from lane_taxonomy import get_lane
     with pytest.raises(ValueError, match="Unknown lane id"):
         get_lane(99)
+
+
+def test_discover_parses_gateway_scenarios_with_agentic(monkeypatch):
+    import lane_taxonomy
+
+    fake_scenarios = [
+        {
+            "module_name": "oauth_delegation_lab",
+            "threat_id": "MCP-T21",
+            "title": "OAuth Token Theft",
+            "description": "desc",
+            "difficulty": "easy",
+            "agentic": {
+                "primary_lane": 2,
+                "secondary_lanes": [1],
+                "transport": "A",
+                "blurb": "Audience confusion in token exchange",
+            },
+        },
+        {
+            "module_name": "auth_lab",
+            "threat_id": "MCP-T01",
+            "title": "Auth Lab",
+            "description": "desc",
+            "difficulty": "easy",
+            "agentic": {"primary_lane": 1, "transport": "A"},
+        },
+        {
+            "module_name": "legacy_lab_no_agentic",
+            "threat_id": "MCP-T99",
+            "title": "Legacy",
+            "description": "desc",
+            "difficulty": "easy",
+            "agentic": {},
+        },
+    ]
+    monkeypatch.setattr(lane_taxonomy, "_fetch_scenarios", lambda: fake_scenarios)
+
+    index = lane_taxonomy.discover_lab_metadata()
+
+    assert "oauth_delegation_lab" in index
+    assert index["oauth_delegation_lab"].primary_lane == 2
+    assert index["oauth_delegation_lab"].secondary_lanes == [1]
+    assert index["oauth_delegation_lab"].transport == "A"
+    assert "auth_lab" in index
+    assert index["auth_lab"].secondary_lanes == []
+    assert "legacy_lab_no_agentic" not in index, (
+        "labs without an agentic block must be silently skipped"
+    )
+
+
+def test_discover_raises_on_invalid_primary_lane(monkeypatch):
+    import lane_taxonomy
+
+    monkeypatch.setattr(
+        lane_taxonomy,
+        "_fetch_scenarios",
+        lambda: [
+            {
+                "module_name": "bad_lab",
+                "threat_id": "MCP-T00",
+                "title": "Bad",
+                "description": "desc",
+                "difficulty": "easy",
+                "agentic": {"primary_lane": 7},
+            }
+        ],
+    )
+
+    with pytest.raises(ValueError, match="invalid primary_lane"):
+        lane_taxonomy.discover_lab_metadata()
+
+
+def test_discover_raises_on_invalid_secondary_lane(monkeypatch):
+    import lane_taxonomy
+
+    monkeypatch.setattr(
+        lane_taxonomy,
+        "_fetch_scenarios",
+        lambda: [
+            {
+                "module_name": "bad_lab",
+                "threat_id": "MCP-T00",
+                "title": "Bad",
+                "description": "desc",
+                "difficulty": "easy",
+                "agentic": {"primary_lane": 1, "secondary_lanes": [9]},
+            }
+        ],
+    )
+
+    with pytest.raises(ValueError, match="invalid secondary_lanes"):
+        lane_taxonomy.discover_lab_metadata()
+
+
+def test_discover_handles_gateway_unreachable(monkeypatch):
+    import lane_taxonomy
+
+    monkeypatch.setattr(lane_taxonomy, "_fetch_scenarios", lambda: [])
+    index = lane_taxonomy.discover_lab_metadata()
+    assert index == {}

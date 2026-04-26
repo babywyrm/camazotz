@@ -13,7 +13,10 @@ rename without updating both sibling projects.
 from __future__ import annotations
 
 import logging
+import os
 from dataclasses import dataclass, field
+
+import httpx
 
 logger = logging.getLogger(__name__)
 
@@ -137,3 +140,78 @@ def get_lane(lane_id: int) -> LaneDefinition:
         raise ValueError(
             f"Unknown lane id: {lane_id!r} (valid: {sorted(VALID_LANE_IDS)})"
         ) from exc
+
+
+@dataclass(frozen=True)
+class LabMetadata:
+    module_name: str
+    threat_id: str
+    title: str
+    description: str
+    difficulty: str
+    primary_lane: int
+    secondary_lanes: list[int] = field(default_factory=list)
+    transport: str = ""
+    blurb: str = ""
+
+
+def _fetch_scenarios() -> list[dict]:
+    """Fetch scenario metadata from the brain gateway. Returns [] on error."""
+    gateway_url = os.getenv("GATEWAY_URL", "http://localhost:8080")
+    try:
+        resp = httpx.get(f"{gateway_url}/api/scenarios", timeout=10.0)
+        resp.raise_for_status()
+        payload = resp.json()
+        if isinstance(payload, list):
+            return payload
+    except (httpx.HTTPError, ValueError) as exc:
+        logger.warning("lane_taxonomy: failed to fetch scenarios from gateway: %s", exc)
+    return []
+
+
+def discover_lab_metadata() -> dict[str, LabMetadata]:
+    """Pull scenario metadata from the gateway and extract per-lab lane info.
+
+    Labs without an ``agentic`` block (or empty block) are silently skipped.
+    Invalid ``primary_lane`` or ``secondary_lanes`` values raise ValueError so
+    that bad metadata is caught at first render rather than silently hiding a
+    lab.
+    """
+    index: dict[str, LabMetadata] = {}
+    for entry in _fetch_scenarios():
+        agentic = entry.get("agentic") or {}
+        if not agentic:
+            continue
+
+        module_name = entry.get("module_name", "")
+        primary = agentic.get("primary_lane")
+        if primary not in VALID_LANE_IDS:
+            raise ValueError(
+                f"{module_name}: invalid primary_lane {primary!r} "
+                f"(valid: {sorted(VALID_LANE_IDS)})"
+            )
+
+        secondaries = agentic.get("secondary_lanes") or []
+        for sec in secondaries:
+            if sec not in VALID_LANE_IDS:
+                raise ValueError(
+                    f"{module_name}: invalid secondary_lanes entry {sec!r} "
+                    f"(valid: {sorted(VALID_LANE_IDS)})"
+                )
+        if primary in secondaries:
+            raise ValueError(
+                f"{module_name}: primary_lane {primary} must not appear in secondary_lanes"
+            )
+
+        index[module_name] = LabMetadata(
+            module_name=module_name,
+            threat_id=entry.get("threat_id", ""),
+            title=entry.get("title", module_name),
+            description=entry.get("description", ""),
+            difficulty=entry.get("difficulty", "medium"),
+            primary_lane=primary,
+            secondary_lanes=list(secondaries),
+            transport=agentic.get("transport", ""),
+            blurb=agentic.get("blurb", ""),
+        )
+    return index
