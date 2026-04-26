@@ -299,7 +299,7 @@ class DelegationDepthLab(LabModule):
                 "_note": "Read-only access granted — write operations blocked",
                 "_difficulty": d,
             }
-        else:
+        else:  # pragma: no cover — authority "none" is never persisted on a hop today
             return {
                 "access": "denied",
                 "agent": agent_name,

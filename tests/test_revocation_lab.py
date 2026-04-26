@@ -343,3 +343,17 @@ def test_revocation_reset_clears_all() -> None:
         if r["uri"].startswith("revocation://")
     ]
     assert rev_uris == []
+
+
+def test_idp_use_tags_token_missing_branch(monkeypatch) -> None:
+    """Zitadel mode with no access_token surfaces the 'token_missing' status tag."""
+    from brain_gateway.app.modules.registry import get_registry
+
+    monkeypatch.setenv("CAMAZOTZ_IDP_PROVIDER", "zitadel")
+    # get_idp_provider falls back to "mock" unless the token endpoint is set too.
+    monkeypatch.setenv("CAMAZOTZ_IDP_TOKEN_ENDPOINT", "http://zitadel.test/token")
+
+    reg = get_registry()
+    mod = next(m for m in reg._modules if m.name == "revocation")
+    tags = mod._idp_use_tags(access_token=None)
+    assert tags == {"_idp_token_status": "token_missing", "_idp_backed": True}

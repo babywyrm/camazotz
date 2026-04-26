@@ -1,4 +1,8 @@
-"""Tests for the RBAC & Isolation Boundary Bypass lab (MCP-T20)."""
+"""Tests for the RBAC & Isolation Boundary Bypass lab (MCP-T20).
+
+Also covers the zitadel-mode ``_effective_groups`` early-return branches
+(empty groups env, empty sub env, sub mismatch, empty extras after split).
+"""
 
 import json
 
@@ -357,3 +361,54 @@ def test_rbac_reset_clears_access_log() -> None:
     )
     reset_registry()
     set_difficulty("easy")
+
+
+# -- _effective_groups zitadel-mode early returns -----------------------------
+
+
+def _zitadel_mode(monkeypatch) -> None:
+    """Enable zitadel provider for tests — requires token endpoint too per config.py."""
+    monkeypatch.setenv("CAMAZOTZ_IDP_PROVIDER", "zitadel")
+    monkeypatch.setenv("CAMAZOTZ_IDP_TOKEN_ENDPOINT", "http://zitadel.test/token")
+
+
+def test_effective_groups_no_sub_env_returns_base_unmodified(monkeypatch) -> None:
+    """When CAMAZOTZ_LAB_IDENTITY_SUB is unset the groups-extension is skipped."""
+    from brain_gateway.app.modules.registry import get_registry
+
+    reg = get_registry()
+    mod = next(m for m in reg._modules if m.name == "rbac")
+
+    _zitadel_mode(monkeypatch)
+    monkeypatch.setenv("CAMAZOTZ_LAB_IDENTITY_GROUPS", "platform-eng,oncall")
+    monkeypatch.delenv("CAMAZOTZ_LAB_IDENTITY_SUB", raising=False)
+    _, appended = mod._effective_groups("alice@example.com")
+    assert appended is False
+
+
+def test_effective_groups_sub_mismatch_returns_base_unmodified(monkeypatch) -> None:
+    """When sub is set but doesn't match the principal, extras are ignored."""
+    from brain_gateway.app.modules.registry import get_registry
+
+    reg = get_registry()
+    mod = next(m for m in reg._modules if m.name == "rbac")
+
+    _zitadel_mode(monkeypatch)
+    monkeypatch.setenv("CAMAZOTZ_LAB_IDENTITY_SUB", "someone@example.com")
+    monkeypatch.setenv("CAMAZOTZ_LAB_IDENTITY_GROUPS", "admin")
+    _, appended = mod._effective_groups("alice@example.com")
+    assert appended is False
+
+
+def test_effective_groups_empty_extras_after_split_returns_base(monkeypatch) -> None:
+    """Whitespace-only CAMAZOTZ_LAB_IDENTITY_GROUPS must not extend base groups."""
+    from brain_gateway.app.modules.registry import get_registry
+
+    reg = get_registry()
+    mod = next(m for m in reg._modules if m.name == "rbac")
+
+    _zitadel_mode(monkeypatch)
+    monkeypatch.setenv("CAMAZOTZ_LAB_IDENTITY_SUB", "alice@example.com")
+    monkeypatch.setenv("CAMAZOTZ_LAB_IDENTITY_GROUPS", " , , ")
+    _, appended = mod._effective_groups("alice@example.com")
+    assert appended is False
