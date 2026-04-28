@@ -23,6 +23,16 @@ spec:
         - name: nullfield-tools
           configMap:
             name: nullfield-tools
+        {{- if .Values.nullfield.activePolicySource }}
+        # Mount the controller-managed bridged ConfigMap on top of /etc/nullfield/policy.yaml.
+        # When set, the chart-shipped policy.yaml is replaced at runtime by the
+        # NullfieldPolicy CRD that the nullfield-controller picks via its
+        # nullfield.io/active-for label. See bridge spec in the nullfield-controller.
+        - name: nullfield-active-policy
+          configMap:
+            name: {{ .Values.nullfield.activePolicySource | quote }}
+            optional: true
+        {{- end }}
         {{- end }}
       containers:
         - name: brain-gateway
@@ -75,6 +85,15 @@ spec:
             - name: nullfield-tools
               mountPath: /etc/nullfield
               readOnly: true
+            {{- if .Values.nullfield.activePolicySource }}
+            # Mount the bridged active policy ON TOP OF /etc/nullfield/policy.yaml.
+            # subPath surgically replaces just that one file so the chart's
+            # tools.yaml + any other file in /etc/nullfield remains intact.
+            - name: nullfield-active-policy
+              mountPath: /etc/nullfield/policy.yaml
+              subPath: policy.yaml
+              readOnly: true
+            {{- end }}
           livenessProbe:
             httpGet:
               path: /healthz

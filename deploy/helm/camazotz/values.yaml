@@ -145,6 +145,12 @@ nullfield:
   circuitMaxCalls: "50"
   circuitMaxDuration: "5m"
   auditLogLevel: "FULL"
+  # Optional: name of a ConfigMap (typically managed by nullfield-controller's
+  # CRD bridge — see nullfield/pkg/crdwatcher syncActivePolicy) whose
+  # `policy.yaml` key replaces the chart-shipped policy.yaml at runtime.
+  # Empty (default) = use the chart-shipped policy file as-is.
+  # Example: activePolicySource: nullfield-active-policy
+  activePolicySource: ""
   resources:
     requests:
       cpu: 50m
