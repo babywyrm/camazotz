@@ -24,10 +24,10 @@ spec:
           configMap:
             name: nullfield-tools
         {{- if .Values.nullfield.activePolicySource }}
-        # Mount the controller-managed bridged ConfigMap on top of /etc/nullfield/policy.yaml.
-        # When set, the chart-shipped policy.yaml is replaced at runtime by the
-        # NullfieldPolicy CRD that the nullfield-controller picks via its
-        # nullfield.io/active-for label. See bridge spec in the nullfield-controller.
+        # Controller-managed bridged ConfigMap (typically nullfield-controller's
+        # syncActivePolicy). Mounted at its own path so the chart's
+        # /etc/nullfield/* stays intact; sidecar's NULLFIELD_POLICY_PATH env
+        # points the loader at this overlay path instead.
         - name: nullfield-active-policy
           configMap:
             name: {{ .Values.nullfield.activePolicySource | quote }}
@@ -81,17 +81,22 @@ spec:
           envFrom:
             - configMapRef:
                 name: nullfield-config
+          {{- if .Values.nullfield.activePolicySource }}
+          env:
+            # Override the loader path so the bridged active-policy file
+            # (mounted at /etc/nullfield-active) replaces the chart-shipped
+            # /etc/nullfield/policy.yaml without colliding with the
+            # nullfield-tools ConfigMap mount above.
+            - name: NULLFIELD_POLICY_PATH
+              value: "/etc/nullfield-active/policy.yaml"
+          {{- end }}
           volumeMounts:
             - name: nullfield-tools
               mountPath: /etc/nullfield
               readOnly: true
             {{- if .Values.nullfield.activePolicySource }}
-            # Mount the bridged active policy ON TOP OF /etc/nullfield/policy.yaml.
-            # subPath surgically replaces just that one file so the chart's
-            # tools.yaml + any other file in /etc/nullfield remains intact.
             - name: nullfield-active-policy
-              mountPath: /etc/nullfield/policy.yaml
-              subPath: policy.yaml
+              mountPath: /etc/nullfield-active
               readOnly: true
             {{- end }}
           livenessProbe:
