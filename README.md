@@ -3,9 +3,10 @@
 
 <p align="center">
 <img src="https://img.shields.io/badge/python-3.12%2B-3776ab?style=flat-square&logo=python&logoColor=white" alt="Python 3.12+">
-<img src="https://img.shields.io/badge/tests-671_passing-10b981?style=flat-square" alt="671 tests">
+<img src="https://img.shields.io/badge/tests-785_passing-10b981?style=flat-square" alt="785 tests">
 <img src="https://img.shields.io/badge/coverage-100%25-10b981?style=flat-square" alt="100% coverage">
-<img src="https://img.shields.io/badge/modules-31_labs-dc2626?style=flat-square" alt="31 labs">
+<img src="https://img.shields.io/badge/modules-32_labs-dc2626?style=flat-square" alt="32 labs">
+<img src="https://img.shields.io/badge/identity_lanes-5%C3%973-60a5fa?style=flat-square" alt="5 lanes × 3 transports">
 <img src="https://img.shields.io/badge/Red_Team_Playbook-14%2F14-10b981?style=flat-square" alt="Playbook 14/14">
 <img src="https://img.shields.io/badge/license-MIT-a89cb8?style=flat-square" alt="MIT License">
 </p>
@@ -148,7 +149,8 @@ automated testing layers — each is independently deployable.
 │              │                        ▼
 │  K8s access  │     ┌──────────────────────────────────────┐
 │  MCP access  │     │  camazotz brain-gateway              │
-└──────────────┘     │  28 intentionally vulnerable labs    │
+└──────────────┘     │  32 intentionally vulnerable labs    │
+                     │  (5 identity lanes × 3 transports)   │
                      │  backed by live LLM                  │
                      └──────────────────────────────────────┘
 ```
@@ -359,7 +361,7 @@ Open **http://localhost:3000/identity** for the Identity Dashboard showing live 
 
 Navigate to **http://localhost:3000/operator** (hidden — no nav link) for:
 
-- **Guided Walkthrough** — pick any of the 25 labs and watch the exploit
+- **Guided Walkthrough** — pick any of the labs and watch the exploit
   demonstrated step-by-step at medium guardrails. Each step shows a narrative
   explanation, the raw MCP JSON-RPC request/response (expandable), and a
   security insight callout. Auto-play with pause/step controls.
@@ -484,7 +486,7 @@ camazotz/
 ├── scripts/
 │   ├── qa_harness.py        # CLI entry point for E2E QA
 │   └── qa_runner/            # Reusable QA engine (shared by CLI + operator panel)
-├── tests/                   # 671 tests, 100% coverage
+├── tests/                   # 785 tests, 100% coverage
 └── Makefile                 # Cross-platform dev/deploy targets
 ```
 
@@ -494,7 +496,7 @@ camazotz/
 make up             # start with Claude
 make up-local       # start with Ollama
 make down           # stop all services
-make test           # run 671 tests (100% coverage)
+make test           # run 785 tests (100% coverage)
 make qa             # E2E QA harness against live gateway
 make qa-json        # QA harness with machine-readable JSON output
 make smoke-local    # smoke test local Docker Compose target
@@ -575,8 +577,8 @@ make help           # show all targets
   links from challenges and scenarios
 - **Observer signal tiers** — `signal_tier`, `reason_code`, tighter
   confused-deputy detection, signal filter in Enhanced tab
-- **QA checks for all 25 labs** — 25/25 labs covered in QA harness
-- **Operator Console** — guided walkthroughs for all 25 labs at medium
+- **QA checks for all 32 labs** — every lab covered in the QA harness
+- **Operator Console** — guided walkthroughs for the original 25 labs at medium
   guardrails with telemetry strip
 - **ZITADEL live flow wiring** — real HTTP token exchange, introspection,
   and revocation

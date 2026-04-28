@@ -151,7 +151,8 @@ session binding, HOLD gates, and replay detection block them.
                      │                   │                          │
                      │                   ▼                          │
                      │           brain-gateway (:8080)              │
-                     │           └── 28 vulnerable MCP labs         │
+                     │           └── 32 vulnerable MCP labs         │
+                     │               (5 identity lanes × 3 transports)│
                      │                                              │
   mcpnuke ──────────▶│  Scans both Teleport infra + MCP tools       │
   (scanner)          │  Reports findings + exploit chain results    │
@@ -235,7 +236,7 @@ secrets, full audit). Together they implement the golden path: every request
 carries identity, every tool is registered and scoped, every secret lives in a
 secret manager, and the AI's output is never trusted as authorization.
 
-**The validation:** camazotz provides 28 intentionally vulnerable labs covering
+**The validation:** camazotz provides 32 intentionally vulnerable labs covering
 every OWASP MCP Top 10 risk. mcpnuke automates the attack sequences and
 reports whether your defenses hold. Run mcpnuke on hard difficulty — if the
 exploit chains fail and defenses hold, your golden path is working.
