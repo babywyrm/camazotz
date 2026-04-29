@@ -1,0 +1,37 @@
+threat_id: "MCP-T33"
+title: "SDK Token Cache Poisoning"
+difficulty: medium
+category: auth
+description: >
+  An operator-deployed MCP SDK wrapper caches the user's JWT locally in a
+  JSON file and reuses it on subsequent calls without re-validating the
+  signature.  On easy the cache is accepted blindly — write anything.  On
+  medium the expiry field is checked but the signature is not.  On hard the
+  sidecar re-validates signature and issuer on every invocation.
+
+objectives:
+  - Write a crafted token to the SDK cache that grants admin role
+  - Invoke a privileged operation using the poisoned cache
+  - Demonstrate the difference between expiry-only and full validation
+
+hints:
+  - sdk.write_cache accepts any JSON — try setting cached_role to admin on easy
+  - On medium add an exp claim far in the future; the signature is never checked
+  - On hard a valid token signed by the real issuer is required
+
+tools:
+  - sdk.get_cached_token
+  - sdk.write_cache
+  - sdk.invoke_as_cached
+
+canary_location: "invoke response contains cached_role=admin when cache poisoning succeeds"
+owasp_mcp: "MCP04"
+
+references:
+  - title: "OWASP MCP Top 10 — Token Audience Bypass"
+    url: "https://owasp.org/www-project-top-10-for-large-language-model-applications/"
+
+agentic:
+  primary_lane: 1
+  transport: "C"
+  blurb: "SDK token cache tampered to inject elevated role"
