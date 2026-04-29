@@ -203,6 +203,13 @@ def discover_lab_metadata() -> dict[str, LabMetadata]:
                 f"{module_name}: primary_lane {primary} must not appear in secondary_lanes"
             )
 
+        transport = agentic.get("transport", "")
+        if transport and transport not in _TRANSPORT_BY_CODE:
+            raise ValueError(
+                f"{module_name}: invalid transport {transport!r} "
+                f"(valid: {sorted(_TRANSPORT_BY_CODE)})"
+            )
+
         index[module_name] = LabMetadata(
             module_name=module_name,
             threat_id=entry.get("threat_id", ""),
@@ -211,13 +218,137 @@ def discover_lab_metadata() -> dict[str, LabMetadata]:
             difficulty=entry.get("difficulty", "medium"),
             primary_lane=primary,
             secondary_lanes=list(secondaries),
-            transport=agentic.get("transport", ""),
+            transport=transport,
             blurb=agentic.get("blurb", ""),
         )
     return index
 
 
-TRANSPORTS: tuple[str, ...] = ("A", "B", "C")
+# --------------------------------------------------------------------------
+# Transport taxonomy
+# --------------------------------------------------------------------------
+#
+# Each transport is a *materially different identity envelope* — distinguished
+# by what carries the credential at the wire / process boundary, not by the
+# wire bytes per se.
+#
+# Codes A–C are stable (in production across camazotz, nullfield, mcpnuke as
+# of 2026-04-26). Codes D and E were added on 2026-04-28 to address a real
+# gap: not every agentic deployment routes through MCP, and "Transport C"
+# was overloading three distinct identity envelopes (in-process libraries,
+# subprocess execution, third-party function-calling APIs). See ADR
+# docs/adr/0001-five-transport-taxonomy.md for the decision record.
+#
+# DO NOT rename or reorder. nullfield policy labels and mcpnuke finding
+# fields key off these codes. Add new transports only if a *new* identity
+# envelope appears; do not split for fashion.
+
+
+@dataclass(frozen=True)
+class TransportDefinition:
+    code: str
+    name: str
+    identity_envelope: str
+    threat_surface: str
+    rfcs_or_specs: list[str]
+
+
+TRANSPORT_DEFINITIONS: list[TransportDefinition] = [
+    TransportDefinition(
+        code="A",
+        name="MCP JSON-RPC",
+        identity_envelope=(
+            "Authorization bearer header + mcp-session-id; tool-call args are "
+            "a secondary identity surface (LLM-controlled)."
+        ),
+        threat_surface=(
+            "Bearer theft, session fixation, prompt-injected tool args, "
+            "audience confusion at the MCP boundary."
+        ),
+        rfcs_or_specs=["MCP 2024-11-05", "RFC 6750", "RFC 9449"],
+    ),
+    TransportDefinition(
+        code="B",
+        name="Direct wire API (REST / gRPC / GraphQL)",
+        identity_envelope=(
+            "Whatever the upstream requires: bearer, IAM-signed request, "
+            "mTLS, basic auth. No MCP layer."
+        ),
+        threat_surface=(
+            "Identity laundering at hop, audience pinning failures, "
+            "credential reuse across services."
+        ),
+        rfcs_or_specs=["RFC 6749", "RFC 8693", "RFC 8705", "RFC 9068"],
+    ),
+    TransportDefinition(
+        code="C",
+        name="In-process SDK / library",
+        identity_envelope=(
+            "Shared address space — Python imports, in-process function "
+            "calls. Credentials live in process memory, env vars, or "
+            "file-mounted secrets read at import time."
+        ),
+        threat_surface=(
+            "SDK-level cache tampering, prompt-injected args bypassing "
+            "downstream controls, in-memory secret exposure, no fresh "
+            "credential boundary between caller and callee."
+        ),
+        rfcs_or_specs=["(no canonical RFC)"],
+    ),
+    TransportDefinition(
+        code="D",
+        name="Subprocess / native binary",
+        identity_envelope=(
+            "OS process tree — child process inherits parent's environment, "
+            "file mounts, ServiceAccount tokens, and Unix credentials. "
+            "Credentials cross the fork boundary, not the network."
+        ),
+        threat_surface=(
+            "Argv injection, environment-variable credential leakage to "
+            "child, privilege drift between parent and child, command "
+            "substitution attacks, accidental cred reuse via env passthrough."
+        ),
+        rfcs_or_specs=["POSIX exec(3)", "Kubernetes projected SA tokens"],
+    ),
+    TransportDefinition(
+        code="E",
+        name="Native LLM function-calling (non-MCP)",
+        identity_envelope=(
+            "Third-party model provider's tool-use protocol (OpenAI tools, "
+            "Anthropic tool_use, Gemini function-calling). Provider mediates "
+            "the call; identity is implicit in the API key the agent uses "
+            "to talk to the model provider."
+        ),
+        threat_surface=(
+            "Provider trust boundary, prompt-injected tool args reflected "
+            "back to local execution, model-provider data plane exposure, "
+            "no standard for end-user identity propagation through the "
+            "provider round-trip."
+        ),
+        rfcs_or_specs=[
+            "OpenAI function calling (proprietary)",
+            "Anthropic tool_use (proprietary)",
+            "Gemini function-calling (proprietary)",
+        ],
+    ),
+]
+
+
+TRANSPORTS: tuple[str, ...] = tuple(t.code for t in TRANSPORT_DEFINITIONS)
+_TRANSPORT_BY_CODE: dict[str, TransportDefinition] = {
+    t.code: t for t in TRANSPORT_DEFINITIONS
+}
+VALID_TRANSPORT_CODES: frozenset[str] = frozenset(_TRANSPORT_BY_CODE)
+
+
+def get_transport(code: str) -> TransportDefinition:
+    """Return the TransportDefinition for the given code; raises ValueError if unknown."""
+    try:
+        return _TRANSPORT_BY_CODE[code]
+    except KeyError as exc:
+        raise ValueError(
+            f"Unknown transport code: {code!r} (valid: {sorted(VALID_TRANSPORT_CODES)})"
+        ) from exc
 
 
 @dataclass(frozen=True)
@@ -236,9 +367,19 @@ def coverage_summary(
 
     If ``labs`` is None, discovery is performed. Pass an explicit map in tests
     that want deterministic input.
+
+    Gap detection currently flags missing Transport A/B/C cells as the
+    teaching baseline (these are the original three transports and every
+    lane should aim for coverage across them). Transports D and E are
+    *opportunistic* — flagged as gaps only when at least one lab on the
+    lane already declares D or E (indicating the deployment exercises that
+    surface). This avoids spurious "Transport D not covered" noise for
+    lanes that have no D/E presence by design.
     """
     if labs is None:
         labs = discover_lab_metadata()
+
+    baseline_transports = ("A", "B", "C")
 
     summary: dict[int, LaneCoverage] = {}
     for lane in LANES:
@@ -250,8 +391,22 @@ def coverage_summary(
         if not primary:
             gaps.append("No primary labs yet")
         if lane.id != 5:  # Anonymous lane intentionally has no transport notion
-            for t in TRANSPORTS:
+            for t in baseline_transports:
                 if t not in transports and primary:
+                    gaps.append(f"Transport {t} not covered")
+            # D and E: only flag if some lab on the lane already uses them
+            # but coverage is incomplete (i.e. the deployment cares about
+            # that surface but hasn't filled it).
+            for t in ("D", "E"):
+                if t in transports:
+                    continue
+                # Any other lane lab using D/E? Then this lane is missing it.
+                any_other = any(
+                    m.transport == t
+                    for m in labs.values()
+                    if m.primary_lane != lane.id
+                )
+                if any_other and primary:
                     gaps.append(f"Transport {t} not covered")
 
         summary[lane.id] = LaneCoverage(

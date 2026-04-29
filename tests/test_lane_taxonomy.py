@@ -300,9 +300,17 @@ def test_all_lanes_have_at_least_one_primary_lab():
 
 
 def test_migration_transport_distribution_hits_a_b_c():
-    """Verify the three transports are all represented — anchors the lane-view teaching point."""
+    """Baseline transports A, B, C must all be represented across the corpus.
+
+    D and E are opportunistic — labs may declare them once a real
+    deployment exercises that surface, but the baseline is the original
+    three. This test asserts the baseline holds and that any declared
+    transport is one of the five valid codes.
+    """
     from pathlib import Path
     import yaml
+
+    from lane_taxonomy import VALID_TRANSPORT_CODES
 
     modules = Path(__file__).parent.parent / "camazotz_modules"
     transports: set[str] = set()
@@ -312,6 +320,145 @@ def test_migration_transport_distribution_hits_a_b_c():
         t = agentic.get("transport")
         if t:
             transports.add(t)
-    assert transports == {"A", "B", "C"}, (
-        f"expected transports A, B, C all represented; got {sorted(transports)}"
+    baseline = {"A", "B", "C"}
+    assert baseline.issubset(transports), (
+        f"baseline transports A, B, C must all be represented; missing: {baseline - transports}"
     )
+    assert transports.issubset(VALID_TRANSPORT_CODES), (
+        f"unknown transports declared in corpus: {transports - VALID_TRANSPORT_CODES}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Five-transport taxonomy (added 2026-04-28 — see ADR 0001)
+# ---------------------------------------------------------------------------
+
+
+def test_transport_definitions_expose_five_codes():
+    from lane_taxonomy import TRANSPORT_DEFINITIONS, TRANSPORTS
+
+    assert [t.code for t in TRANSPORT_DEFINITIONS] == ["A", "B", "C", "D", "E"]
+    assert TRANSPORTS == ("A", "B", "C", "D", "E")
+
+
+def test_transport_definitions_have_required_metadata():
+    from lane_taxonomy import TRANSPORT_DEFINITIONS
+
+    for t in TRANSPORT_DEFINITIONS:
+        assert t.code in {"A", "B", "C", "D", "E"}
+        assert t.name
+        assert t.identity_envelope
+        assert t.threat_surface
+        assert isinstance(t.rfcs_or_specs, list)
+
+
+def test_get_transport_lookup_by_code():
+    from lane_taxonomy import get_transport
+
+    a = get_transport("A")
+    assert "MCP" in a.name
+    d = get_transport("D")
+    assert "Subprocess" in d.name
+    e = get_transport("E")
+    assert "function-calling" in e.name.lower()
+
+
+def test_get_transport_raises_on_unknown_code():
+    from lane_taxonomy import get_transport
+
+    with pytest.raises(ValueError, match="Unknown transport code"):
+        get_transport("Z")
+
+
+def test_discover_accepts_transport_d_and_e(monkeypatch):
+    """Newly added Transport D and E codes pass discovery validation."""
+    import lane_taxonomy
+
+    monkeypatch.setattr(
+        lane_taxonomy,
+        "_fetch_scenarios",
+        lambda: [
+            {"module_name": "subprocess_lab", "threat_id": "T-D", "title": "",
+             "description": "", "difficulty": "easy",
+             "agentic": {"primary_lane": 3, "transport": "D"}},
+            {"module_name": "function_calling_lab", "threat_id": "T-E", "title": "",
+             "description": "", "difficulty": "easy",
+             "agentic": {"primary_lane": 2, "transport": "E"}},
+        ],
+    )
+    index = lane_taxonomy.discover_lab_metadata()
+    assert index["subprocess_lab"].transport == "D"
+    assert index["function_calling_lab"].transport == "E"
+
+
+def test_discover_rejects_unknown_transport(monkeypatch):
+    """A typo'd transport (e.g., 'F') is caught at discovery, not silently accepted."""
+    import lane_taxonomy
+
+    monkeypatch.setattr(
+        lane_taxonomy,
+        "_fetch_scenarios",
+        lambda: [
+            {"module_name": "bad_lab", "threat_id": "T-X", "title": "",
+             "description": "", "difficulty": "easy",
+             "agentic": {"primary_lane": 1, "transport": "F"}},
+        ],
+    )
+    with pytest.raises(ValueError, match="invalid transport"):
+        lane_taxonomy.discover_lab_metadata()
+
+
+def test_coverage_summary_does_not_flag_unused_d_e_as_gap(monkeypatch):
+    """If no lab anywhere uses D or E, do not surface them as gaps.
+
+    D and E are opportunistic — a deployment that doesn't exercise
+    subprocess or non-MCP function-calling shouldn't see noise.
+    """
+    import lane_taxonomy
+
+    monkeypatch.setattr(
+        lane_taxonomy,
+        "_fetch_scenarios",
+        lambda: [
+            {"module_name": "a", "threat_id": "A", "title": "", "description": "",
+             "difficulty": "easy",
+             "agentic": {"primary_lane": 1, "transport": "A"}},
+            {"module_name": "b", "threat_id": "B", "title": "", "description": "",
+             "difficulty": "easy",
+             "agentic": {"primary_lane": 1, "transport": "B"}},
+            {"module_name": "c", "threat_id": "C", "title": "", "description": "",
+             "difficulty": "easy",
+             "agentic": {"primary_lane": 1, "transport": "C"}},
+        ],
+    )
+    summary = lane_taxonomy.coverage_summary()
+    gap_text = " ".join(summary[1].gaps).lower()
+    assert "transport d" not in gap_text
+    assert "transport e" not in gap_text
+
+
+def test_coverage_summary_flags_d_gap_when_other_lane_uses_d(monkeypatch):
+    """Once any lab declares Transport D, lanes that primary-cover but lack D are flagged."""
+    import lane_taxonomy
+
+    monkeypatch.setattr(
+        lane_taxonomy,
+        "_fetch_scenarios",
+        lambda: [
+            # Lane 1 has A only.
+            {"module_name": "a", "threat_id": "A", "title": "", "description": "",
+             "difficulty": "easy",
+             "agentic": {"primary_lane": 1, "transport": "A"}},
+            # Lane 3 has D — proves the deployment cares about subprocess.
+            {"module_name": "d", "threat_id": "D", "title": "", "description": "",
+             "difficulty": "easy",
+             "agentic": {"primary_lane": 3, "transport": "D"}},
+        ],
+    )
+    summary = lane_taxonomy.coverage_summary()
+    lane1_gaps = " ".join(summary[1].gaps).lower()
+    # Lane 1 still gets the baseline B/C gaps, plus a D gap because lane 3 uses D.
+    assert "transport d" in lane1_gaps
+    # Lane 3 has D itself, so D is not a gap on lane 3.
+    lane3_gaps = " ".join(summary[3].gaps).lower()
+    assert "transport d" not in lane3_gaps
