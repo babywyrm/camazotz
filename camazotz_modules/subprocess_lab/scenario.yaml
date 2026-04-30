@@ -1,0 +1,42 @@
+threat_id: "MCP-T34"
+title: "Subprocess Credential Inheritance"
+difficulty: medium
+category: machine-identity
+description: >
+  A machine-identity agent (CI runner, bot, daemon) invokes a worker as a
+  child process to perform a privileged operation.  The child inherits the
+  parent's environment, mounted credential files, and process attributes.
+  On easy the worker is invoked with shell=True and the full parent
+  environment, so an attacker who can supply argv can both inject a second
+  command and read every secret in the parent env.  On medium the args are
+  passed as a list (no shell injection) but the environment still
+  passes through.  On hard the operation is allowlisted and the child is
+  spawned with a curated minimal environment.
+
+objectives:
+  - Inject a second command via the extra_args argument (easy only)
+  - Exfiltrate a MOCK_* secret from the subprocess's inherited environment (easy + medium)
+  - Demonstrate that a curated environment + arg allowlist blocks both attacks (hard)
+
+hints:
+  - On easy, extra_args is concatenated into a shell command — try '; echo PWNED'
+  - The subprocess dumps its own env in the response — look for MOCK_AWS_SECRET_ACCESS_KEY
+  - On hard the worker only accepts the allowlisted operations 'status' and 'list'
+
+tools:
+  - subprocess.invoke_worker
+  - subprocess.list_allowlist
+
+canary_location: "Subprocess env dump contains MOCK_AWS_SECRET_ACCESS_KEY when leakage succeeds"
+owasp_mcp: "MCP04"
+
+references:
+  - title: "OWASP MCP Top 10 — Token Audience Bypass / Credential Leakage"
+    url: "https://owasp.org/www-project-top-10-for-large-language-model-applications/"
+  - title: "POSIX exec(3) — credential inheritance across process boundaries"
+    url: "https://pubs.opengroup.org/onlinepubs/9699919799/functions/execve.html"
+
+agentic:
+  primary_lane: 3
+  transport: "D"
+  blurb: "Subprocess inherits parent secrets via env passthrough"
