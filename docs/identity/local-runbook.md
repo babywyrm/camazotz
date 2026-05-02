@@ -41,7 +41,7 @@ After every `make up`, confirm the lane view is live:
 ```bash
 make smoke-local-lanes
 # -> PASS lanes probe (/lanes renders)
-# -> PASS lanes probe (/api/lanes schema=v1, 5 lanes, 32 labs mapped)
+# -> PASS lanes probe (/api/lanes schema=v1, 5 lanes, 35 labs mapped)
 ```
 
 Or by hand:

@@ -43,7 +43,7 @@ After every `helm upgrade` / rollout, confirm the lane view is live:
 ```bash
 K8S_HOST=<your-node-ip> make smoke-k8s-lanes
 # -> PASS lanes probe (/lanes renders)
-# -> PASS lanes probe (/api/lanes schema=v1, 5 lanes, 32 labs mapped)
+# -> PASS lanes probe (/api/lanes schema=v1, 5 lanes, 35 labs mapped)
 ```
 
 Or by hand:
@@ -56,6 +56,52 @@ curl -s http://<your-node-ip>:3000/api/lanes | python3 -m json.tool | head -20
 Browser check: `http://<your-node-ip>:3000/lanes`. The Threat Map at
 `http://<your-node-ip>:3000/threat-map` must remain byte-identical — a
 spec invariant; any regression there is a deploy blocker.
+
+## Policed entry point (`:30090`)
+
+The cluster exposes two NodePorts onto the same `brain-gateway` pod, on
+purpose, so you can teach the difference between "no arbiter" and "with
+arbiter" without redeploying:
+
+| Port | Service | Path | Behavior |
+|------|---------|------|----------|
+| `:30080` | `brain-gateway` | direct → gateway `:8080` | **Bypass.** No nullfield. Every `tools/call` reaches the lab. |
+| `:30090` | `brain-gateway-policed` | nullfield sidecar `:9090` → gateway `:8080` | **Policed.** Identity, registry, and policy enforced before forwarding. |
+
+The policed Service is defined in
+[`kube/brain-gateway-policed.yaml`](../../kube/brain-gateway-policed.yaml).
+It selects the same pod as the bypass Service but targets the sidecar
+container's `9090` listener so callers traverse nullfield's decision
+chain (identity → registry → integrity → circuit → policy → budget →
+audit) before the request lands on the gateway.
+
+### Smoke
+
+```bash
+K8S_HOST=<your-node-ip> make smoke-k8s-policed
+```
+
+Under the hood this runs
+`scripts/smoke_test.py --target k8s --require-policed`, which probes
+`http://<K8S_HOST>:30090/mcp` with an unauthenticated JSON-RPC
+`tools/call`. Expected response:
+
+```json
+{"jsonrpc":"2.0","error":{"code":-32001,"message":"identity verification failed"}, "id":...}
+```
+
+If you see a normal `tools/call` result instead, you are hitting the
+bypass path — confirm the Service exists (`kubectl -n camazotz get svc
+brain-gateway-policed`) and that the nullfield sidecar is `Ready` in
+the gateway pod.
+
+### When to use each port
+
+- **`:30080`** — `make smoke-k8s`, walkthroughs, demos that need
+  unconditional access to the labs (the vulnerable target view).
+- **`:30090`** — defense validation, `mcpnuke` runs that should fail
+  closed, anything you want to publish externally. This is the
+  "production-shaped" entry point.
 
 ## ZITADEL realism mode (cluster)
 
@@ -150,6 +196,7 @@ helm rollback camazotz -n camazotz
 | `make smoke-k8s-identity` | K8s smoke + `GET /config` identity probe (requires `K8S_HOST`) |
 | `make smoke-k8s-llm` | K8s smoke + LLM probe (requires `K8S_HOST`) |
 | `make smoke-k8s-lanes` | K8s smoke + `/lanes` and `/api/lanes` probe (requires `K8S_HOST`) |
+| `make smoke-k8s-policed` | K8s smoke + `:30090` nullfield enforcement probe (requires `K8S_HOST`) |
 | `make helm-template` | Render manifests locally for review |
 
 See [configuration.md](configuration.md) and [deploy/README.md](../../deploy/README.md).
