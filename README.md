@@ -5,8 +5,8 @@
 <img src="https://img.shields.io/badge/python-3.12%2B-3776ab?style=flat-square&logo=python&logoColor=white" alt="Python 3.12+">
 <img src="https://img.shields.io/badge/tests-785_passing-10b981?style=flat-square" alt="785 tests">
 <img src="https://img.shields.io/badge/coverage-100%25-10b981?style=flat-square" alt="100% coverage">
-<img src="https://img.shields.io/badge/modules-32_labs-dc2626?style=flat-square" alt="32 labs">
-<img src="https://img.shields.io/badge/identity_lanes-5%C3%973-60a5fa?style=flat-square" alt="5 lanes × 3 transports">
+<img src="https://img.shields.io/badge/modules-35_labs-dc2626?style=flat-square" alt="35 labs">
+<img src="https://img.shields.io/badge/identity_lanes-5%C3%975-60a5fa?style=flat-square" alt="5 lanes × 5 transports">
 <img src="https://img.shields.io/badge/Red_Team_Playbook-14%2F14-10b981?style=flat-square" alt="Playbook 14/14">
 <img src="https://img.shields.io/badge/license-MIT-a89cb8?style=flat-square" alt="MIT License">
 </p>
@@ -149,11 +149,17 @@ automated testing layers — each is independently deployable.
 │              │                        ▼
 │  K8s access  │     ┌──────────────────────────────────────┐
 │  MCP access  │     │  camazotz brain-gateway              │
-└──────────────┘     │  32 intentionally vulnerable labs    │
-                     │  (5 identity lanes × 3 transports)   │
+└──────────────┘     │  35 intentionally vulnerable labs    │
+                     │  (5 identity lanes × 5 transports)   │
                      │  backed by live LLM                  │
                      └──────────────────────────────────────┘
 ```
+
+> Transport codes A–E (MCP JSON-RPC, Direct HTTP, SDK/library, subprocess,
+> native LLM function-calling) are defined in
+> [docs/adr/0001-five-transport-taxonomy.md](docs/adr/0001-five-transport-taxonomy.md).
+> The canonical 5×5 lane × transport mapping lives in
+> [`frontend/lane_taxonomy.py`](frontend/lane_taxonomy.py).
 
 | Integration | What It Does | Why You'd Want It |
 |---|---|---|
@@ -357,6 +363,16 @@ Reset all flags: `POST /reset` or click the Reset button in the nav.
 
 Open **http://localhost:3000/identity** for the Identity Dashboard showing live ZITADEL status, IDP-backed tool activity, and architecture reference.
 
+### Lane View
+
+Open **http://localhost:3000/lanes** for the agentic-lane view: every lab
+plotted on the 5 identity lanes × 5 transports grid (schema v1) with
+coverage gaps surfaced as a teaching artifact. The same data is served as
+JSON at **http://localhost:3000/api/lanes** — `mcpnuke --coverage-report`
+consumes that contract directly. Source of truth:
+[`frontend/lane_taxonomy.py`](frontend/lane_taxonomy.py); transport codes
+A–E are defined in [the five-transport ADR](docs/adr/0001-five-transport-taxonomy.md).
+
 ### Operator Console
 
 Navigate to **http://localhost:3000/operator** (hidden — no nav link) for:
@@ -452,7 +468,7 @@ camazotz/
 │   ├── app/brain/           # LLM provider abstraction (Anthropic API, Bedrock, Ollama)
 │   └── app/modules/
 │       └── registry.py      # LabRegistry — auto-discovers modules, middleware pipeline
-├── camazotz_modules/        # 25 vulnerability lab modules (LabModule subclasses)
+├── camazotz_modules/        # 35 vulnerability lab modules (LabModule subclasses)
 │   ├── base.py              # LabModule ABC — shared contract and helpers
 │   ├── audit_lab/           # Audit log evasion, service account attribution (MCP-T13)
 │   ├── auth_lab/            # Confused deputy, privilege escalation, audience bypass
@@ -577,7 +593,7 @@ make help           # show all targets
   links from challenges and scenarios
 - **Observer signal tiers** — `signal_tier`, `reason_code`, tighter
   confused-deputy detection, signal filter in Enhanced tab
-- **QA checks for all 32 labs** — every lab covered in the QA harness
+- **QA checks for all 35 labs** — every lab covered in the QA harness
 - **Operator Console** — guided walkthroughs for the original 25 labs at medium
   guardrails with telemetry strip
 - **ZITADEL live flow wiring** — real HTTP token exchange, introspection,
