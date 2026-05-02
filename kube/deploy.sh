@@ -36,6 +36,9 @@ $K apply -f "${KUBE_DIR}/secret.yaml"
 $K apply -f "${KUBE_DIR}/zitadel-postgres.yaml"
 $K apply -f "${KUBE_DIR}/zitadel.yaml"
 $K apply -f "${KUBE_DIR}/brain-gateway.yaml"
+if [ -f "${KUBE_DIR}/brain-gateway-policed.yaml" ]; then
+  $K apply -f "${KUBE_DIR}/brain-gateway-policed.yaml"
+fi
 $K apply -f "${KUBE_DIR}/portal.yaml"
 $K apply -f "${KUBE_DIR}/observer.yaml"
 
