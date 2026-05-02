@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from dataclasses import dataclass
 
@@ -118,6 +119,37 @@ def _check_identity_probe(client: httpx.Client, gateway_url: str) -> None:
 _EXPECTED_LANE_SLUGS = ("human-direct", "delegated", "machine", "chain", "anonymous")
 
 
+def _check_policed_probe(client: httpx.Client, policed_url: str) -> None:
+    """Verify the nullfield-policed entry point enforces identity.
+
+    Sends an unauthenticated MCP tools/list to the policed gateway and
+    expects a -32001 'identity verification failed' error. A 200 OK means
+    nullfield is bypassed (sidecar not in path or policy not loaded).
+    """
+    try:
+        resp = client.post(
+            f"{policed_url}/mcp",
+            json={"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
+            headers={"Content-Type": "application/json"},
+        )
+    except httpx.HTTPError as exc:
+        raise RuntimeError(f"policed probe: request failed: {exc}") from exc
+
+    if resp.status_code == 200:
+        body = resp.json()
+        err = body.get("error", {})
+        if err.get("code") == -32001:
+            print("PASS policed probe (nullfield denied unauthenticated request)")
+            return
+        raise RuntimeError(
+            f"policed probe: expected error -32001, got {body!r} — "
+            "nullfield sidecar may be bypassed"
+        )
+    raise RuntimeError(
+        f"policed probe: expected HTTP 200 with JSON-RPC error, got HTTP {resp.status_code}"
+    )
+
+
 def _check_lanes_probe(client: httpx.Client, portal_url: str) -> None:
     """Verify the Agentic Lane View is live: HTML page, JSON endpoint, real labs."""
     html = client.get(f"{portal_url}/lanes")
@@ -171,6 +203,15 @@ def main() -> int:
         action="store_true",
         help="Also verify GET /lanes renders and /api/lanes returns schema v1 with 5 lanes",
     )
+    parser.add_argument(
+        "--require-policed",
+        action="store_true",
+        help="Also verify the nullfield-policed entry point denies unauthenticated traffic",
+    )
+    parser.add_argument(
+        "--policed-url",
+        help="Policed gateway URL (default: http://<k8s-host>:30090 for --target k8s)",
+    )
     args = parser.parse_args()
 
     target = _resolve_target(args)
@@ -185,6 +226,22 @@ def main() -> int:
                 _check_identity_probe(client, target.gateway_url)
             if args.require_lanes:
                 _check_lanes_probe(client, target.portal_url)
+            if args.require_policed:
+                policed_url = args.policed_url
+                if not policed_url:
+                    if args.target == "k8s":
+                        host = args.k8s_host or os.getenv("K8S_HOST", "")
+                        if not host:
+                            raise RuntimeError(
+                                "--require-policed needs --k8s-host (or K8S_HOST) for k8s target"
+                            )
+                        policed_url = f"http://{host}:30090"
+                    else:
+                        raise RuntimeError(
+                            "--require-policed has no default for --target local; "
+                            "pass --policed-url"
+                        )
+                _check_policed_probe(client, policed_url)
             if args.require_llm:
                 _check_llm_probe(client, target.gateway_url, session_id)
     except (httpx.HTTPError, RuntimeError, ValueError, KeyError) as exc:

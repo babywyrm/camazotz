@@ -1,4 +1,4 @@
-.PHONY: help up up-local down logs test test-zitadel-flows build clean status ps env compose-gen helm-template qa qa-json smoke-local smoke-k8s smoke-local-llm smoke-k8s-llm smoke-local-identity smoke-k8s-identity smoke-local-identity-llm smoke-k8s-identity-llm smoke-local-lanes smoke-k8s-lanes
+.PHONY: help up up-local down logs test test-zitadel-flows build clean status ps env compose-gen helm-template qa qa-json smoke-local smoke-k8s smoke-local-llm smoke-k8s-llm smoke-local-identity smoke-k8s-identity smoke-local-identity-llm smoke-k8s-identity-llm smoke-local-lanes smoke-k8s-lanes smoke-k8s-policed
 
 COMPOSE := docker compose -f compose/docker-compose.yml
 ENV_FILE := compose/.env
@@ -106,6 +106,9 @@ smoke-local-lanes: ## Smoke test local target including /lanes + /api/lanes prob
 
 smoke-k8s-lanes: ## Smoke test k8s target including /lanes + /api/lanes probe (requires K8S_HOST)
 	uv run python scripts/smoke_test.py --target k8s --require-lanes
+
+smoke-k8s-policed: ## Smoke test k8s policed entry point (nullfield enforcement, requires K8S_HOST)
+	uv run python scripts/smoke_test.py --target k8s --require-policed
 
 zitadel-bootstrap: ## Bootstrap ZITADEL service user for non-degraded IDP operation
 	uv run python scripts/zitadel_bootstrap.py --write-env
