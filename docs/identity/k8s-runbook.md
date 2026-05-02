@@ -109,6 +109,32 @@ To mirror local `CAMAZOTZ_LAB_IDENTITY_*` injection, add equivalent env entries 
 | Secret not mounted | `secrets.idpClientSecret` empty in chart | Set in values or external secret operator |
 | `_idp_degraded: true` in tool responses | ZITADEL unreachable from cluster | Check ZITADEL pod: `kubectl -n camazotz exec deploy/zitadel -- /app/zitadel ready`; trio falls back to mock gracefully |
 | `make smoke-k8s-llm` fails | Brain provider credentials missing in cluster | Set `secrets.anthropicApiKey` or Bedrock/AWS env per [deploy/README.md](../../deploy/README.md) |
+| `ask_agent` returns `[cloud-stub] …` text | `ANTHROPIC_API_KEY` secret value is empty (key exists but zero bytes) | Patch and restart: see "Sync Anthropic key from local .env to NUC" below |
+
+## Sync Anthropic key from local .env to NUC
+
+`CloudClaudeProvider` falls back to a stub responder when `ANTHROPIC_API_KEY`
+is empty. The secret can exist with zero bytes (e.g. when an earlier `kubectl
+apply` carried no value), so the gateway boots cleanly but every LLM call
+silently degrades. `make smoke-k8s-llm` still passes against the stub —
+detect the gap by inspecting `ask_agent` output for the `[cloud-stub]`
+prefix.
+
+To sync the key from your local `compose/.env` to the NUC and restart:
+
+```bash
+KEY=$(grep "^ANTHROPIC_API_KEY=" compose/.env | cut -d= -f2)
+ssh root@$K8S_HOST "sudo k3s kubectl -n camazotz patch secret camazotz-secrets \
+  --type=json \
+  -p='[{\"op\":\"replace\",\"path\":\"/data/ANTHROPIC_API_KEY\",\"value\":\"$(echo -n "$KEY" | base64)\"}]' \
+  && sudo k3s kubectl -n camazotz rollout restart deploy/brain-gateway \
+  && sudo k3s kubectl -n camazotz rollout status deploy/brain-gateway --timeout=60s"
+```
+
+Confirm with `make smoke-k8s-llm` — successful Claude responses will not
+carry the `[cloud-stub]` prefix. The same key powers `mcpnuke --claude`
+on the operator side, which fails loudly if the env var is unset rather
+than degrading silently — keep both in sync.
 
 ## Rollback
 

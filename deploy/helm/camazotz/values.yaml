@@ -29,6 +29,11 @@ config:
   idpClientId: "camazotz-gateway"
 
 secrets:
+  # WARNING: leaving anthropicApiKey empty causes CloudClaudeProvider to
+  # respond with "[cloud-stub] ..." text on every ask_agent call. The brain
+  # boots cleanly and `make smoke-k8s-llm` still passes, so the degradation
+  # is silent. See docs/identity/k8s-runbook.md → "Sync Anthropic key from
+  # local .env to NUC" for the patch + restart procedure.
   anthropicApiKey: ""
   flaskSecret: "cztz-k8s-secret"
   idpClientSecret: ""
