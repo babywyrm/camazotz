@@ -135,7 +135,7 @@ Then open http://localhost:3000 in your browser. Use the difficulty
 dropdown in the nav bar to switch between easy/medium/hard in real-time.
 
 Start with the **Threat Map** (`/threat-map`) for a birds-eye view of all
-32 labs organized by threat category (and by agentic-identity lane at `/lanes`), then dive into individual challenges.
+35 labs organized by threat category (and by agentic-identity lane at `/lanes`), then dive into individual challenges.
 Visit `/identity` for the **Identity Dashboard** showing live ZITADEL
 status and IDP integration details.
 If you get stuck, each challenge offers a link to its guided walkthrough.

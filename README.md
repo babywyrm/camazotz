@@ -588,9 +588,9 @@ make help           # show all targets
   checks, 3 exploit chain automations, regression baselines
 - **Golden path v3** — Machine Identity section (Phase 0b) for agent auth
   via Teleport, OWASP MCP Top 10 mapping updates
-- **Threat Map** — `/threat-map` page with 7 category groups, 28 lab
-  cards, localStorage-based progress tracking, and contextual walkthrough
-  links from challenges and scenarios
+- **Threat Map** — `/threat-map` page with 7 category groups, 35 lab
+  cards (originally 28), localStorage-based progress tracking, and
+  contextual walkthrough links from challenges and scenarios
 - **Observer signal tiers** — `signal_tier`, `reason_code`, tighter
   confused-deputy detection, signal filter in Enhanced tab
 - **QA checks for all 35 labs** — every lab covered in the QA harness

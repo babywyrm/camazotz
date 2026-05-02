@@ -1,0 +1,81 @@
+name: Tests
+
+# Per-repo CI for camazotz. Runs the unit-test suite verbose against
+# Python 3.12 + 3.13 on every push and PR. Cross-repo drift assertions
+# (lab count, transport taxonomy, lane vocabulary) live in agentic-sec's
+# `cross-repo-coherence` workflow and run nightly + on every push to
+# agentic-sec/main; this workflow notifies that one via repository_dispatch
+# at the end of a successful build so drift is caught within the same hour
+# as the change instead of waiting up to 24h for the cron.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pytest:
+    name: pytest (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.12', '3.13']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install ${{ matrix.python-version }}
+
+      - name: Install project (with dev extras)
+        run: uv sync --frozen
+
+      - name: Run pytest verbose
+        run: uv run pytest -v --tb=short
+
+  lab-count-sanity:
+    name: Lab count sanity check
+    runs-on: ubuntu-latest
+    needs: pytest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Assert README badge matches scenario.yaml count
+        run: |
+          ACTUAL=$(ls camazotz_modules/*/scenario.yaml 2>/dev/null | wc -l | tr -d ' ')
+          BADGE=$(grep -oE 'modules-([0-9]+)_labs' README.md | head -1 | grep -oE '[0-9]+' | head -1 || echo "?")
+          echo "actual scenario.yaml count: $ACTUAL"
+          echo "README badge claims:        $BADGE"
+          if [ "$ACTUAL" != "$BADGE" ]; then
+            echo "::error::README badge ($BADGE) and scenario.yaml count ($ACTUAL) disagree"
+            exit 1
+          fi
+          echo "OK"
+
+  notify-coherence:
+    name: Notify ecosystem coherence workflow
+    runs-on: ubuntu-latest
+    needs: [pytest, lab-count-sanity]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Trigger agentic-sec coherence run
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.ECOSYSTEM_DISPATCH_TOKEN || secrets.GITHUB_TOKEN }}
+          repository: babywyrm/agentic-sec
+          event-type: ecosystem-changed
+          client-payload: '{"source": "camazotz", "sha": "${{ github.sha }}"}'
+        continue-on-error: true   # nightly cron is the safety net
