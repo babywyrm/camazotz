@@ -5,6 +5,56 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## Lane View, Policed Entry Point & Five-Transport Taxonomy (2026-05-01)
+
+### Agentic Lane View
+- **`/lanes` portal page** — renders every lab on the 5 identity lanes ×
+  5 transports grid with explicit coverage gaps surfaced as a teaching
+  artifact. Nav entry sits between Threat Map and Observer.
+- **`GET /api/lanes`** — JSON contract (schema `v1`) consumed by
+  `mcpnuke --coverage-report`. Stable shape: `lanes[]`, `transports[]`,
+  and per-lab `agentic:` metadata blocks.
+- **`agentic:` scenario blocks** added across all 35 labs declaring
+  lane, transport (A–E), and threat-id alignment.
+- **Canonical taxonomy** lives in
+  [`frontend/lane_taxonomy.py`](frontend/lane_taxonomy.py); the
+  five-transport rationale is recorded in
+  [`docs/adr/0001-five-transport-taxonomy.md`](docs/adr/0001-five-transport-taxonomy.md).
+- **Smoke targets** `make smoke-local-lanes` and `make smoke-k8s-lanes`
+  probe both the HTML page and the JSON contract; the existing Threat
+  Map page is asserted byte-identical (spec invariant).
+
+### Five-Transport Taxonomy (A–E)
+- Extended the transport dimension from 3 codes to 5: **A** MCP
+  JSON-RPC, **B** Direct HTTP, **C** SDK / library, **D** subprocess /
+  native binary, **E** native LLM function-calling (non-MCP).
+- New labs spiking the new codes: `subprocess_lab` (D),
+  `function_calling_lab` (E), `sdk_tamper_lab` (C).
+
+### nullfield-policed Kubernetes Entry Point
+- **`kube/brain-gateway-policed.yaml`** — new K8s Service exposing the
+  nullfield-enforced path on **NodePort `:30090`** that targets the
+  sidecar listener on `:9090`. The default `:30080` remains the
+  bypass path (direct gateway, no policy) for teaching contrast.
+- **`make smoke-k8s-policed`** + `--require-policed` flag in
+  `scripts/smoke_test.py` assert the policy path: unauthenticated
+  `POST /mcp` against `:30090` must return JSON-RPC error
+  `-32001 identity verification failed`.
+
+### Identity Provider Realism (recap)
+- **ZITADEL** wired into `oauth_delegation_lab`, `rbac_lab`, and
+  `revocation_lab` via the `CAMAZOTZ_IDP_PROVIDER` env hook. See the
+  2026-04-12 entry for the full IDP trio rollout details.
+
+### Operations
+- **Silent `[cloud-stub]` degradation** documented: when
+  `ANTHROPIC_API_KEY` is set but empty (zero-byte secret),
+  `CloudClaudeProvider` returns stubbed text and `make smoke-k8s-llm`
+  still passes. Detection and the sync-from-`.env` patch procedure now
+  live in [`docs/identity/k8s-runbook.md`](docs/identity/k8s-runbook.md).
+
+---
+
 ## IDP Trio Rollout — Live ZITADEL Identity Flows (2026-04-12)
 
 ### Identity Provider Integration
