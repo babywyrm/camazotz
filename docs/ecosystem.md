@@ -14,7 +14,7 @@ brokers, webhook registrations. Every `tools/call` is a function invocation with
 side effects, triggered by an LLM that cannot be trusted to make authorization
 decisions.
 
-The attack surface is not theoretical. Camazotz demonstrates 28 distinct
+The attack surface is not theoretical. Camazotz demonstrates 35 distinct
 vulnerability patterns — from prompt injection that triggers secret exfiltration,
 to confused-deputy attacks where the AI grants admin access because the attacker
 wrote a convincing justification. These attacks work because:
@@ -62,6 +62,22 @@ MCP Client → nullfield (:9090) → brain-gateway (:8080)
 nullfield adds ~2ms to the request path. It runs as a sidecar container, a
 standalone gateway, or is auto-injected via a mutating admission webhook
 (`nullfield.io/inject: "true"`).
+
+**Two NodePorts on one pod (Kubernetes).** The cluster deployment exposes
+the gateway twice on purpose so operators can demonstrate the with/without
+contrast on the same workload:
+
+| NodePort | Service | Path | Use |
+|----------|---------|------|-----|
+| `:30080` | `brain-gateway` | direct → gateway | Bypass / vulnerable view |
+| `:30090` | `brain-gateway-policed` | nullfield sidecar `:9090` → gateway | Policy enforced |
+
+Manifest: [`kube/brain-gateway-policed.yaml`](../kube/brain-gateway-policed.yaml).
+Smoke: `make smoke-k8s-policed` asserts that an unauthenticated `tools/call`
+against `:30090` returns JSON-RPC error `-32001 identity verification failed`,
+i.e. nullfield rejects the request before it reaches a lab. Hitting `:30080`
+with the same payload returns a normal tool result — the teaching difference
+in one curl.
 
 **What it solves:** Even if the LLM is compromised or manipulated, the policy
 layer enforces hard boundaries. The AI cannot override a DENY rule.
@@ -151,8 +167,8 @@ session binding, HOLD gates, and replay detection block them.
                      │                   │                          │
                      │                   ▼                          │
                      │           brain-gateway (:8080)              │
-                     │           └── 32 vulnerable MCP labs         │
-                     │               (5 identity lanes × 3 transports)│
+                     │           └── 35 vulnerable MCP labs         │
+                     │               (5 identity lanes × 5 transports)│
                      │                                              │
   mcpnuke ──────────▶│  Scans both Teleport infra + MCP tools       │
   (scanner)          │  Reports findings + exploit chain results    │
@@ -164,6 +180,33 @@ Teleport as the defense. You deploy camazotz as the vulnerable target. You run
 mcpnuke to prove the defenses work. If mcpnuke's exploit chains produce
 CRITICAL findings on hard difficulty, your policy has gaps. If they produce
 INFO findings ("defense held"), you're in good shape.
+
+---
+
+## Coverage as a Teaching Artifact — the Lane View
+
+The policy layer is only as good as the inventory it reasons over. Camazotz
+publishes its full inventory along the same axes the rest of the framework
+uses — five identity lanes × five transports — so that "what we cover" and
+"what we *don't* cover yet" are both first-class.
+
+The portal page **`/lanes`** plots every lab on that 5 × 5 grid: lanes
+(human-direct, delegated, machine, agent-chain, anonymous) on one axis,
+transports (A MCP JSON-RPC, B direct HTTP, C SDK / library, D subprocess,
+E native LLM function-calling) on the other. Filled cells show which
+threat-ids land where; empty cells are the deliberate teaching artifact —
+visible coverage gaps, not silent ones. Transport semantics are pinned by
+[ADR 0001](adr/0001-five-transport-taxonomy.md); the canonical lane and
+transport tables and the per-lab `agentic:` blocks they read from live in
+[`frontend/lane_taxonomy.py`](../frontend/lane_taxonomy.py).
+
+The same data is served as JSON at **`GET /api/lanes`** (schema `v1`,
+stable shape: `lanes[]`, `transports[]`, per-lab metadata). This is the
+contract `mcpnuke --coverage-report` consumes when it merges what camazotz
+ships with what your scan actually probed: cells that the framework
+declares but the scan missed are flagged as scanner gaps; cells the scan
+hit that camazotz never declared are flagged as inventory drift. Either
+way the answer is a delta you can act on, not a feeling.
 
 ---
 
@@ -236,7 +279,7 @@ secrets, full audit). Together they implement the golden path: every request
 carries identity, every tool is registered and scoped, every secret lives in a
 secret manager, and the AI's output is never trusted as authorization.
 
-**The validation:** camazotz provides 32 intentionally vulnerable labs covering
+**The validation:** camazotz provides 35 intentionally vulnerable labs covering
 every OWASP MCP Top 10 risk. mcpnuke automates the attack sequences and
 reports whether your defenses hold. Run mcpnuke on hard difficulty — if the
 exploit chains fail and defenses hold, your golden path is working.
