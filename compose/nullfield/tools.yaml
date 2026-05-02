@@ -1,0 +1,13 @@
+# Empty starter tool registry for the camazotz Compose overlay.
+#
+# The starter policy uses an open tools/call rule so an empty registry is
+# fine — calls fall through. Swap with
+# https://github.com/babywyrm/nullfield/blob/main/integrations/camazotz/tools.yaml
+# once you want strict per-tool registration (and tighten policy.yaml to
+# reject unregistered tools).
+
+apiVersion: nullfield.io/v1alpha1
+kind: ToolRegistry
+metadata:
+  name: camazotz-compose-starter
+tools: []

@@ -182,6 +182,63 @@ carry the `[cloud-stub]` prefix. The same key powers `mcpnuke --claude`
 on the operator side, which fails loudly if the env var is unset rather
 than degrading silently — keep both in sync.
 
+## Agentic feedback loop (scan -> generate-policy -> apply -> re-scan)
+
+The cross-repo round-trip lives in `scripts/feedback_loop.py` and is
+exposed as three Make targets. The targets work in **three deployment
+classes** without editing the Makefile — defaults are derived from
+environment variables:
+
+| Class | What you set | Resulting URLs |
+|-------|--------------|----------------|
+| Local Docker Compose | nothing (run `make up-policed` first) | `http://localhost:8080` (bypass) / `:9090` (policed) |
+| K3s with NodePorts (reference layout in `kube/`) | `K8S_HOST=<node>` | `http://<node>:30080` / `:30090` |
+| Generic K8s (EKS / GKE / AKS / vanilla) | `BASELINE_URL=...` and `POLICED_URL=...` (e.g. LoadBalancer DNS or `kubectl port-forward` URLs) | whatever you set |
+
+Add `SSH_HOST=user@host` only when you want kubectl to tunnel via
+`ssh ... sudo k3s kubectl` (the NUC reference flow). Without it,
+kubectl runs against your local kubeconfig — the right behavior for
+EKS / GKE / minikube / Docker Desktop K8s.
+
+Examples:
+
+```bash
+# Local Compose, dry render only:
+make up-policed
+make feedback-loop-print
+
+# Local Compose, full apply + re-scan:
+make up-policed
+make feedback-loop-apply
+
+# K3s NodePort cluster, full round-trip:
+K8S_HOST=10.0.0.5 make feedback-loop-apply
+
+# Generic K8s with explicit URLs (e.g. behind an ingress):
+BASELINE_URL=https://mcp-bypass.example.com/mcp \
+POLICED_URL=https://mcp-policed.example.com/mcp \
+make feedback-loop-apply
+
+# K3s NodePort + ssh-tunneled kubectl (NUC reference deploy):
+K8S_HOST=10.0.0.5 SSH_HOST=root@10.0.0.5 make feedback-loop-apply
+```
+
+What the loop reports:
+
+1. Baseline finding count + per-severity tally against the bypass URL.
+2. The synthesized `NullfieldPolicy` CRD (writes to `--workdir`,
+   default a tempdir, with selector `app=brain-gateway`).
+3. `kubectl apply` (or `--dry-run=client`, or print-only).
+4. A wait window (`WAIT_SECONDS`, default 60) so nullfield's CRD
+   controller (default 30s loop) and the sidecar's policy loader can
+   pick up the change.
+5. A re-scan against the policed URL, then a severity-bucketed delta
+   plus a list of fully-closed checks.
+
+Exit codes: `0` = findings dropped (loop verified), `1` = unchanged
+(selector mismatch / wait too short / wrong namespace), `2` = findings
+increased (the applied policy probably broke the gateway).
+
 ## Rollback
 
 ```bash

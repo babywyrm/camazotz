@@ -1,6 +1,7 @@
-.PHONY: help up up-local down logs test test-zitadel-flows build clean status ps env compose-gen helm-template qa qa-json smoke-local smoke-k8s smoke-local-llm smoke-k8s-llm smoke-local-identity smoke-k8s-identity smoke-local-identity-llm smoke-k8s-identity-llm smoke-local-lanes smoke-k8s-lanes smoke-k8s-policed feedback-loop-print feedback-loop-dry feedback-loop-apply
+.PHONY: help up up-local up-policed down logs test test-zitadel-flows build clean status ps env compose-gen helm-template qa qa-json smoke-local smoke-k8s smoke-local-llm smoke-k8s-llm smoke-local-identity smoke-k8s-identity smoke-local-identity-llm smoke-k8s-identity-llm smoke-local-lanes smoke-k8s-lanes smoke-k8s-policed feedback-loop-print feedback-loop-dry feedback-loop-apply
 
 COMPOSE := docker compose -f compose/docker-compose.yml
+COMPOSE_POLICED := docker compose -f compose/docker-compose.yml -f compose/docker-compose.nullfield.yml
 ENV_FILE := compose/.env
 
 help: ## Show available targets
@@ -23,6 +24,17 @@ up: env ## Start stack (gateway + portal; default brain: Anthropic API)
 
 up-local: env ## Start with local provider (Ollama)
 	BRAIN_PROVIDER=local $(COMPOSE) --env-file $(ENV_FILE) --profile local up -d --build
+
+up-policed: env ## Start stack with the nullfield sidecar overlay (adds :9090 policed + :9091 admin)
+	$(COMPOSE_POLICED) --env-file $(ENV_FILE) up -d --build
+	@echo ""
+	@echo "  Bypass:    http://localhost:8080  (brain-gateway direct, no policy)"
+	@echo "  Policed:   http://localhost:9090  (nullfield -> brain-gateway)"
+	@echo "  Admin:     http://localhost:9091  (nullfield status / metrics)"
+	@echo "  Portal:    http://localhost:3000"
+	@echo ""
+	@echo "  Run the agentic feedback loop: make feedback-loop-print"
+	@echo ""
 	@echo ""
 	@echo "  Portal:  http://localhost:3000"
 	@echo "  Gateway: http://localhost:8080"
@@ -110,27 +122,73 @@ smoke-k8s-lanes: ## Smoke test k8s target including /lanes + /api/lanes probe (r
 smoke-k8s-policed: ## Smoke test k8s policed entry point (nullfield enforcement, requires K8S_HOST)
 	uv run python scripts/smoke_test.py --target k8s --require-policed
 
-feedback-loop-print: ## Render the mcpnuke-derived NullfieldPolicy without applying (safe; needs K8S_HOST)
-	uv run python scripts/feedback_loop.py \
-	  --baseline-url http://$(K8S_HOST):30080/mcp \
-	  --mode print \
-	  --namespace camazotz
+# --- Cross-repo agentic feedback loop -----------------------------------------
+#
+# Defaults are env-overridable so the same targets work in three deployment
+# classes without editing the Makefile:
+#
+#   1. Local Docker Compose:
+#        make feedback-loop-print              (uses localhost:8080 / :9090)
+#
+#   2. K3s with NodePorts (reference layout shipped in kube/):
+#        K8S_HOST=10.0.0.5 make feedback-loop-print
+#        => http://10.0.0.5:30080 (bypass) / :30090 (policed)
+#
+#   3. Generic K8s (EKS / GKE / AKS / vanilla — local kubeconfig already set):
+#        BASELINE_URL=https://my-elb.example.com/bypass/mcp \
+#        POLICED_URL=https://my-elb.example.com/policed/mcp \
+#        make feedback-loop-apply
+#
+# SSH_HOST is opt-in. Without it, kubectl runs against your local kubeconfig
+# (which is the right behavior for EKS / GKE / minikube). Only set SSH_HOST
+# when you specifically want to tunnel via ssh root@host sudo k3s kubectl
+# (the NUC reference flow).
+#
+# Override knobs:
+#   BASELINE_URL  bypass entry point URL                (default: derived)
+#   POLICED_URL   nullfield-protected entry point URL   (default: derived)
+#   K8S_HOST      cluster node hostname/IP for NodePort defaults
+#   K8S_NS        target namespace                       (default: camazotz)
+#   SSH_HOST      "user@host" for kubectl-over-ssh       (default: empty)
+#   WAIT_SECONDS  apply -> re-scan delay                 (default: 60)
+# ------------------------------------------------------------------------------
 
-feedback-loop-dry: ## kubectl apply --dry-run=client of the generated policy (needs K8S_HOST + ssh)
-	uv run python scripts/feedback_loop.py \
-	  --baseline-url http://$(K8S_HOST):30080/mcp \
-	  --mode dry-run \
-	  --namespace camazotz \
-	  --ssh-host root@$(K8S_HOST)
+K8S_NS       ?= camazotz
+WAIT_SECONDS ?= 60
 
-feedback-loop-apply: ## Full round-trip: scan -> generate -> apply -> wait -> re-scan -> diff (needs K8S_HOST + ssh)
-	uv run python scripts/feedback_loop.py \
-	  --baseline-url http://$(K8S_HOST):30080/mcp \
-	  --policed-url http://$(K8S_HOST):30090/mcp \
+# URL defaults: prefer explicit BASELINE_URL/POLICED_URL; otherwise derive
+# from K8S_HOST (NodePort layout); otherwise fall back to localhost (Compose).
+ifeq ($(strip $(BASELINE_URL)),)
+  ifeq ($(strip $(K8S_HOST)),)
+    BASELINE_URL := http://localhost:8080/mcp
+  else
+    BASELINE_URL := http://$(K8S_HOST):30080/mcp
+  endif
+endif
+ifeq ($(strip $(POLICED_URL)),)
+  ifeq ($(strip $(K8S_HOST)),)
+    POLICED_URL := http://localhost:9090/mcp
+  else
+    POLICED_URL := http://$(K8S_HOST):30090/mcp
+  endif
+endif
+
+FEEDBACK_LOOP_BASE = uv run python scripts/feedback_loop.py \
+	  --baseline-url $(BASELINE_URL) \
+	  --namespace $(K8S_NS) \
+	  $(if $(strip $(SSH_HOST)),--ssh-host $(SSH_HOST),)
+
+feedback-loop-print: ## Generate the NullfieldPolicy from a baseline scan; do not apply (safe)
+	$(FEEDBACK_LOOP_BASE) --mode print
+
+feedback-loop-dry: ## kubectl apply --dry-run=client of the generated policy
+	$(FEEDBACK_LOOP_BASE) --mode dry-run
+
+feedback-loop-apply: ## Full round-trip: scan -> generate -> apply -> wait -> re-scan -> diff
+	$(FEEDBACK_LOOP_BASE) \
+	  --policed-url $(POLICED_URL) \
 	  --mode apply \
-	  --namespace camazotz \
-	  --ssh-host root@$(K8S_HOST) \
-	  --wait-seconds 60
+	  --wait-seconds $(WAIT_SECONDS)
 
 zitadel-bootstrap: ## Bootstrap ZITADEL service user for non-degraded IDP operation
 	uv run python scripts/zitadel_bootstrap.py --write-env

@@ -1,0 +1,38 @@
+# Starter NullfieldPolicy for the camazotz Compose overlay.
+#
+# Intentionally minimal so the policed entry point comes up green and the
+# feedback loop can run without per-tool registration. For a stricter
+# baseline, swap this file with:
+#   https://github.com/babywyrm/nullfield/blob/main/integrations/camazotz/policy.yaml
+# (the same file used by the helm chart's `nullfield-tools` ConfigMap).
+
+apiVersion: nullfield.io/v1alpha1
+kind: NullfieldPolicy
+metadata:
+  name: camazotz-compose-starter
+  labels:
+    nullfield.io/integration: "camazotz"
+    nullfield.io/profile: "starter"
+spec:
+  selector:
+    matchLabels:
+      app: brain-gateway
+
+  rules:
+    # Protocol chatter is always fine.
+    - action: ALLOW
+      mcpMethod: initialize
+
+    - action: ALLOW
+      mcpMethod: tools/list
+      reason: "discovery; no execution"
+
+    # Default allow on tools/call so the loop can see baseline behavior;
+    # mcpnuke --generate-policy will narrow this to per-tool DENY/HOLD/SCOPE
+    # rules based on what the scanner actually finds.
+    - action: ALLOW
+      mcpMethod: tools/call
+      maxCallsPerMinute: 120
+
+  audit:
+    logLevel: FULL
