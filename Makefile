@@ -1,4 +1,4 @@
-.PHONY: help up up-local down logs test test-zitadel-flows build clean status ps env compose-gen helm-template qa qa-json smoke-local smoke-k8s smoke-local-llm smoke-k8s-llm smoke-local-identity smoke-k8s-identity smoke-local-identity-llm smoke-k8s-identity-llm smoke-local-lanes smoke-k8s-lanes smoke-k8s-policed
+.PHONY: help up up-local down logs test test-zitadel-flows build clean status ps env compose-gen helm-template qa qa-json smoke-local smoke-k8s smoke-local-llm smoke-k8s-llm smoke-local-identity smoke-k8s-identity smoke-local-identity-llm smoke-k8s-identity-llm smoke-local-lanes smoke-k8s-lanes smoke-k8s-policed feedback-loop-print feedback-loop-dry feedback-loop-apply
 
 COMPOSE := docker compose -f compose/docker-compose.yml
 ENV_FILE := compose/.env
@@ -109,6 +109,28 @@ smoke-k8s-lanes: ## Smoke test k8s target including /lanes + /api/lanes probe (r
 
 smoke-k8s-policed: ## Smoke test k8s policed entry point (nullfield enforcement, requires K8S_HOST)
 	uv run python scripts/smoke_test.py --target k8s --require-policed
+
+feedback-loop-print: ## Render the mcpnuke-derived NullfieldPolicy without applying (safe; needs K8S_HOST)
+	uv run python scripts/feedback_loop.py \
+	  --baseline-url http://$(K8S_HOST):30080/mcp \
+	  --mode print \
+	  --namespace camazotz
+
+feedback-loop-dry: ## kubectl apply --dry-run=client of the generated policy (needs K8S_HOST + ssh)
+	uv run python scripts/feedback_loop.py \
+	  --baseline-url http://$(K8S_HOST):30080/mcp \
+	  --mode dry-run \
+	  --namespace camazotz \
+	  --ssh-host root@$(K8S_HOST)
+
+feedback-loop-apply: ## Full round-trip: scan -> generate -> apply -> wait -> re-scan -> diff (needs K8S_HOST + ssh)
+	uv run python scripts/feedback_loop.py \
+	  --baseline-url http://$(K8S_HOST):30080/mcp \
+	  --policed-url http://$(K8S_HOST):30090/mcp \
+	  --mode apply \
+	  --namespace camazotz \
+	  --ssh-host root@$(K8S_HOST) \
+	  --wait-seconds 60
 
 zitadel-bootstrap: ## Bootstrap ZITADEL service user for non-degraded IDP operation
 	uv run python scripts/zitadel_bootstrap.py --write-env
