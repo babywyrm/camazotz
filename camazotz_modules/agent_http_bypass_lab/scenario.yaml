@@ -1,0 +1,34 @@
+threat_id: "MCP-T37"
+title: "Agent HTTP Bypass — Direct Transport B Access"
+difficulty: medium
+category: authz
+description: >
+  A machine agent bypasses the MCP transport layer entirely and calls the
+  internal tool server's HTTP REST API directly. This evades all MCP-level
+  authentication, nullfield policy, and session binding. Transport B
+  (Direct HTTP API) / Lane 3 (Machine). Demonstrates that nullfield protects
+  the MCP entry point, not the raw HTTP surface.
+module_name: "agent_http_bypass"
+transport: "B"
+lane: 3
+objectives:
+  - Call /internal/secrets directly with no auth (easy mode — should succeed)
+  - Discover the leaked API key in the tool description and use it (medium)
+  - Observe hard mode rejecting both unauthenticated and API-key-only calls
+hints:
+  - "The MCP layer has controls; the HTTP layer may not"
+  - "Read the tool description carefully — it may contain credentials"
+  - "Hard mode requires mTLS, not just an API key"
+tools:
+  - agent_http_bypass.call_direct
+  - agent_http_bypass.get_access_log
+  - agent_http_bypass.get_rejected_log
+canary_location: "data./internal/secrets contains db_password and api_signing_key when authorized=True on easy/medium"
+owasp_mcp: "MCP05"
+references:
+  - title: "OWASP MCP Top 10 — Missing Authentication"
+    url: "https://owasp.org/www-project-top-10-for-large-language-model-applications/"
+agentic:
+  primary_lane: 3
+  transport: "B"
+  blurb: "Machine agent calls raw HTTP endpoint, bypassing MCP and nullfield controls"

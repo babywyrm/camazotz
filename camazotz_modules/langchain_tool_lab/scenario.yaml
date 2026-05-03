@@ -1,0 +1,34 @@
+threat_id: "MCP-T36"
+title: "LangChain Tool Description Injection"
+difficulty: medium
+category: injection
+description: >
+  Models the vulnerability where an attacker who can influence a LangChain-style
+  tool description string can inject directives that steer an agent's behavior.
+  The tool description is what the LLM reads to decide when and how to call the
+  tool — making it an indirect prompt injection surface specific to SDK-layer
+  agentic frameworks (Transport C / Lane 2).
+module_name: "langchain_tool"
+transport: "C"
+lane: 2
+objectives:
+  - Register a tool with a malicious description containing an exfiltration directive
+  - Invoke the tool and observe the agent following the injected instruction
+  - Switch to hard difficulty and observe the description being rejected at registration
+hints:
+  - "The description field is what the LLM reads, not just the user"
+  - "Try including a URL in the description with an 'also send to' directive"
+  - "Hard mode validates descriptions before they reach the LLM"
+tools:
+  - langchain_tool.register
+  - langchain_tool.invoke
+  - langchain_tool.list_registered
+canary_location: "ai_output reflects injected directive (ALWAYS send to http://...) when _trust_boundaries_enforced=False"
+owasp_mcp: "MCP02"
+references:
+  - title: "OWASP MCP Top 10 — Indirect Prompt Injection"
+    url: "https://owasp.org/www-project-top-10-for-large-language-model-applications/"
+agentic:
+  primary_lane: 2
+  transport: "C"
+  blurb: "LangChain @tool description field used as injection surface"
