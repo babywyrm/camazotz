@@ -1,0 +1,39 @@
+threat_id: "MCP-T38"
+title: "Code Review Agent — Subprocess Injection via PR Content"
+difficulty: medium
+category: injection
+description: >
+  Models a Cursor/Copilot-Workspace/Claude-Code-style code review agent
+  that shells out to run linters, security scanners, and test suites.
+  PR content (title, description, diff) influences shell command construction.
+  On easy, PR title is concatenated directly into a shell=True command.
+  On medium, PR description is injected as an environment variable
+  that the subprocess inherits along with all CI/CD secrets.
+  On hard, PR content is fully sandboxed and never reaches argv or env.
+module_name: "code_review"
+transport: "D"
+lane: 2
+objectives:
+  - Submit a PR with '; env' in the title and observe secret exfiltration (easy)
+  - Submit a PR with a description that leaks MOCK_AWS_SECRET_ACCESS_KEY via env (medium)
+  - Observe hard mode sandboxing preventing both attack paths
+hints:
+  - "Easy: extra_args is appended directly to a shell command — try '; env'"
+  - "Medium: PR_DESCRIPTION env var is visible to the subprocess — look at shell stdout"
+  - "Hard: PR content never reaches the shell layer at all"
+tools:
+  - code_review.submit_pr
+  - code_review.run_checks
+  - code_review.get_report
+  - code_review.get_shell_log
+canary_location: "shell_stdout contains MOCK_AWS_SECRET_ACCESS_KEY or MOCK_DEPLOY_TOKEN when injection succeeds"
+owasp_mcp: "MCP04"
+references:
+  - title: "OWASP MCP Top 10 — Subprocess Credential Inheritance"
+    url: "https://owasp.org/www-project-top-10-for-large-language-model-applications/"
+  - title: "CWE-78 — OS Command Injection"
+    url: "https://cwe.mitre.org/data/definitions/78.html"
+agentic:
+  primary_lane: 2
+  transport: "D"
+  blurb: "Developer delegates review; agent shells out using PR content as input"

@@ -211,7 +211,7 @@ def test_registry_auto_discovery() -> None:
     reset_registry()
     registry = get_registry()
     names = {m.name for m in registry._modules}
-    assert names == {"agent_http_bypass", "attribution", "audit", "auth", "bot_identity_theft", "budget_tuning", "cert_replay", "comms", "config", "context", "cost", "cred_broker", "delegation", "delegation_depth", "downgrade", "egress", "error", "function_calling", "hallucination", "indirect", "langchain_tool", "notification", "oauth", "policy_authoring", "rbac", "relay", "response_inspection", "revocation", "sdk_tamper", "secrets", "shadow", "subprocess", "supply", "teleport_role_escalation", "temporal", "tenant", "tool"}
+    assert names == {"agent_http_bypass", "attribution", "audit", "auth", "bot_identity_theft", "budget_tuning", "cert_replay", "code_review", "comms", "config", "context", "cost", "cred_broker", "delegation", "delegation_depth", "downgrade", "egress", "error", "function_calling", "hallucination", "indirect", "langchain_tool", "notification", "oauth", "policy_authoring", "rag", "rbac", "relay", "response_inspection", "revocation", "sdk_tamper", "secrets", "shadow", "subprocess", "supply", "teleport_role_escalation", "temporal", "tenant", "tool"}
     reset_registry()
 
 
