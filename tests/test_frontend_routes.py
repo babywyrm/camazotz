@@ -266,7 +266,13 @@ def test_scenarios_page_has_walkthrough_pills(frontend_client) -> None:
     mock_resp = MagicMock()
     mock_resp.status_code = 200
     mock_resp.json.return_value = [
-        {"module_name": "rbac_lab", "threat_id": "MCP-T01", "title": "RBAC Lab"},
+        {
+            "threat_id": "MCP-T01", "title": "RBAC Lab",
+            "difficulty": "easy", "category": "authz",
+            "description": "Test RBAC enforcement.", "module_name": "rbac_lab",
+            "objectives": ["Escalate privileges"], "hints": [],
+            "tools": ["rbac.check_permission"], "owasp_mcp": "MCP03",
+        },
     ]
     mock_resp.raise_for_status = MagicMock()
     with patch.object(httpx, "get", return_value=mock_resp), \
