@@ -1,0 +1,66 @@
+# Campaign C: Code Review Agent
+# ─────────────────────────────────────────────────────────────────────────────
+# Persona:  Cursor/Copilot-style code review bot with PR access and shell
+#           execution. Can invoke LangChain tools whose descriptions arrive
+#           from PR content (untrusted external).
+# Transports: C (in-process SDK), D (subprocess)  |  Lane: 2 (delegated human)
+# Generated from: mcpnuke --generate-policy + hand-tuned for this scenario
+#
+# Apply:  kubectl apply -f kube/policies/code-review-agent.yaml -n camazotz
+# Remove: kubectl delete -f kube/policies/code-review-agent.yaml -n camazotz
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: nullfield.io/v1alpha1
+kind: NullfieldPolicy
+metadata:
+  name: code-review-agent-policy
+  namespace: camazotz
+  labels:
+    scenario: code-review-agent
+    generated-by: mcpnuke
+spec:
+  selector:
+    matchLabels:
+      app: brain-gateway
+  rules:
+
+    # MCP-T36: Validate LangChain tool descriptions before registration.
+    # Descriptions sourced from PR content must not contain URLs or directives.
+    - action: DENY
+      mcpMethod: tools/call
+      toolNames:
+        - "langchain_tool.register_tool"
+        - "langchain_tool.invoke_tool"
+        - "langchain_tool.list_tools"
+      reason: "Campaign C: Tool registration from untrusted PR content is blocked."
+
+    # MCP-T38: Scope shell execution for code checks to allowlist only.
+    - action: SCOPE
+      mcpMethod: tools/call
+      toolNames: ["code_review.run_checks"]
+      reason: "Campaign C: Shell execution for checks scoped to allowlist operations only."
+      scope:
+        response:
+          redactPatterns: ["password", "token", "secret", "API_KEY", "HOME", "PATH"]
+
+    # MCP-T05: Hold external URL summarization — a reviewer should not
+    # be reaching external sites mid-review.
+    - action: HOLD
+      mcpMethod: tools/call
+      toolNames: ["indirect.fetch_and_summarize"]
+      reason: "Campaign C: External URL fetch during code review held for human approval."
+
+    # MCP-T29: Budget LLM invocations to prevent cost exhaustion attacks.
+    # PR content that triggers recursive review loops must be rate-limited.
+    - action: DENY
+      mcpMethod: tools/call
+      toolNames: ["cost.invoke_llm", "cost.recursive_invoke"]
+      reason: "Campaign C: Unbounded recursive LLM invocations blocked."
+
+    # Scope all code_review tool responses to strip env/secrets from output.
+    - action: SCOPE
+      mcpMethod: tools/call
+      toolNames: ["code_review.*"]
+      reason: "Campaign C: Code review output redacted for secrets/env vars."
+      scope:
+        response:
+          redactPatterns: ["SECRET", "PASSWORD", "TOKEN", "API_KEY", "PRIVATE"]

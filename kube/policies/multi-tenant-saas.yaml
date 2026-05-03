@@ -1,0 +1,76 @@
+# Campaign D: Multi-Tenant SaaS AI
+# ─────────────────────────────────────────────────────────────────────────────
+# Persona:  Enterprise SaaS with hundreds of tenants sharing one RAG store.
+#           Poisoned documents in one tenant's corpus can hijack the Synthesizer
+#           to leak another tenant's data (confused deputy / cross-tenant SSRF).
+# Transports: C (in-process SDK)  |  Lane: 4 (agent→agent)
+# Generated from: mcpnuke --generate-policy + hand-tuned for this scenario
+#
+# Apply:  kubectl apply -f kube/policies/multi-tenant-saas.yaml -n camazotz
+# Remove: kubectl delete -f kube/policies/multi-tenant-saas.yaml -n camazotz
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: nullfield.io/v1alpha1
+kind: NullfieldPolicy
+metadata:
+  name: multi-tenant-saas-policy
+  namespace: camazotz
+  labels:
+    scenario: multi-tenant-saas
+    generated-by: mcpnuke
+spec:
+  selector:
+    matchLabels:
+      app: brain-gateway
+  rules:
+
+    # MCP-T11: Block cross-tenant data access entirely.
+    # The Confused Deputy attack routes through tenant boundary violations.
+    - action: DENY
+      mcpMethod: tools/call
+      toolNames:
+        - "tenant.read_cross_tenant"
+        - "tenant.write_cross_tenant"
+        - "tenant.pivot_to_tenant"
+      reason: "Campaign D: Cross-tenant data operations are never permitted."
+
+    # MCP-T39: Scope RAG Synthesizer to treat document chunks as untrusted.
+    # Poisoned chunks must not be able to inject tool calls.
+    - action: SCOPE
+      mcpMethod: tools/call
+      toolNames:
+        - "rag.synthesize_chunks"
+        - "rag.inject_document"
+        - "rag.retrieve_context"
+      reason: "Campaign D: RAG synthesis fenced; injected content treated as untrusted."
+      scope:
+        response:
+          redactPatterns: ["password", "secret", "token", "api_key", "signing_key", "tenant_id"]
+
+    # MCP-T23: Block delegation chains beyond depth 2.
+    # Agent→Agent loops of depth > 2 are almost always injection vectors.
+    - action: DENY
+      mcpMethod: tools/call
+      toolNames: ["delegation_chain.invoke_sub_agent", "delegation_chain.delegate_task"]
+      reason: "Campaign D: Delegation chain depth > 2 is blocked to prevent looping attacks."
+
+    # MCP-T22: Attribution must carry a verified tenant identity.
+    - action: DENY
+      mcpMethod: tools/call
+      toolNames: ["attribution.submit_action", "attribution.forge_context"]
+      reason: "Campaign D: Attribution without verified tenant identity is denied."
+
+    # Redact all tenant-sensitive fields from every response in this persona.
+    - action: SCOPE
+      mcpMethod: tools/call
+      toolNames: ["tenant.*", "rag.*"]
+      reason: "Campaign D: All tenant/RAG tool responses have sensitive fields stripped."
+      scope:
+        response:
+          redactPatterns:
+            - "tenant_id"
+            - "account_id"
+            - "customer_email"
+            - "pii"
+            - "secret"
+            - "token"
+            - "signing_key"

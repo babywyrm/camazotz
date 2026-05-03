@@ -1,0 +1,62 @@
+# Campaign A: Customer Support Bot
+# ─────────────────────────────────────────────────────────────────────────────
+# Persona:  FinTech AI support agent with access to customer records, refund
+#           tools, external URL fetching, and notification webhooks.
+# Transports: A  |  Lane: 1 (human direct)
+# Generated from: mcpnuke --generate-policy + hand-tuned for this scenario
+#
+# Apply:  kubectl apply -f kube/policies/customer-support-bot.yaml -n camazotz
+# Remove: kubectl delete -f kube/policies/customer-support-bot.yaml -n camazotz
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: nullfield.io/v1alpha1
+kind: NullfieldPolicy
+metadata:
+  name: customer-support-bot-policy
+  namespace: camazotz
+  labels:
+    scenario: customer-support-bot
+    generated-by: mcpnuke
+spec:
+  selector:
+    matchLabels:
+      app: brain-gateway
+  rules:
+
+    # MCP-T07: Block all raw secrets access.
+    # Support agents must never return DB credentials or API keys to callers.
+    - action: DENY
+      mcpMethod: tools/call
+      toolNames: ["secrets.leak_config"]
+      reason: "Campaign A: Support agents must not access raw secrets."
+
+    # MCP-T14: Block webhook registration entirely.
+    # No business case for a support agent to register external callbacks.
+    - action: DENY
+      mcpMethod: tools/call
+      toolNames: ["shadow.register_webhook", "shadow.list_webhooks"]
+      reason: "Campaign A: Webhook registration not permitted from customer sessions."
+
+    # MCP-T06: Hold external URL fetches for non-allowlisted hosts.
+    # Allow only known tracking/carrier domains; everything else requires review.
+    - action: HOLD
+      mcpMethod: tools/call
+      toolNames: ["egress.fetch_url"]
+      reason: "Campaign A: External fetch to non-allowlisted host held for review."
+
+    # MCP-T04: Scope token issuance to customer's own account.
+    - action: SCOPE
+      mcpMethod: tools/call
+      toolNames: ["auth.issue_token", "auth.access_protected", "auth.access_service_b"]
+      reason: "Campaign A: Tokens issued to support agents scoped to customer-self."
+      scope:
+        response:
+          redactPatterns: ["password", "secret", "token", "api_key", "signing_key"]
+
+    # MCP-T02: Redact injected content in relay/context responses.
+    - action: SCOPE
+      mcpMethod: tools/call
+      toolNames: ["relay.execute_with_context", "context.injectable_summary"]
+      reason: "Campaign A: Relay responses redacted to prevent injection exfiltration."
+      scope:
+        response:
+          redactPatterns: ["password", "secret", "token", "credential", "key"]

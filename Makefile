@@ -1,4 +1,4 @@
-.PHONY: help up up-local up-policed down logs test test-zitadel-flows build clean status ps env compose-gen helm-template qa qa-json smoke-local smoke-k8s smoke-local-llm smoke-k8s-llm smoke-local-identity smoke-k8s-identity smoke-local-identity-llm smoke-k8s-identity-llm smoke-local-lanes smoke-k8s-lanes smoke-k8s-policed feedback-loop-print feedback-loop-dry feedback-loop-apply
+.PHONY: help up up-local up-policed down logs test test-zitadel-flows build clean status ps env compose-gen helm-template qa qa-json smoke-local smoke-k8s smoke-local-llm smoke-k8s-llm smoke-local-identity smoke-k8s-identity smoke-local-identity-llm smoke-k8s-identity-llm smoke-local-lanes smoke-k8s-lanes smoke-k8s-policed feedback-loop-print feedback-loop-dry feedback-loop-apply campaign campaign-print campaign-list
 
 COMPOSE := docker compose -f compose/docker-compose.yml
 COMPOSE_POLICED := docker compose -f compose/docker-compose.yml -f compose/docker-compose.nullfield.yml
@@ -139,20 +139,30 @@ smoke-k8s-policed: ## Smoke test k8s policed entry point (nullfield enforcement,
 #        POLICED_URL=https://my-elb.example.com/policed/mcp \
 #        make feedback-loop-apply
 #
+# Campaign mode (Gap 1/2):
+#   make campaign SCENARIO=customer-support-bot
+#   make campaign SCENARIO=cicd-pipeline-agent    K8S_HOST=192.168.1.85
+#   make campaign-print SCENARIO=code-review-agent
+#
+#   Available scenarios:
+#     customer-support-bot  cicd-pipeline-agent  code-review-agent  multi-tenant-saas
+#
 # SSH_HOST is opt-in. Without it, kubectl runs against your local kubeconfig
 # (which is the right behavior for EKS / GKE / minikube). Only set SSH_HOST
 # when you specifically want to tunnel via ssh root@host sudo k3s kubectl
 # (the NUC reference flow).
 #
 # Override knobs:
-#   BASELINE_URL  bypass entry point URL                (default: derived)
-#   POLICED_URL   nullfield-protected entry point URL   (default: derived)
+#   SCENARIO      named campaign (see above)                (default: customer-support-bot)
+#   BASELINE_URL  bypass entry point URL                    (default: derived)
+#   POLICED_URL   nullfield-protected entry point URL       (default: derived)
 #   K8S_HOST      cluster node hostname/IP for NodePort defaults
-#   K8S_NS        target namespace                       (default: camazotz)
-#   SSH_HOST      "user@host" for kubectl-over-ssh       (default: empty)
-#   WAIT_SECONDS  apply -> re-scan delay                 (default: 60)
+#   K8S_NS        target namespace                         (default: camazotz)
+#   SSH_HOST      "user@host" for kubectl-over-ssh         (default: empty)
+#   WAIT_SECONDS  apply -> re-scan delay                   (default: 60)
 # ------------------------------------------------------------------------------
 
+SCENARIO     ?= customer-support-bot
 K8S_NS       ?= camazotz
 WAIT_SECONDS ?= 60
 
@@ -186,6 +196,30 @@ feedback-loop-dry: ## kubectl apply --dry-run=client of the generated policy
 
 feedback-loop-apply: ## Full round-trip: scan -> generate -> apply -> wait -> re-scan -> diff
 	$(FEEDBACK_LOOP_BASE) \
+	  --policed-url $(POLICED_URL) \
+	  --mode apply \
+	  --wait-seconds $(WAIT_SECONDS)
+
+# Campaign targets — uses a pre-authored policy from kube/policies/<SCENARIO>.yaml
+# instead of generating one from scan findings (Gap 2 integration).
+#
+# Usage:
+#   make campaign-print SCENARIO=customer-support-bot
+#   make campaign       SCENARIO=cicd-pipeline-agent  K8S_HOST=192.168.1.85
+#   make campaign-list
+
+campaign-list: ## List available campaign scenarios
+	@uv run python scripts/feedback_loop.py --scenario customer-support-bot --help 2>&1 | grep -A5 "Choices:" || \
+		echo "  customer-support-bot  cicd-pipeline-agent  code-review-agent  multi-tenant-saas"
+
+campaign-print: env ## Preview scenario policy (scan + show policy; no apply)
+	$(FEEDBACK_LOOP_BASE) \
+	  --scenario $(SCENARIO) \
+	  --mode print
+
+campaign: env ## Full scenario campaign: scan -> load pre-authored policy -> apply -> wait -> re-scan
+	$(FEEDBACK_LOOP_BASE) \
+	  --scenario $(SCENARIO) \
 	  --policed-url $(POLICED_URL) \
 	  --mode apply \
 	  --wait-seconds $(WAIT_SECONDS)

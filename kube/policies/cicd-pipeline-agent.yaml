@@ -1,0 +1,73 @@
+# Campaign B: CI/CD Pipeline Agent
+# ─────────────────────────────────────────────────────────────────────────────
+# Persona:  Platform deployment bot triggered on every merge to main.
+#           No human in the loop. Blast radius: production k8s cluster.
+# Transports: B (direct HTTP), D (subprocess)  |  Lane: 3 (machine identity)
+# Generated from: mcpnuke --generate-policy + hand-tuned for this scenario
+#
+# Apply:  kubectl apply -f kube/policies/cicd-pipeline-agent.yaml -n camazotz
+# Remove: kubectl delete -f kube/policies/cicd-pipeline-agent.yaml -n camazotz
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: nullfield.io/v1alpha1
+kind: NullfieldPolicy
+metadata:
+  name: cicd-pipeline-policy
+  namespace: camazotz
+  labels:
+    scenario: cicd-pipeline-agent
+    generated-by: mcpnuke
+spec:
+  selector:
+    matchLabels:
+      app: brain-gateway
+  rules:
+
+    # MCP-T37: Block all direct HTTP bypass calls.
+    # CI/CD agents must use the MCP transport layer; raw HTTP access is forbidden.
+    - action: DENY
+      mcpMethod: tools/call
+      toolNames:
+        - "agent_http_bypass.call_direct"
+        - "agent_http_bypass.get_access_log"
+        - "agent_http_bypass.get_rejected_log"
+      reason: "Campaign B: Direct HTTP transport bypass not permitted. Use MCP layer."
+
+    # MCP-T34: Scope subprocess operations to explicit allowlist.
+    # No arbitrary shell commands; no extra_args passthrough.
+    - action: SCOPE
+      mcpMethod: tools/call
+      toolNames: ["subprocess.invoke_worker"]
+      reason: "Campaign B: Subprocess ops restricted to allowlist; extra_args blocked."
+      scope:
+        response:
+          redactPatterns: ["AWS_SECRET", "DEPLOY_TOKEN", "DB_PASSWORD", "SECRET_ACCESS_KEY"]
+
+    # MCP-T09: Hold all agent config writes — require out-of-band approval.
+    - action: HOLD
+      mcpMethod: tools/call
+      toolNames: ["config.read_agent_config", "config.write_agent_config"]
+      reason: "Campaign B: Agent config changes require human approval."
+
+    # MCP-T22: Block attribution from unverified identities.
+    - action: DENY
+      mcpMethod: tools/call
+      toolNames: ["attribution.submit_action", "attribution.forge_context"]
+      reason: "Campaign B: Audit attribution requires cryptographically verified identity."
+
+    # MCP-T18: Scope bot identity tools to machine-identity only.
+    - action: SCOPE
+      mcpMethod: tools/call
+      toolNames: ["bot_identity.issue_cert", "bot_identity.get_credential"]
+      reason: "Campaign B: tbot credential access restricted to Lane 3 machine identity."
+      scope:
+        response:
+          redactPatterns: ["private_key", "cert", "credential", "token"]
+
+    # Catch-all: redact secrets from all subprocess and shell tool responses.
+    - action: SCOPE
+      mcpMethod: tools/call
+      toolNames: ["subprocess.*"]
+      reason: "Campaign B: All subprocess responses have secrets redacted."
+      scope:
+        response:
+          redactPatterns: ["password", "secret", "token", "api_key", "credential", "AWS_"]

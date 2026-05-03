@@ -5,7 +5,8 @@ This script orchestrates the four-tool round-trip that the camazotz / mcpnuke /
 nullfield ecosystem is built around:
 
     1. Scan a baseline target with mcpnuke and record the finding count.
-    2. Have mcpnuke synthesize a NullfieldPolicy CRD from those findings.
+    2. Generate a NullfieldPolicy CRD — either from mcpnuke findings (default)
+       or from a pre-authored scenario file in kube/policies/ (--scenario).
     3. Apply the CRD via kubectl (local context or via SSH to a K8s host).
     4. Wait for nullfield's controller to bridge the CRD to a ConfigMap and for
        the sidecar's policy loader to pick it up.
@@ -20,6 +21,20 @@ Three apply modes:
     print     dump the generated policy to stdout, do not apply (default; safe).
     dry-run   render via `kubectl apply --dry-run=client -f -`, do not commit.
     apply     real `kubectl apply -f -`, then re-scan.
+
+Scenario shortcuts (--scenario):
+
+    Pass --scenario <name> to pre-fill all scenario-specific defaults
+    (policy name, pre-authored policy file, description labels) so you only
+    need to supply the target URLs.  Built-in scenarios:
+
+        customer-support-bot    FinTech support agent with customer data access
+        cicd-pipeline-agent     Platform CI/CD bot with machine identity (Lane 3)
+        code-review-agent       Cursor/Copilot-style reviewer with shell execution
+        multi-tenant-saas       Multi-tenant SaaS AI with shared RAG store
+
+    With --scenario the policy-generation step is skipped; the pre-authored
+    file from kube/policies/<scenario>.yaml is used instead.
 
 Targeting:
 
@@ -59,6 +74,41 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlparse
+
+
+# ---------------------------------------------------------------------------
+# Named scenario registry
+# ---------------------------------------------------------------------------
+
+# Each entry provides defaults that --scenario injects at parse time.
+# policy_file is relative to the repo root (i.e. the directory that contains
+# the Makefile / scripts/ directory).
+SCENARIOS: dict[str, dict] = {
+    "customer-support-bot": {
+        "description": "FinTech support agent with customer data access (Transport A, Lane 1)",
+        "policy_name": "customer-support-bot-policy",
+        "policy_file": "kube/policies/customer-support-bot.yaml",
+        "focus_tools": ["context", "secrets", "egress", "shadow", "relay", "auth"],
+    },
+    "cicd-pipeline-agent": {
+        "description": "Platform CI/CD bot with machine identity (Transport B/D, Lane 3)",
+        "policy_name": "cicd-pipeline-policy",
+        "policy_file": "kube/policies/cicd-pipeline-agent.yaml",
+        "focus_tools": ["subprocess", "agent_http_bypass", "config", "attribution", "bot_identity"],
+    },
+    "code-review-agent": {
+        "description": "Cursor/Copilot-style reviewer with shell execution (Transport C/D, Lane 2)",
+        "policy_name": "code-review-agent-policy",
+        "policy_file": "kube/policies/code-review-agent.yaml",
+        "focus_tools": ["code_review", "indirect", "langchain_tool", "cost"],
+    },
+    "multi-tenant-saas": {
+        "description": "Multi-tenant SaaS AI with shared RAG store (Transport C, Lane 4)",
+        "policy_name": "multi-tenant-saas-policy",
+        "policy_file": "kube/policies/multi-tenant-saas.yaml",
+        "focus_tools": ["tenant", "rag", "delegation_chain", "attribution"],
+    },
+}
 
 
 @dataclass
@@ -368,6 +418,17 @@ def parse_args() -> argparse.Namespace:
         epilog=__doc__,
     )
     p.add_argument(
+        "--scenario",
+        choices=list(SCENARIOS.keys()),
+        metavar="SCENARIO",
+        help=(
+            "Named campaign scenario. Pre-fills --policy-name and uses the "
+            "pre-authored policy from kube/policies/<scenario>.yaml instead of "
+            "generating one from scan findings.  Choices: "
+            + ", ".join(SCENARIOS.keys())
+        ),
+    )
+    p.add_argument(
         "--baseline-url",
         required=True,
         help="MCP endpoint to scan as baseline (typically the bypass entry, e.g. "
@@ -467,6 +528,20 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
 
+    # ── Scenario shortcut ────────────────────────────────────────────────────
+    scenario_meta: dict | None = None
+    if args.scenario:
+        scenario_meta = SCENARIOS[args.scenario]
+        # Apply scenario defaults only when not explicitly overridden.
+        if args.policy_name == "mcpnuke-feedback-loop":
+            args.policy_name = scenario_meta["policy_name"]
+        print(
+            f"\n[scenario] {args.scenario}: {scenario_meta['description']}\n"
+            f"           policy-name  : {args.policy_name}\n"
+            f"           policy-file  : {scenario_meta['policy_file']}\n"
+            f"           focus-tools  : {', '.join(scenario_meta['focus_tools'])}"
+        )
+
     if args.mode == "apply" and not args.policed_url:
         raise SystemExit(
             "feedback_loop: --policed-url is required when --mode=apply "
@@ -492,17 +567,34 @@ def main() -> int:
     _print_scan("Baseline", baseline)
 
     policy_path = workdir / "policy.yaml"
-    print("\n[2/5] Generating policy from baseline findings ...")
-    generate_policy(
-        args.baseline_url,
-        out_path=policy_path,
-        policy_name=args.policy_name,
-        namespace=args.namespace,
-        selectors=args.selector,
-        labels=args.label,
-        scanner=scanner,
-    )
-    print(f"  policy written to {policy_path} ({policy_path.stat().st_size} bytes)")
+    if scenario_meta:
+        # Use the pre-authored scenario policy; resolve relative to repo root.
+        repo_root = Path(__file__).resolve().parent.parent
+        authored_path = repo_root / scenario_meta["policy_file"]
+        if not authored_path.exists():
+            raise SystemExit(
+                f"feedback_loop: scenario policy file not found: {authored_path}\n"
+                "  Run `git pull` or check kube/policies/ in the camazotz repo."
+            )
+        import shutil as _shutil
+        _shutil.copy2(authored_path, policy_path)
+        print(
+            f"\n[2/5] Using pre-authored scenario policy (skipping mcpnuke generate)\n"
+            f"  source : {authored_path}\n"
+            f"  copied : {policy_path} ({policy_path.stat().st_size} bytes)"
+        )
+    else:
+        print("\n[2/5] Generating policy from baseline findings ...")
+        generate_policy(
+            args.baseline_url,
+            out_path=policy_path,
+            policy_name=args.policy_name,
+            namespace=args.namespace,
+            selectors=args.selector,
+            labels=args.label,
+            scanner=scanner,
+        )
+        print(f"  policy written to {policy_path} ({policy_path.stat().st_size} bytes)")
 
     print(f"\n[3/5] Apply (mode={args.mode}) ...")
     if backend == "docker-compose":
