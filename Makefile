@@ -34,6 +34,7 @@ up-policed: env ## Start stack with the nullfield sidecar overlay (adds :9090 po
 	@echo "  Portal:    http://localhost:3000"
 	@echo ""
 	@echo "  Run the agentic feedback loop: make feedback-loop-print"
+	@echo "  Run with Claude AI analysis:   CLAUDE=1 make campaign SCENARIO=customer-support-bot"
 	@echo ""
 	@echo ""
 	@echo "  Portal:  http://localhost:3000"
@@ -165,6 +166,14 @@ smoke-k8s-policed: ## Smoke test k8s policed entry point (nullfield enforcement,
 SCENARIO     ?= customer-support-bot
 K8S_NS       ?= camazotz
 WAIT_SECONDS ?= 60
+CLAUDE_MODEL ?= claude-sonnet-4-20250514
+
+# Set CLAUDE=1 to enable AI-powered analysis on every mcpnuke scan invocation.
+# Requires ANTHROPIC_API_KEY to be exported in your shell.
+# Example:
+#   CLAUDE=1 make campaign SCENARIO=customer-support-bot
+#   CLAUDE=1 K8S_HOST=192.168.1.85 make feedback-loop-apply
+CLAUDE_FLAG   = $(if $(filter 1,$(CLAUDE)),--claude --claude-model $(CLAUDE_MODEL),)
 
 # URL defaults: prefer explicit BASELINE_URL/POLICED_URL; otherwise derive
 # from K8S_HOST (NodePort layout); otherwise fall back to localhost (Compose).
@@ -186,7 +195,8 @@ endif
 FEEDBACK_LOOP_BASE = uv run python scripts/feedback_loop.py \
 	  --baseline-url $(BASELINE_URL) \
 	  --namespace $(K8S_NS) \
-	  $(if $(strip $(SSH_HOST)),--ssh-host $(SSH_HOST),)
+	  $(if $(strip $(SSH_HOST)),--ssh-host $(SSH_HOST),) \
+	  $(CLAUDE_FLAG)
 
 feedback-loop-print: ## Generate the NullfieldPolicy from a baseline scan; do not apply (safe)
 	$(FEEDBACK_LOOP_BASE) --mode print

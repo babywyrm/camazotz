@@ -192,10 +192,14 @@ def run_scan(
     *,
     extra_args: list[str],
     scanner: str = "",
+    ai_args: list[str] | None = None,
 ) -> ScanSummary:
     """Run mcpnuke against target_url and parse the JSON report."""
     mcpnuke = scanner or _require("mcpnuke")
-    cmd = [mcpnuke, "--targets", target_url, "--json", str(json_out)] + extra_args
+    cmd = [mcpnuke, "--targets", target_url, "--json", str(json_out)]
+    if ai_args:
+        cmd.extend(ai_args)
+    cmd.extend(extra_args)
     _run(cmd, check=False)
 
     if not json_out.exists():
@@ -242,6 +246,7 @@ def generate_policy(
     selectors: list[str],
     labels: list[str],
     scanner: str = "",
+    ai_args: list[str] | None = None,
 ) -> None:
     """Run mcpnuke --generate-policy with selector/label targeting."""
     mcpnuke = scanner or _require("mcpnuke")
@@ -256,6 +261,8 @@ def generate_policy(
         "--policy-namespace",
         namespace,
     ]
+    if ai_args:
+        cmd.extend(ai_args)
     for sel in selectors:
         cmd.extend(["--policy-selector", sel])
     for lbl in labels:
@@ -522,6 +529,30 @@ def parse_args() -> argparse.Namespace:
         help="Extra args passed verbatim to the mcpnuke scans (e.g. "
         '"--no-invoke --safe-mode").',
     )
+    p.add_argument(
+        "--claude",
+        action="store_true",
+        default=False,
+        help="Enable Claude AI-powered analysis in mcpnuke scans. Passes --claude "
+             "to every scan invocation. Requires ANTHROPIC_API_KEY to be set. "
+             "Recommended for production campaign runs — finds subtle issues "
+             "that deterministic checks miss.",
+    )
+    p.add_argument(
+        "--claude-model",
+        default="claude-sonnet-4-20250514",
+        metavar="MODEL",
+        help="Claude model for AI scan analysis (default: claude-sonnet-4-20250514). "
+             "Use claude-opus-4-20250514 for deepest analysis.",
+    )
+    p.add_argument(
+        "--claude-max-tools",
+        type=int,
+        default=10,
+        metavar="N",
+        help="Max tools analysed per Claude call (default: 10). Higher = more "
+             "thorough but slower and costs more.",
+    )
     return p.parse_args()
 
 
@@ -559,10 +590,25 @@ def main() -> int:
 
     extra_scan_args = shlex.split(args.scan_args) if args.scan_args else []
 
+    # Build AI args list once; injected into every mcpnuke invocation when --claude is set.
+    ai_args: list[str] = []
+    if args.claude:
+        ai_args = [
+            "--claude",
+            "--claude-model", args.claude_model,
+            "--claude-max-tools", str(args.claude_max_tools),
+        ]
+        print(
+            f"\n[AI] Claude analysis enabled — model: {args.claude_model}, "
+            f"max-tools: {args.claude_max_tools}\n"
+            "     Ensure ANTHROPIC_API_KEY is set. Scan will be slower but richer."
+        )
+
     baseline_json = workdir / "baseline.json"
     print("\n[1/5] Baseline scan ...")
     baseline = run_scan(
-        args.baseline_url, baseline_json, extra_args=extra_scan_args, scanner=scanner
+        args.baseline_url, baseline_json,
+        extra_args=extra_scan_args, scanner=scanner, ai_args=ai_args,
     )
     _print_scan("Baseline", baseline)
 
@@ -593,6 +639,7 @@ def main() -> int:
             selectors=args.selector,
             labels=args.label,
             scanner=scanner,
+            ai_args=ai_args,
         )
         print(f"  policy written to {policy_path} ({policy_path.stat().st_size} bytes)")
 
@@ -619,7 +666,8 @@ def main() -> int:
     after_json = workdir / "after.json"
     print("\n[5/5] Re-scan against policed entry ...")
     after = run_scan(
-        args.policed_url, after_json, extra_args=extra_scan_args, scanner=scanner
+        args.policed_url, after_json,
+        extra_args=extra_scan_args, scanner=scanner, ai_args=ai_args,
     )
     _print_scan("After policy", after)
 
