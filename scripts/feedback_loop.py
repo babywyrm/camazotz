@@ -58,6 +58,7 @@ import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import urlparse
 
 
 @dataclass
@@ -87,14 +88,63 @@ def _require(binary: str) -> str:
     return path
 
 
+SCANNER_SEARCH_PATHS = [
+    "/opt/mcpnuke/scan",
+    "/opt/mcpnuke/.venv/bin/mcpnuke",
+]
+
+
+def _resolve_scanner(args: argparse.Namespace) -> str:
+    """Resolve the mcpnuke binary in priority order."""
+    # 1. Explicit --scanner arg
+    if args.scanner:
+        if not Path(args.scanner).is_file():
+            raise SystemExit(f"feedback_loop: --scanner path not found: {args.scanner}")
+        return args.scanner
+    # 2. MCPNUKE_BIN env var
+    env_bin = os.environ.get("MCPNUKE_BIN")
+    if env_bin:
+        if not Path(env_bin).is_file():
+            raise SystemExit(f"feedback_loop: MCPNUKE_BIN path not found: {env_bin}")
+        return env_bin
+    # 3. Well-known installation paths
+    for candidate in SCANNER_SEARCH_PATHS:
+        if Path(candidate).is_file():
+            return candidate
+    # 4. shutil.which
+    found = shutil.which("mcpnuke")
+    if found:
+        return found
+    raise SystemExit(
+        "feedback_loop: mcpnuke not found. Install it or use:\n"
+        "  --scanner /path/to/mcpnuke  OR  MCPNUKE_BIN=/path/to/mcpnuke"
+    )
+
+
+def _resolve_apply_backend(args: argparse.Namespace) -> str:
+    if args.apply_backend:
+        return args.apply_backend
+    url = args.policed_url or args.baseline_url
+    host = urlparse(url).hostname or ""
+    if host in ("localhost", "127.0.0.1") or host.startswith("127."):
+        return "docker-compose"
+    return "kubectl"
+
+
 # ---------------------------------------------------------------------------
 # Scanning
 # ---------------------------------------------------------------------------
 
 
-def run_scan(target_url: str, json_out: Path, *, extra_args: list[str]) -> ScanSummary:
+def run_scan(
+    target_url: str,
+    json_out: Path,
+    *,
+    extra_args: list[str],
+    scanner: str = "",
+) -> ScanSummary:
     """Run mcpnuke against target_url and parse the JSON report."""
-    mcpnuke = _require("mcpnuke")
+    mcpnuke = scanner or _require("mcpnuke")
     cmd = [mcpnuke, "--targets", target_url, "--json", str(json_out)] + extra_args
     _run(cmd, check=False)
 
@@ -141,9 +191,10 @@ def generate_policy(
     namespace: str,
     selectors: list[str],
     labels: list[str],
+    scanner: str = "",
 ) -> None:
     """Run mcpnuke --generate-policy with selector/label targeting."""
-    mcpnuke = _require("mcpnuke")
+    mcpnuke = scanner or _require("mcpnuke")
     cmd = [
         mcpnuke,
         target_url,
@@ -175,7 +226,11 @@ def generate_policy(
 def _kubectl_cmd(args: argparse.Namespace) -> list[str]:
     """Return the kubectl invocation prefix, possibly tunneled via SSH."""
     if args.ssh_host:
-        return ["ssh", args.ssh_host, "sudo", "k3s", "kubectl"]
+        cmd = ["ssh"]
+        if args.ssh_key:
+            cmd.extend(["-i", args.ssh_key])
+        cmd.extend([args.ssh_host, "sudo", "k3s", "kubectl"])
+        return cmd
     cmd = [_require("kubectl")]
     if args.kubeconfig:
         cmd.extend(["--kubeconfig", args.kubeconfig])
@@ -203,6 +258,38 @@ def apply_policy(args: argparse.Namespace, policy_path: Path) -> None:
             f"feedback_loop: kubectl apply failed with exit {result.returncode}. "
             "Verify cluster access and that the NullfieldPolicy CRD is installed."
         )
+
+
+def apply_policy_compose(args: argparse.Namespace, policy_path: Path) -> None:
+    """Apply policy for docker-compose deployments via file write + container restart."""
+    compose_policy = (
+        Path(args.compose_policy_path)
+        if hasattr(args, "compose_policy_path") and args.compose_policy_path
+        else None
+    )
+    if compose_policy is None:
+        for candidate in [
+            Path.cwd() / "compose" / "nullfield" / "policy.yaml",
+            Path(__file__).parent.parent / "compose" / "nullfield" / "policy.yaml",
+        ]:
+            if candidate.parent.exists():
+                compose_policy = candidate
+                break
+    if compose_policy is None:
+        raise SystemExit(
+            "feedback_loop: cannot find compose/nullfield/policy.yaml. "
+            "Use --compose-policy-path to specify the path."
+        )
+    if args.mode == "print":
+        print("\n--- Generated NullfieldPolicy (mode=print, NOT applied) ---")
+        print(policy_path.read_text())
+        return
+    print(f"  Writing policy to {compose_policy}")
+    compose_policy.write_text(policy_path.read_text())
+    if args.mode == "dry-run":
+        print("  [dry-run] Would restart nullfield-controller container.")
+        return
+    _run(["docker", "compose", "restart", "nullfield-controller"], check=False)
 
 
 # ---------------------------------------------------------------------------
@@ -333,6 +420,29 @@ def parse_args() -> argparse.Namespace:
         "the NUC reference deploy where the workstation lacks a local kubeconfig.",
     )
     p.add_argument(
+        "--ssh-key",
+        metavar="PATH",
+        help="SSH private key for --ssh-host connections.",
+    )
+    p.add_argument(
+        "--scanner",
+        metavar="PATH",
+        help="Path to mcpnuke binary. Overrides MCPNUKE_BIN env and auto-discovery.",
+    )
+    p.add_argument(
+        "--apply-backend",
+        choices=("kubectl", "docker-compose"),
+        default=None,
+        help="How to apply the generated policy. Default: auto-detect from --policed-url "
+             "(docker-compose if localhost/127.x, kubectl otherwise).",
+    )
+    p.add_argument(
+        "--compose-policy-path",
+        metavar="PATH",
+        help="Path to the compose/nullfield/policy.yaml file. "
+             "Used when --apply-backend=docker-compose.",
+    )
+    p.add_argument(
         "--wait-seconds",
         type=int,
         default=45,
@@ -365,6 +475,9 @@ def main() -> int:
     if not args.selector:
         args.selector = ["app=brain-gateway"]
 
+    scanner = _resolve_scanner(args)
+    backend = _resolve_apply_backend(args)
+
     workdir = Path(args.workdir) if args.workdir else Path(tempfile.mkdtemp(prefix="feedback-loop-"))
     workdir.mkdir(parents=True, exist_ok=True)
     print(f"feedback_loop: workdir = {workdir}")
@@ -373,7 +486,9 @@ def main() -> int:
 
     baseline_json = workdir / "baseline.json"
     print("\n[1/5] Baseline scan ...")
-    baseline = run_scan(args.baseline_url, baseline_json, extra_args=extra_scan_args)
+    baseline = run_scan(
+        args.baseline_url, baseline_json, extra_args=extra_scan_args, scanner=scanner
+    )
     _print_scan("Baseline", baseline)
 
     policy_path = workdir / "policy.yaml"
@@ -385,11 +500,15 @@ def main() -> int:
         namespace=args.namespace,
         selectors=args.selector,
         labels=args.label,
+        scanner=scanner,
     )
     print(f"  policy written to {policy_path} ({policy_path.stat().st_size} bytes)")
 
     print(f"\n[3/5] Apply (mode={args.mode}) ...")
-    apply_policy(args, policy_path)
+    if backend == "docker-compose":
+        apply_policy_compose(args, policy_path)
+    else:
+        apply_policy(args, policy_path)
 
     if args.mode != "apply":
         print(
@@ -407,7 +526,9 @@ def main() -> int:
 
     after_json = workdir / "after.json"
     print("\n[5/5] Re-scan against policed entry ...")
-    after = run_scan(args.policed_url, after_json, extra_args=extra_scan_args)
+    after = run_scan(
+        args.policed_url, after_json, extra_args=extra_scan_args, scanner=scanner
+    )
     _print_scan("After policy", after)
 
     return _print_diff(baseline, after)
