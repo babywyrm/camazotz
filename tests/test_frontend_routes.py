@@ -263,7 +263,15 @@ def test_challenge_detail_has_walkthrough_link(frontend_client) -> None:
 
 def test_scenarios_page_has_walkthrough_pills(frontend_client) -> None:
     client, _ = frontend_client
-    resp = client.get("/scenarios")
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = [
+        {"module_name": "rbac_lab", "threat_id": "MCP-T01", "title": "RBAC Lab"},
+    ]
+    mock_resp.raise_for_status = MagicMock()
+    with patch.object(httpx, "get", return_value=mock_resp), \
+            patch("threat_map.has_walkthrough", return_value=True):
+        resp = client.get("/scenarios")
     html = resp.data.decode()
     assert "walkthrough" in html.lower()
 
