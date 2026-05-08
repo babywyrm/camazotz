@@ -47,6 +47,36 @@ def show_tokens() -> bool:
     return os.getenv("CAMAZOTZ_SHOW_TOKENS", "").lower() in ("true", "1", "yes")
 
 
+def get_brain_metadata() -> dict[str, str]:
+    """Return read-only metadata for the active inference backend."""
+    provider = os.getenv("BRAIN_PROVIDER", "cloud").lower().strip() or "cloud"
+    if provider == "local":
+        model = get_ollama_model()
+        mode = "live"
+    elif provider == "bedrock":
+        model = (
+            os.getenv("CAMAZOTZ_BEDROCK_MODEL")
+            or os.getenv("CAMAZOTZ_MODEL")
+            or ""
+        ).strip()
+        if os.getenv("CAMAZOTZ_BEDROCK_STUB", "").lower() in ("1", "true", "yes"):
+            mode = "stub"
+        elif not model:
+            mode = "unconfigured"
+        else:
+            mode = "live"
+    else:
+        provider = "cloud"
+        model = os.getenv("CAMAZOTZ_MODEL", "claude-sonnet-4-20250514")
+        mode = "live" if os.getenv("ANTHROPIC_API_KEY", "").strip() else "stub"
+
+    return {
+        "provider": provider,
+        "model": model,
+        "mode": mode,
+    }
+
+
 def estimate_cost(input_tokens: int, output_tokens: int) -> float:
     """Rough USD cost estimate for Sonnet-class models."""
     return (

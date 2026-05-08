@@ -20,7 +20,13 @@ from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 
-from brain_gateway.app.config import get_difficulty, get_idp_provider, set_difficulty, show_tokens
+from brain_gateway.app.config import (
+    get_brain_metadata,
+    get_difficulty,
+    get_idp_provider,
+    set_difficulty,
+    show_tokens,
+)
 from brain_gateway.app.identity.service import idp_status
 from brain_gateway.app.mcp_handlers import handle_rpc
 from brain_gateway.app.rate_limit import TokenBucketLimiter
@@ -132,6 +138,7 @@ def get_config() -> dict[str, object]:
         "idp_reason": status["idp_reason"],
         "idp_backed_labs": list(IDP_BACKED_LABS),
         "idp_backed_tools": list(IDP_BACKED_TOOLS),
+        "brain": get_brain_metadata(),
     }
     if status["idp_provider"] == "zitadel":
         p = ZitadelIdentityProvider.from_env()

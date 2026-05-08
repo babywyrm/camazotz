@@ -8,6 +8,21 @@ from brain_gateway.app.modules.registry import get_registry, reset_registry
 from tests.helpers import tool_call
 
 
+def test_config_includes_brain_metadata(monkeypatch) -> None:
+    monkeypatch.setenv("BRAIN_PROVIDER", "cloud")
+    monkeypatch.setenv("CAMAZOTZ_MODEL", "claude-test-model")
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+
+    client = TestClient(app)
+    payload = client.get("/config").json()
+
+    assert payload["brain"] == {
+        "provider": "cloud",
+        "model": "claude-test-model",
+        "mode": "stub",
+    }
+
+
 def test_show_tokens_off_by_default(monkeypatch) -> None:
     monkeypatch.delenv("CAMAZOTZ_SHOW_TOKENS", raising=False)
     client = TestClient(app)

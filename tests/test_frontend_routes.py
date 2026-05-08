@@ -54,6 +54,19 @@ def test_index_page(frontend_client) -> None:
     assert b"context_lab" in resp.data
 
 
+def test_base_layout_contains_brain_badge(frontend_client) -> None:
+    client, _ = frontend_client
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = []
+    mock_resp.raise_for_status = MagicMock()
+    with patch.object(httpx, "get", return_value=mock_resp):
+        resp = client.get("/")
+    assert resp.status_code == 200
+    assert b'id="brainPill"' in resp.data
+    assert b'id="brainModel"' in resp.data
+
+
 def test_playground_page(frontend_client) -> None:
     client, mod = frontend_client
     tools_result = {"tools": [

@@ -143,6 +143,10 @@ code,pre{font-family:var(--font-mono)}
 .idp-global-pill.off{background:var(--surface);color:var(--text2);border:1px solid var(--border)}
 .idp-global-pill.degraded{background:rgba(251,191,36,.12);color:#facc15;border:1px solid rgba(251,191,36,.2)}
 .idp-global-tools{color:var(--text2)}
+.brain-global-pill{padding:.15rem .45rem;border-radius:999px;font-weight:700;letter-spacing:.03em;
+  background:rgba(96,165,250,.12);color:#93c5fd;border:1px solid rgba(96,165,250,.24)}
+.brain-global-pill.stub,.brain-global-pill.unconfigured{background:rgba(251,191,36,.12);color:#facc15;border-color:rgba(251,191,36,.2)}
+.brain-global-model{color:var(--text2);font-family:var(--font-mono)}
 
 .btn-primary{background:var(--accent);color:#fff;padding:.7rem 1.6rem;border-radius:10px;
   font-weight:600;font-size:.9rem;transition:all .25s;border:none;cursor:pointer;display:inline-block}
@@ -202,6 +206,8 @@ code,pre{font-family:var(--font-mono)}
 <div class="idp-global-strip" id="idpStrip">
   <span class="idp-global-pill" id="idpPill"></span>
   <span class="idp-global-tools" id="idpTools"></span>
+  <span class="brain-global-pill" id="brainPill"></span>
+  <span class="brain-global-model" id="brainModel"></span>
 </div>
 
 {% block content %}{% endblock %}
@@ -231,6 +237,8 @@ code,pre{font-family:var(--font-mono)}
     var strip=document.getElementById('idpStrip');
     var pill=document.getElementById('idpPill');
     var tools=document.getElementById('idpTools');
+    var brainPill=document.getElementById('brainPill');
+    var brainModel=document.getElementById('brainModel');
     if(d.idp_provider&&strip&&pill){
       var prov=d.idp_provider;
       var deg=d.idp_degraded;
@@ -239,6 +247,13 @@ code,pre{font-family:var(--font-mono)}
       var backed=d.idp_backed_tools||[];
       tools.textContent=backed.length?('IDP-backed: '+backed.join(', ')):'';
       if(deg)tools.textContent+=' (degraded: '+(d.idp_reason||'fallback')+')';
+      strip.classList.add('visible');
+    }
+    if(d.brain&&strip&&brainPill&&brainModel){
+      var mode=d.brain.mode||'unknown';
+      brainPill.textContent='Brain: '+(d.brain.provider||'unknown');
+      brainPill.className='brain-global-pill '+mode;
+      brainModel.textContent=(d.brain.model||'unconfigured')+(mode==='live'?'':' · '+mode);
       strip.classList.add('visible');
     }
   }).catch(()=>{});
