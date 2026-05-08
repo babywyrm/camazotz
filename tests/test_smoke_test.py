@@ -211,6 +211,7 @@ def test_smoke_cli_lists_require_identity_flag() -> None:
     )
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert "--require-identity" in proc.stdout
+    assert "--require-brain" in proc.stdout
 
 
 def test_smoke_passes_with_identity_probe() -> None:
@@ -235,6 +236,67 @@ def test_smoke_passes_with_identity_probe() -> None:
             check=False,
         )
         assert proc.returncode == 0, proc.stdout + proc.stderr
+        assert calls["tools_call"] == 0
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
+def test_smoke_passes_with_brain_probe() -> None:
+    server, calls = _start_server(
+        False,
+        config_payload={
+            "brain": {
+                "provider": "cloud",
+                "model": "claude-sonnet-4-20250514",
+                "mode": "live",
+            }
+        },
+    )
+    try:
+        base = f"http://127.0.0.1:{server.server_address[1]}"
+        proc = subprocess.run(
+            [
+                sys.executable,
+                str(SCRIPT),
+                "--gateway-url",
+                base,
+                "--portal-url",
+                base,
+                "--require-brain",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert proc.returncode == 0, proc.stdout + proc.stderr
+        assert "PASS brain probe" in proc.stdout
+        assert calls["tools_call"] == 0
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
+def test_smoke_fails_when_brain_probe_missing() -> None:
+    server, calls = _start_server(False, config_payload={"difficulty": "medium"})
+    try:
+        base = f"http://127.0.0.1:{server.server_address[1]}"
+        proc = subprocess.run(
+            [
+                sys.executable,
+                str(SCRIPT),
+                "--gateway-url",
+                base,
+                "--portal-url",
+                base,
+                "--require-brain",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert proc.returncode == 1, proc.stdout + proc.stderr
+        assert "missing brain metadata" in proc.stdout
         assert calls["tools_call"] == 0
     finally:
         server.shutdown()

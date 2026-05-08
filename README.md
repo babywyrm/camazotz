@@ -44,6 +44,8 @@ make up-local     # start with Ollama (fully offline, no API key needed)
 ```
 
 Open **http://localhost:3000** — the Camazotz Security Portal.
+The top status strip shows the active AI brain (`cloud`, `local`, or
+`bedrock`) and the model currently driving inference.
 
 For Kubernetes deployment: `make helm-deploy` (see [deploy/README.md](deploy/README.md)).
 

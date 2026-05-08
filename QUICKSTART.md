@@ -91,6 +91,7 @@ Services:
 
 ```bash
 make status                     # health check all services
+uv run python scripts/smoke_test.py --require-brain
 ```
 
 Or hit the gateway directly:
@@ -103,6 +104,18 @@ curl -s http://localhost:8080/mcp \
 
 The response includes `protocolVersion: "2025-03-26"` and an
 `Mcp-Session-Id` header (UUID) for session tracking.
+
+The portal also shows the active inference backend on every page. To inspect
+the raw metadata:
+
+```bash
+curl -s http://localhost:3000/api/config | jq '.brain'
+# {
+#   "provider": "cloud",
+#   "model": "claude-sonnet-4-20250514",
+#   "mode": "live"
+# }
+```
 
 ### Response format
 

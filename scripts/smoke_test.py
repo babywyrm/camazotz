@@ -116,6 +116,25 @@ def _check_identity_probe(client: httpx.Client, gateway_url: str) -> None:
     print(f"PASS identity probe (/config idp_provider={provider})")
 
 
+def _check_brain_probe(client: httpx.Client, gateway_url: str) -> None:
+    resp = client.get(f"{gateway_url}/config")
+    resp.raise_for_status()
+    body = resp.json()
+    brain = body.get("brain")
+    if not isinstance(brain, dict):
+        raise RuntimeError("brain probe: /config missing brain metadata")
+    provider = brain.get("provider")
+    model = brain.get("model")
+    mode = brain.get("mode")
+    if provider not in ("cloud", "local", "bedrock"):
+        raise RuntimeError(f"brain probe: unexpected provider {provider!r}")
+    if not isinstance(model, str) or not model:
+        raise RuntimeError(f"brain probe: missing model for provider {provider!r}")
+    if mode not in ("live", "stub", "unconfigured"):
+        raise RuntimeError(f"brain probe: unexpected mode {mode!r}")
+    print(f"PASS brain probe (/config provider={provider} model={model} mode={mode})")
+
+
 _EXPECTED_LANE_SLUGS = ("human-direct", "delegated", "machine", "chain", "anonymous")
 
 
@@ -199,6 +218,11 @@ def main() -> int:
         help="Also verify GET /config exposes idp_provider (mock or zitadel)",
     )
     parser.add_argument(
+        "--require-brain",
+        action="store_true",
+        help="Also verify GET /config exposes active brain provider/model/mode",
+    )
+    parser.add_argument(
         "--require-lanes",
         action="store_true",
         help="Also verify GET /lanes renders and /api/lanes returns schema v1 with 5 lanes",
@@ -224,6 +248,8 @@ def main() -> int:
             _mcp_tools_list(client, target.gateway_url, session_id)
             if args.require_identity:
                 _check_identity_probe(client, target.gateway_url)
+            if args.require_brain:
+                _check_brain_probe(client, target.gateway_url)
             if args.require_lanes:
                 _check_lanes_probe(client, target.portal_url)
             if args.require_policed:
