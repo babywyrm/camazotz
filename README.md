@@ -3,7 +3,7 @@
 
 <p align="center">
 <img src="https://img.shields.io/badge/python-3.12%2B-3776ab?style=flat-square&logo=python&logoColor=white" alt="Python 3.12+">
-<img src="https://img.shields.io/badge/tests-861_passing-10b981?style=flat-square" alt="785 tests">
+<img src="https://img.shields.io/badge/tests-1090_passing-10b981?style=flat-square" alt="785 tests">
 <img src="https://img.shields.io/badge/coverage-100%25-10b981?style=flat-square" alt="100% coverage">
 <img src="https://img.shields.io/badge/modules-43_labs-dc2626?style=flat-square" alt="43 labs">
 <img src="https://img.shields.io/badge/identity_lanes-5%C3%975-60a5fa?style=flat-square" alt="5 lanes × 5 transports">

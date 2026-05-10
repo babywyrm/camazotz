@@ -71,5 +71,5 @@ class BedrockClaudeProvider:
             input_tokens=inp,
             output_tokens=out,
             cost_usd=estimate_cost(inp, out),
-            model=model,
+            model=self._model,
         )
