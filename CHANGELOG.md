@@ -5,6 +5,26 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## ai_governance_bypass_lab — MCP-T41 (2026-05-09)
+
+### New lab: AI Governance Gate Bypass via Trusted Redirect
+
+- **`ai_governance_bypass_lab`** (MCP-T41, Lane 2 / Transport A) — teaches
+  that AI security gates validating URL hostnames can be bypassed through
+  structural weaknesses in trusted infrastructure (open redirect), not
+  through prompt injection. The AI approves the initial hostname; the
+  underlying resolution follows the redirect. The AI has no visibility into
+  where the redirect leads.
+- Three tools: `gateway.list_resources` (discovery), `gateway.register_asset`
+  (unvalidated redirect registration, no AI gate), `gateway.fetch_content`
+  (AI-gated fetch that resolves the token post-approval).
+- 17 unit tests covering all three difficulty levels. The bypass succeeds
+  even on hard — this is intentional; the lesson is that AI scrutiny of
+  the initial hostname cannot compensate for an architectural gap.
+- Badge count: 39 → 40 labs.
+
+---
+
 ## Runtime Brain Model Selector + OpenAI Provider (2026-05-09)
 
 ### Brain model selector

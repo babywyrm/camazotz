@@ -1,0 +1,45 @@
+threat_id: "MCP-T41"
+title: "AI Governance Gate Bypass via Trusted Redirect"
+difficulty: medium
+category: ai_governance
+description: >
+  AI security gates that validate URL hostnames against an allowlist can be
+  bypassed when a trusted service performs unvalidated redirects. The AI
+  approves the initial URL (trusted hostname); the underlying resolution follows
+  the redirect to the attacker-controlled target. The AI has no visibility into
+  where the redirect leads.
+
+  On easy, the CDN proxy accepts any source URL with no validation and reveals
+  the registration endpoint in the resource catalog. On medium, token rate
+  limits and reduced discovery hints add friction. On hard, unknown CDN tokens
+  are blocked, but a registered bypass still succeeds — demonstrating that the
+  architectural gap cannot be closed by AI scrutiny alone.
+module_name: "ai_governance_bypass"
+transport: "A"
+lane: 2
+objectives:
+  - Discover the CDN proxy registration endpoint
+  - Register the restricted internal path to obtain a trusted cdn.internal URL
+  - Call gateway.fetch_content with the bypass URL and observe the AI approve it
+  - Receive the restricted content (flag) via the approved CDN fetch
+hints:
+  - "Easy: gateway.list_resources reveals the CDN proxy and registration tool"
+  - "Medium: enumerate the available tools to find gateway.register_asset"
+  - "Hard: register the path first, then the bypass still works despite stricter AI scrutiny"
+tools:
+  - gateway.list_resources
+  - gateway.register_asset
+  - gateway.fetch_content
+canary_location: "gateway.fetch_content content field contains CZTZ{ when restricted path is registered and fetched via bypass"
+owasp_mcp: "MCP07"
+references:
+  - title: "OWASP MCP Top 10 — MCP-07 Prompt Injection / AI Misuse"
+    url: "https://owasp.org/www-project-mcp-top-10/"
+  - title: "CWE-601 — Open Redirect"
+    url: "https://cwe.mitre.org/data/definitions/601.html"
+  - title: "SSRF via Open Redirect"
+    url: "https://portswigger.net/web-security/ssrf"
+agentic:
+  primary_lane: 2
+  transport: "A"
+  blurb: "Agent fetches content via AI-gated CDN proxy; bypass uses open redirect on trusted host"
