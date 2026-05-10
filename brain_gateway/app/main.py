@@ -21,10 +21,13 @@ from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 
 from brain_gateway.app.config import (
+    get_available_models,
     get_brain_metadata,
     get_difficulty,
     get_idp_provider,
+    get_ollama_host,
     set_difficulty,
+    set_runtime_model,
     show_tokens,
 )
 from brain_gateway.app.identity.service import idp_status
@@ -130,6 +133,7 @@ def get_config() -> dict[str, object]:
     from brain_gateway.app.identity.zitadel_provider import ZitadelIdentityProvider
 
     status = idp_status()
+    brain_meta = get_brain_metadata()
     config: dict[str, object] = {
         "difficulty": get_difficulty(),
         "show_tokens": show_tokens(),
@@ -138,7 +142,12 @@ def get_config() -> dict[str, object]:
         "idp_reason": status["idp_reason"],
         "idp_backed_labs": list(IDP_BACKED_LABS),
         "idp_backed_tools": list(IDP_BACKED_TOOLS),
-        "brain": get_brain_metadata(),
+        "brain": {
+            **brain_meta,
+            "available_models": get_available_models(
+                brain_meta["provider"], get_ollama_host()
+            ),
+        },
     }
     if status["idp_provider"] == "zitadel":
         p = ZitadelIdentityProvider.from_env()
@@ -153,16 +162,34 @@ def get_config() -> dict[str, object]:
 
 class _ConfigUpdate(BaseModel):
     difficulty: str | None = None
+    model: str | None = None
 
 
 @app.put("/config")
 def update_config(payload: _ConfigUpdate) -> dict[str, object]:
-    """Update runtime difficulty."""
+    """Update runtime difficulty and/or active brain model."""
+    from fastapi import HTTPException
+    from brain_gateway.app.brain.factory import reset_provider
+
     if payload.difficulty is not None:
         set_difficulty(payload.difficulty)
+
+    if payload.model is not None:
+        if not payload.model.strip():
+            raise HTTPException(status_code=400, detail="model must be a non-empty string")
+        set_runtime_model(payload.model)
+        reset_provider()
+
+    brain_meta = get_brain_metadata()
     return {
         "difficulty": get_difficulty(),
         "show_tokens": show_tokens(),
+        "brain": {
+            **brain_meta,
+            "available_models": get_available_models(
+                brain_meta["provider"], get_ollama_host()
+            ),
+        },
     }
 
 

@@ -16,11 +16,10 @@ def test_config_includes_brain_metadata(monkeypatch) -> None:
     client = TestClient(app)
     payload = client.get("/config").json()
 
-    assert payload["brain"] == {
-        "provider": "cloud",
-        "model": "claude-test-model",
-        "mode": "stub",
-    }
+    assert payload["brain"]["provider"] == "cloud"
+    assert payload["brain"]["model"] == "claude-test-model"
+    assert payload["brain"]["mode"] == "stub"
+    assert "available_models" in payload["brain"]
 
 
 def test_model_switch_updates_brain_metadata(monkeypatch) -> None:
@@ -73,6 +72,35 @@ def test_available_models_local_falls_back_when_ollama_down(monkeypatch) -> None
     assert len(models) == 1
     assert models[0]["id"] == "llama3.2:3b"
     assert models[0]["source"] == "fallback"
+
+
+def test_config_get_includes_available_models(monkeypatch) -> None:
+    monkeypatch.setenv("BRAIN_PROVIDER", "cloud")
+    monkeypatch.setenv("CAMAZOTZ_MODEL", "claude-a")
+    monkeypatch.setenv("CAMAZOTZ_AVAILABLE_MODELS", "claude-a,claude-b")
+    client = TestClient(app)
+    payload = client.get("/config").json()
+    assert "available_models" in payload["brain"]
+    ids = [m["id"] for m in payload["brain"]["available_models"]]
+    assert "claude-a" in ids
+    assert "claude-b" in ids
+
+
+def test_config_put_model_switches_brain(monkeypatch) -> None:
+    from brain_gateway.app import config as cfg
+    from brain_gateway.app.brain.factory import reset_provider
+    monkeypatch.setenv("BRAIN_PROVIDER", "cloud")
+    monkeypatch.setenv("CAMAZOTZ_MODEL", "claude-orig")
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    reset_provider()
+    try:
+        client = TestClient(app)
+        resp = client.put("/config", json={"model": "claude-switched"})
+        assert resp.status_code == 200
+        assert resp.json()["brain"]["model"] == "claude-switched"
+    finally:
+        cfg.set_runtime_model("")
+        reset_provider()
 
 
 def test_show_tokens_off_by_default(monkeypatch) -> None:
