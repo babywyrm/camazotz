@@ -131,15 +131,25 @@ def get_available_models(provider: str, ollama_host: str) -> list[dict[str, str]
             if m.strip()
         ]
     if provider == "bedrock":
+        # Bedrock model IDs are region/profile-specific — no safe default list.
+        # Set CAMAZOTZ_AVAILABLE_MODELS to populate the selector.
         current = (
             get_runtime_model()
             or os.getenv("CAMAZOTZ_BEDROCK_MODEL")
             or os.getenv("CAMAZOTZ_MODEL")
             or ""
         )
-    else:
-        current = get_runtime_model() or os.getenv("CAMAZOTZ_MODEL", "claude-sonnet-4-20250514")
-    return [{"id": current, "label": current, "source": "config"}]
+        return [{"id": current, "label": current, "source": "config"}]
+
+    # cloud — return a useful default list even without CAMAZOTZ_AVAILABLE_MODELS
+    active = get_runtime_model() or os.getenv("CAMAZOTZ_MODEL", "claude-sonnet-4-20250514")
+    _CLOUD_DEFAULTS = [
+        "claude-sonnet-4-20250514",
+        "claude-haiku-4-5",
+        "claude-opus-4-7",
+    ]
+    ids = list(dict.fromkeys([active] + _CLOUD_DEFAULTS))  # active first, deduped
+    return [{"id": m, "label": m, "source": "builtin"} for m in ids]
 
 
 def estimate_cost(input_tokens: int, output_tokens: int) -> float:

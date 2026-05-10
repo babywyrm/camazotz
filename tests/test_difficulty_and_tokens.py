@@ -59,9 +59,11 @@ def test_available_models_cloud_falls_back_to_current(monkeypatch) -> None:
     monkeypatch.delenv("CAMAZOTZ_AVAILABLE_MODELS", raising=False)
     from brain_gateway.app.config import get_available_models
     models = get_available_models("cloud", "http://localhost:11434")
-    assert len(models) == 1
-    assert models[0]["id"] == "claude-only"
-    assert models[0]["source"] == "config"
+    ids = [m["id"] for m in models]
+    # active model is first; default list follows deduped
+    assert ids[0] == "claude-only"
+    assert len(ids) >= 1
+    assert all(m["source"] == "builtin" for m in models)
 
 
 def test_available_models_local_falls_back_when_ollama_down(monkeypatch) -> None:
