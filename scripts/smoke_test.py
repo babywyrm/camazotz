@@ -135,6 +135,21 @@ def _check_brain_probe(client: httpx.Client, gateway_url: str) -> None:
     print(f"PASS brain probe (/config provider={provider} model={model} mode={mode})")
 
 
+def _check_brain_switch(client: httpx.Client, gateway_url: str, model: str) -> None:
+    """PUT /config with a model and verify the response reflects it."""
+    resp = client.put(f"{gateway_url}/config", json={"model": model})
+    resp.raise_for_status()
+    body = resp.json()
+    brain = body.get("brain")
+    if not isinstance(brain, dict):
+        raise RuntimeError("brain switch: /config response missing brain key")
+    if brain.get("model") != model:
+        raise RuntimeError(
+            f"brain switch: expected model {model!r}, got {brain.get('model')!r}"
+        )
+    print(f"PASS brain switch (model={model})")
+
+
 _EXPECTED_LANE_SLUGS = ("human-direct", "delegated", "machine", "chain", "anonymous")
 
 
@@ -223,6 +238,12 @@ def main() -> int:
         help="Also verify GET /config exposes active brain provider/model/mode",
     )
     parser.add_argument(
+        "--switch-model",
+        default=None,
+        metavar="MODEL_ID",
+        help="Also test PUT /config model switch to MODEL_ID and verify response",
+    )
+    parser.add_argument(
         "--require-lanes",
         action="store_true",
         help="Also verify GET /lanes renders and /api/lanes returns schema v1 with 5 lanes",
@@ -250,6 +271,8 @@ def main() -> int:
                 _check_identity_probe(client, target.gateway_url)
             if args.require_brain:
                 _check_brain_probe(client, target.gateway_url)
+            if args.switch_model:
+                _check_brain_switch(client, target.gateway_url, args.switch_model)
             if args.require_lanes:
                 _check_lanes_probe(client, target.portal_url)
             if args.require_policed:

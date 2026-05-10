@@ -113,9 +113,37 @@ curl -s http://localhost:3000/api/config | jq '.brain'
 # {
 #   "provider": "cloud",
 #   "model": "claude-sonnet-4-20250514",
-#   "mode": "live"
+#   "mode": "live",
+#   "available_models": [...]
 # }
 ```
+
+### Switching the active model at runtime
+
+To switch the brain model without restarting the gateway:
+
+```bash
+# List available models
+curl -s http://localhost:3000/api/config | jq '.brain.available_models'
+
+# Switch model via API
+curl -s -X PUT http://localhost:8080/config \
+  -H "Content-Type: application/json" \
+  -d '{"model": "qwen3.5:0.8b"}'
+
+# Confirm
+curl -s http://localhost:8080/config | jq '.brain.model'
+```
+
+Or click the **Brain** badge in the top status strip — when multiple models are
+available it becomes a dropdown. The selected model takes effect on the next
+MCP `tools/call`; any in-flight calls complete with the previous model.
+
+For **local (Ollama)** deployments, available models are fetched live from
+`OLLAMA_HOST/api/tags` — only pulled models appear.
+
+For **cloud/bedrock**, set `CAMAZOTZ_AVAILABLE_MODELS=model-a,model-b` in
+`compose/.env` to populate the selector.
 
 ### Response format
 

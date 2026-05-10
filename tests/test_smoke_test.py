@@ -53,6 +53,24 @@ def _start_server(
                 return
             self._send_json({"detail": "not found"}, status=404)  # pragma: no cover
 
+        def do_PUT(self) -> None:  # noqa: N802
+            if self.path == "/config":
+                length = int(self.headers.get("Content-Length", "0"))
+                body = json.loads(self.rfile.read(length).decode() or "{}")
+                model = body.get("model", "")
+                self._send_json({
+                    "difficulty": "medium",
+                    "show_tokens": False,
+                    "brain": {
+                        "provider": "local",
+                        "model": model,
+                        "mode": "live",
+                        "available_models": [{"id": model, "label": model, "source": "ollama"}],
+                    },
+                })
+                return
+            self._send_json({"detail": "not found"}, status=404)  # pragma: no cover
+
         def do_POST(self) -> None:  # noqa: N802
             if self.path != "/mcp":  # pragma: no cover
                 self._send_json({"detail": "not found"}, status=404)
@@ -391,6 +409,42 @@ def test_smoke_fails_when_identity_probe_invalid() -> None:
         )
         assert proc.returncode == 1, proc.stdout + proc.stderr
         assert calls["tools_call"] == 0
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
+def test_smoke_passes_with_brain_switch() -> None:
+    server, _ = _start_server(
+        False,
+        config_payload={
+            "brain": {
+                "provider": "local",
+                "model": "qwen3.5:0.8b",
+                "mode": "live",
+                "available_models": [
+                    {"id": "qwen3.5:0.8b", "label": "qwen3.5:0.8b", "source": "ollama"},
+                ],
+            }
+        },
+    )
+    try:
+        base = f"http://127.0.0.1:{server.server_address[1]}"
+        proc = subprocess.run(
+            [
+                sys.executable,
+                str(SCRIPT),
+                "--gateway-url", base,
+                "--portal-url", base,
+                "--require-brain",
+                "--switch-model", "qwen3.5:0.8b",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert proc.returncode == 0, proc.stdout + proc.stderr
+        assert "PASS brain switch" in proc.stdout
     finally:
         server.shutdown()
         server.server_close()
