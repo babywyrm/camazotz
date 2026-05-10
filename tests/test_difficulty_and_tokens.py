@@ -43,6 +43,38 @@ def test_model_switch_empty_string_rejected(monkeypatch) -> None:
     assert resp.status_code == 400
 
 
+def test_available_models_cloud_from_env(monkeypatch) -> None:
+    monkeypatch.setenv("BRAIN_PROVIDER", "cloud")
+    monkeypatch.setenv("CAMAZOTZ_MODEL", "claude-a")
+    monkeypatch.setenv("CAMAZOTZ_AVAILABLE_MODELS", "claude-a,claude-b,claude-c")
+    from brain_gateway.app.config import get_available_models
+    models = get_available_models("cloud", "http://localhost:11434")
+    ids = [m["id"] for m in models]
+    assert ids == ["claude-a", "claude-b", "claude-c"]
+    assert all(m["source"] == "config" for m in models)
+
+
+def test_available_models_cloud_falls_back_to_current(monkeypatch) -> None:
+    monkeypatch.setenv("BRAIN_PROVIDER", "cloud")
+    monkeypatch.setenv("CAMAZOTZ_MODEL", "claude-only")
+    monkeypatch.delenv("CAMAZOTZ_AVAILABLE_MODELS", raising=False)
+    from brain_gateway.app.config import get_available_models
+    models = get_available_models("cloud", "http://localhost:11434")
+    assert len(models) == 1
+    assert models[0]["id"] == "claude-only"
+    assert models[0]["source"] == "config"
+
+
+def test_available_models_local_falls_back_when_ollama_down(monkeypatch) -> None:
+    monkeypatch.setenv("BRAIN_PROVIDER", "local")
+    monkeypatch.setenv("CAMAZOTZ_OLLAMA_MODEL", "llama3.2:3b")
+    from brain_gateway.app.config import get_available_models
+    models = get_available_models("local", "http://localhost:19999")
+    assert len(models) == 1
+    assert models[0]["id"] == "llama3.2:3b"
+    assert models[0]["source"] == "fallback"
+
+
 def test_show_tokens_off_by_default(monkeypatch) -> None:
     monkeypatch.delenv("CAMAZOTZ_SHOW_TOKENS", raising=False)
     client = TestClient(app)

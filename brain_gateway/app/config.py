@@ -94,6 +94,54 @@ def get_brain_metadata() -> dict[str, str]:
     }
 
 
+def get_available_models(provider: str, ollama_host: str) -> list[dict[str, str]]:
+    """Return selectable models for the active provider.
+
+    local:   fetched live from Ollama /api/tags; falls back to [current model]
+             with source='fallback' if Ollama is unreachable.
+    cloud / bedrock: parsed from CAMAZOTZ_AVAILABLE_MODELS (comma-separated IDs).
+             Falls back to [current model] with source='config' if env var unset.
+
+    Each entry: {"id": str, "label": str, "source": "ollama"|"config"|"fallback"}
+    """
+    if provider == "local":
+        try:
+            import json as _json
+            import urllib.request as _req
+            url = f"{ollama_host.rstrip('/')}/api/tags"
+            resp = _req.urlopen(url, timeout=3)
+            data = _json.loads(resp.read())
+            models = [
+                {"id": m["name"], "label": m["name"], "source": "ollama"}
+                for m in data.get("models", [])
+            ]
+            if models:
+                return models
+        except Exception:
+            pass
+        fallback = get_runtime_model() or os.getenv("CAMAZOTZ_OLLAMA_MODEL", "llama3.2:3b")
+        return [{"id": fallback, "label": fallback, "source": "fallback"}]
+
+    # cloud or bedrock
+    raw = os.getenv("CAMAZOTZ_AVAILABLE_MODELS", "").strip()
+    if raw:
+        return [
+            {"id": m.strip(), "label": m.strip(), "source": "config"}
+            for m in raw.split(",")
+            if m.strip()
+        ]
+    if provider == "bedrock":
+        current = (
+            get_runtime_model()
+            or os.getenv("CAMAZOTZ_BEDROCK_MODEL")
+            or os.getenv("CAMAZOTZ_MODEL")
+            or ""
+        )
+    else:
+        current = get_runtime_model() or os.getenv("CAMAZOTZ_MODEL", "claude-sonnet-4-20250514")
+    return [{"id": current, "label": current, "source": "config"}]
+
+
 def estimate_cost(input_tokens: int, output_tokens: int) -> float:
     """Rough USD cost estimate for Sonnet-class models."""
     return (
