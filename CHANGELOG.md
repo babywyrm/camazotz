@@ -5,6 +5,24 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## dpop_forgery_lab — MCP-T43 (2026-05-10)
+
+### New lab: DPoP Key Exposure and JWT Forgery
+
+- **`dpop_forgery_lab`** (MCP-T43, Lane 3 / Transport A) — teaches that
+  DPoP (RFC 9449) proof-of-possession only works when the private key stays
+  private. When it is exposed via a config or actuator endpoint, an attacker
+  can forge proofs with correct `htm`/`htu` binding and bypass the gateway.
+- Four tools: `dpop.get_service_info` (topology + key leak), `dpop.request_access`
+  (structured 401 iterative discovery), `dpop.sign_proof` (JWT forging),
+  `dpop.access_resource` (protected endpoint, flag returned on valid proof).
+- Hard mode: key is nested in a `deployment_config.signing_key` field — a
+  realistic operational pattern (audit tokens reused as signing keys).
+- 19 unit tests covering all difficulty levels, full bypass chain, and
+  htm/htu binding enforcement. Badge count: 41 → 42 labs.
+
+---
+
 ## shared_idp_pollution_lab — MCP-T42 (2026-05-10)
 
 ### New lab: Shared IdP Cross-Pollution (User → Agent Token Escalation)

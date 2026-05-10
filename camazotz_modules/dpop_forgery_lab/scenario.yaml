@@ -1,0 +1,49 @@
+threat_id: "MCP-T43"
+title: "DPoP Key Exposure and JWT Forgery"
+difficulty: medium
+category: identity
+description: >
+  DPoP (Demonstrating Proof of Possession, RFC 9449) binds access tokens to
+  a cryptographic key. The gateway validates that every request carries a
+  fresh DPoP proof signed with the correct private key, and that the proof's
+  htm (HTTP method) and htu (HTTP target URI) claims match the actual request.
+
+  When the private key is exposed via a misconfigured config or actuator
+  endpoint, an attacker can forge DPoP proofs with correct htm/htu binding
+  and gain access to protected resources. The gateway returns structured 401
+  errors that guide the player through the required proof format via iterative
+  discovery.
+
+  On easy, the key is directly present in get_service_info. On medium, it is
+  base64-encoded. On hard, it is nested in a deployment_config audit field.
+module_name: "dpop_forgery"
+transport: "A"
+lane: 3
+objectives:
+  - Extract the DPoP private key from dpop.get_service_info
+  - Use dpop.request_access to iteratively discover the required htm and htu claims
+  - Forge a DPoP proof with dpop.sign_proof using the correct key and claim binding
+  - Access the protected resource with dpop.access_resource to retrieve the flag
+hints:
+  - "Easy: the private key is at the top level of get_service_info"
+  - "Medium: the key is base64-encoded — decode it before passing to sign_proof"
+  - "Hard: look for the signing_key inside the deployment_config field"
+  - "The gateway 401 errors describe exactly which claim is wrong or missing"
+tools:
+  - dpop.get_service_info
+  - dpop.request_access
+  - dpop.sign_proof
+  - dpop.access_resource
+canary_location: "dpop.access_resource secret field contains CZTZ{ when proof is valid"
+owasp_mcp: "MCP05"
+references:
+  - title: "RFC 9449 — OAuth 2.0 DPoP (Demonstrating Proof of Possession)"
+    url: "https://datatracker.ietf.org/doc/html/rfc9449"
+  - title: "OWASP MCP Top 10 — MCP-05 Unauthorized Access"
+    url: "https://owasp.org/www-project-mcp-top-10/"
+  - title: "CWE-321 — Use of Hard-coded Cryptographic Key"
+    url: "https://cwe.mitre.org/data/definitions/321.html"
+agentic:
+  primary_lane: 3
+  transport: "A"
+  blurb: "Machine identity via DPoP — leaked RSA key enables proof forgery with correct htm/htu binding"
