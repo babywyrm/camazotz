@@ -9,6 +9,7 @@ dependencies = [
     "boto3>=1.34.0",
     "fastapi>=0.116.0",
     "httpx>=0.28.0",
+    "openai>=2.36.0",
     "pydantic>=2.11.0",
     "pyyaml>=6.0",
     "sse-starlette>=2.0.0",
@@ -29,6 +30,17 @@ default-groups = ["dev"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = [".", "frontend", "scripts"]
+markers = [
+    "lab: marks a test that exercises a camazotz lab module",
+    "identity: identity, auth, delegation, DPoP, or agent-chain labs",
+    "injection: prompt-injection, blocklist-bypass, indirect, or RAG labs",
+    "secrets: credential-leak, exfiltration, or persistence labs",
+    "governance: AI-governance, tool-mutation, or hallucination labs",
+    "defense: policy-authoring, response-inspection, or budget-tuning labs",
+    "teleport: Teleport machine-identity labs",
+    "infrastructure: brain-provider, registry, config, observe, or smoke tests",
+    "slow: tests that start real services or make real HTTP calls",
+]
 addopts = [
     "--strict-markers",
     "--strict-config",

@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import pathlib
+import re
+
 import pytest
 
 
@@ -462,3 +465,94 @@ def test_coverage_summary_flags_d_gap_when_other_lane_uses_d(monkeypatch):
     # Lane 3 has D itself, so D is not a gap on lane 3.
     lane3_gaps = " ".join(summary[3].gaps).lower()
     assert "transport d" not in lane3_gaps
+
+
+# ---------------------------------------------------------------------------
+# Cross-repo vocabulary drift checks
+#
+# These tests catch drift between camazotz scenario.yaml metadata and the
+# canonical vocabulary defined in the agentic-sec Identity Flow Framework.
+# If a lane slug, transport code, or threat ID format changes in one repo
+# without updating the others, these tests fail before any finding is
+# mis-tagged in mcpnuke or any nullfield policy breaks.
+# ---------------------------------------------------------------------------
+
+_VALID_LANE_IDS = frozenset(range(1, 6))
+_VALID_TRANSPORTS = frozenset("ABCDE")
+_THREAT_ID_RE = re.compile(r"^MCP-T\d{1,4}$")
+
+_AGENTIC_REQUIRED_KEYS = frozenset({"primary_lane", "transport", "blurb"})
+
+
+def _all_scenarios():
+    """Return (lab_name, scenario_dict) for every scenario.yaml in the corpus."""
+    import yaml
+    modules_dir = pathlib.Path(__file__).parent.parent / "camazotz_modules"
+    for p in sorted(modules_dir.glob("*/scenario.yaml")):
+        try:
+            d = yaml.safe_load(p.read_text()) or {}
+        except Exception:
+            d = {}
+        yield p.parent.name, d
+
+
+def test_all_threat_ids_follow_mcp_t_format() -> None:
+    """Every threat_id must match MCP-T<digits> — catches typos and format drift."""
+    bad = []
+    for lab, d in _all_scenarios():
+        tid = d.get("threat_id", "")
+        if tid and not _THREAT_ID_RE.match(tid):
+            bad.append(f"{lab}: {tid!r}")
+    assert not bad, f"Malformed threat_id values:\n" + "\n".join(bad)
+
+
+def test_no_duplicate_threat_ids() -> None:
+    """Every lab must have a unique threat_id — catches copy-paste scenario files."""
+    seen: dict[str, str] = {}
+    dupes = []
+    for lab, d in _all_scenarios():
+        tid = d.get("threat_id", "")
+        if not tid:
+            continue
+        if tid in seen:
+            dupes.append(f"{tid}: {seen[tid]} and {lab}")
+        seen[tid] = lab
+    assert not dupes, f"Duplicate threat_ids:\n" + "\n".join(dupes)
+
+
+def test_agentic_block_lane_ids_are_valid() -> None:
+    """Every agentic.primary_lane and secondary_lanes entry must be 1–5."""
+    bad = []
+    for lab, d in _all_scenarios():
+        ag = d.get("agentic") or {}
+        pl = ag.get("primary_lane")
+        if pl is not None and pl not in _VALID_LANE_IDS:
+            bad.append(f"{lab}: primary_lane={pl!r}")
+        for sl in ag.get("secondary_lanes") or []:
+            if sl not in _VALID_LANE_IDS:
+                bad.append(f"{lab}: secondary_lanes contains {sl!r}")
+    assert not bad, f"Invalid lane IDs:\n" + "\n".join(bad)
+
+
+def test_agentic_block_transport_codes_are_valid() -> None:
+    """Every agentic.transport must be one of A B C D E."""
+    bad = []
+    for lab, d in _all_scenarios():
+        ag = d.get("agentic") or {}
+        t = ag.get("transport", "")
+        if t and t.upper() not in _VALID_TRANSPORTS:
+            bad.append(f"{lab}: transport={t!r}")
+    assert not bad, f"Invalid transport codes:\n" + "\n".join(bad)
+
+
+def test_agentic_block_required_keys_present() -> None:
+    """Every agentic: block must have primary_lane, transport, and blurb."""
+    bad = []
+    for lab, d in _all_scenarios():
+        ag = d.get("agentic") or {}
+        if not ag:
+            continue  # no agentic block at all is allowed (non-agentic-lane labs)
+        missing = _AGENTIC_REQUIRED_KEYS - set(ag.keys())
+        if missing:
+            bad.append(f"{lab}: missing {sorted(missing)}")
+    assert not bad, f"agentic: blocks with missing required keys:\n" + "\n".join(bad)
