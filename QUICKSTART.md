@@ -87,7 +87,21 @@ Services:
 | Gateway | http://localhost:8080 | MCP Streamable HTTP API |
 | Ollama | http://localhost:11434 | Local LLM inference |
 
-## Verify it works
+## Option D: OpenAI
+
+Requires an `OPENAI_API_KEY`. Set `BRAIN_PROVIDER=openai`.
+
+```bash
+make env
+# Edit compose/.env — add:
+#   BRAIN_PROVIDER=openai
+#   OPENAI_API_KEY=sk-...
+#   CAMAZOTZ_MODEL=gpt-4o   # or gpt-4o-mini, o1, o3-mini
+make up
+```
+
+The brain pill in the portal shows a dropdown with `gpt-4o`, `gpt-4o-mini`, `o1`, and `o3-mini`
+by default. Override with `CAMAZOTZ_AVAILABLE_MODELS=model-a,model-b` in `compose/.env`.
 
 ```bash
 make status                     # health check all services
@@ -234,11 +248,12 @@ Edit `compose/.env` to tune behavior:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `BRAIN_PROVIDER` | `cloud` | `cloud`, `bedrock`, or `local` |
+| `BRAIN_PROVIDER` | `cloud` | `cloud`, `openai`, `bedrock`, or `local` |
 | `AWS_REGION` | — | Set for Bedrock |
 | `AWS_PROFILE` | — | Optional named profile |
-| `CAMAZOTZ_MODEL` | (see `.env.example`) | Model id for Anthropic API or Bedrock |
+| `CAMAZOTZ_MODEL` | (see `.env.example`) | Model id for Anthropic API, OpenAI, or Bedrock |
 | `ANTHROPIC_API_KEY` | (empty) | Required when `BRAIN_PROVIDER=cloud` |
+| `OPENAI_API_KEY` | (empty) | Required when `BRAIN_PROVIDER=openai` |
 | `CAMAZOTZ_BEDROCK_STUB` | — | Set `1` for Bedrock stub without AWS |
 | `CAMAZOTZ_DIFFICULTY` | `medium` | `easy`, `medium`, or `hard` (switchable live from portal) |
 | `CAMAZOTZ_SHOW_TOKENS` | `false` | Show token usage and cost |

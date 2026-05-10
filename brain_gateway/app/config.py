@@ -102,10 +102,11 @@ def get_available_models(provider: str, ollama_host: str) -> list[dict[str, str]
 
     local:   fetched live from Ollama /api/tags; falls back to [current model]
              with source='fallback' if Ollama is unreachable.
-    cloud / bedrock: parsed from CAMAZOTZ_AVAILABLE_MODELS (comma-separated IDs).
+    cloud / openai: built-in default list; overridden by CAMAZOTZ_AVAILABLE_MODELS.
+    bedrock: CAMAZOTZ_AVAILABLE_MODELS only (model IDs are account/region-specific).
              Falls back to [current model] with source='config' if env var unset.
 
-    Each entry: {"id": str, "label": str, "source": "ollama"|"config"|"fallback"}
+    Each entry: {"id": str, "label": str, "source": "ollama"|"config"|"builtin"|"fallback"}
     """
     if provider == "local":
         try:

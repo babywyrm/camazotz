@@ -76,6 +76,19 @@ def test_available_models_local_falls_back_when_ollama_down(monkeypatch) -> None
     assert models[0]["source"] == "fallback"
 
 
+def test_available_models_openai_builtin_list(monkeypatch) -> None:
+    monkeypatch.setenv("BRAIN_PROVIDER", "openai")
+    monkeypatch.setenv("CAMAZOTZ_MODEL", "gpt-4o")
+    monkeypatch.delenv("CAMAZOTZ_AVAILABLE_MODELS", raising=False)
+    from brain_gateway.app.config import get_available_models
+    models = get_available_models("openai", "http://localhost:11434")
+    ids = [m["id"] for m in models]
+    assert ids[0] == "gpt-4o"
+    assert "gpt-4o-mini" in ids
+    assert "o1" in ids
+    assert all(m["source"] == "builtin" for m in models)
+
+
 def test_config_get_includes_available_models(monkeypatch) -> None:
     monkeypatch.setenv("BRAIN_PROVIDER", "cloud")
     monkeypatch.setenv("CAMAZOTZ_MODEL", "claude-a")

@@ -126,7 +126,7 @@ def _check_brain_probe(client: httpx.Client, gateway_url: str) -> None:
     provider = brain.get("provider")
     model = brain.get("model")
     mode = brain.get("mode")
-    if provider not in ("cloud", "local", "bedrock"):
+    if provider not in ("cloud", "local", "bedrock", "openai"):
         raise RuntimeError(f"brain probe: unexpected provider {provider!r}")
     if not isinstance(model, str) or not model:
         raise RuntimeError(f"brain probe: missing model for provider {provider!r}")

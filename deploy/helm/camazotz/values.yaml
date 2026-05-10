@@ -35,6 +35,7 @@ secrets:
   # is silent. See docs/identity/k8s-runbook.md → "Sync Anthropic key from
   # local .env to NUC" for the patch + restart procedure.
   anthropicApiKey: ""
+  openaiApiKey: ""
   flaskSecret: "cztz-k8s-secret"
   idpClientSecret: ""
   zitadelMasterKey: "CamazotzZitadelMasterKeyValue123"

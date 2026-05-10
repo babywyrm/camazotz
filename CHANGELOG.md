@@ -5,6 +5,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## Runtime Brain Model Selector + OpenAI Provider (2026-05-09)
+
+### Brain model selector
+- **Interactive model selector** — the Brain badge in the global nav strip is now a dropdown when multiple models are available. Selecting a model calls `PUT /config` and applies gracefully (in-flight sessions complete with the previous model; the new model takes effect on the next `tools/call`).
+- **`GET /config` `brain.available_models`** — lists selectable models with source (`ollama`, `builtin`, `config`, `fallback`). For `local` (Ollama) the list is fetched live from `/api/tags`. For `cloud` and `openai` a built-in default list is returned. For `bedrock` set `CAMAZOTZ_AVAILABLE_MODELS`.
+- **`PUT /config` `model` field** — switches the active model at runtime without a restart. Empty string returns 400.
+- **`CAMAZOTZ_AVAILABLE_MODELS`** — optional comma-separated override for cloud/bedrock/openai.
+- Switch banner in the UI communicates graceful handoff to the user.
+
+### OpenAI provider
+- **`BRAIN_PROVIDER=openai`** — new provider backed by `openai.OpenAI()`. Requires `OPENAI_API_KEY`. Stubs cleanly when key is absent.
+- Default model: `gpt-4o`. Built-in selector list: `gpt-4o`, `gpt-4o-mini`, `o1`, `o3-mini`.
+- `CAMAZOTZ_MODEL` and runtime model override both apply.
+- Helm `values.yaml` extended with `secrets.openaiApiKey`.
+
+---
+
 ## Lane View, Policed Entry Point & Five-Transport Taxonomy (2026-05-01)
 
 ### Agentic Lane View

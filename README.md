@@ -13,7 +13,7 @@
 <p align="center">
 <img src="https://img.shields.io/badge/docker-compose-2496ed?style=flat-square&logo=docker&logoColor=white" alt="Docker Compose">
 <img src="https://img.shields.io/badge/kubernetes-helm-326ce5?style=flat-square&logo=kubernetes&logoColor=white" alt="Kubernetes">
-<img src="https://img.shields.io/badge/LLM-Bedrock_%7C_Claude_API_%7C_Ollama-f87171?style=flat-square" alt="Bedrock | Claude API | Ollama">
+<img src="https://img.shields.io/badge/LLM-Bedrock_%7C_Claude_API_%7C_OpenAI_%7C_Ollama-f87171?style=flat-square" alt="Bedrock | Claude API | OpenAI | Ollama">
 </p>
 
 ---
@@ -40,6 +40,8 @@ make env          # create .env from template
 make up           # start with Claude API (needs ANTHROPIC_API_KEY in .env)
 # — or —
 make up-local     # start with Ollama (fully offline, no API key needed)
+# — or —
+# BRAIN_PROVIDER=openai make up  # start with OpenAI (needs OPENAI_API_KEY in .env)
 # Optional: BRAIN_PROVIDER=bedrock + AWS region/credentials for Amazon Bedrock
 ```
 
@@ -577,7 +579,7 @@ make help           # show all targets
 - **Multi-player mode** — concurrent sessions with isolated state
 - **Scoring engine** — track which vulnerabilities each participant
   discovers, time-to-exploit metrics
-- **Additional LLM providers** — OpenAI, Gemini, local GGUF models
+- **Additional LLM providers** — Gemini, local GGUF models (OpenAI shipped 2026-05-09)
 
 ### Completed (recent)
 
