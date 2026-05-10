@@ -5,6 +5,26 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## shared_idp_pollution_lab — MCP-T42 (2026-05-10)
+
+### New lab: Shared IdP Cross-Pollution (User → Agent Token Escalation)
+
+- **`shared_idp_pollution_lab`** (MCP-T42, Lane 2+1 / Transport A) — teaches
+  that when multiple OAuth clients share the same identity realm, JWKS endpoint,
+  and MCP server, the only separation between user and agent is JWT role claims.
+  A leaked agent `client_secret` allows anyone to mint an agent-level token via
+  the standard `client_credentials` grant and access elevated tools.
+- Four tools: `platform.get_service_config` (topology + shared realm disclosure),
+  `platform.ask_assistant` (AI-backed, soft guardrails on agent secret),
+  `platform.mint_token` (simulated client_credentials grant), and
+  `platform.execute_privileged_op` (agent-role only, returns flag).
+- Hard mode discovery path: `audit_token` field in the config response is the
+  agent secret — a realistic operational pattern that creates identical exposure.
+- 17 unit tests covering all three difficulty levels, full bypass chain, and
+  flag format verification. Badge count: 40 → 41 labs.
+
+---
+
 ## ai_governance_bypass_lab — MCP-T41 (2026-05-09)
 
 ### New lab: AI Governance Gate Bypass via Trusted Redirect

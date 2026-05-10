@@ -1,0 +1,47 @@
+threat_id: "MCP-T42"
+title: "Shared IdP Cross-Pollution (User → Agent Token Escalation)"
+difficulty: medium
+category: identity
+description: >
+  When multiple OAuth clients share the same identity realm (same issuer,
+  same JWKS endpoint, same MCP server), the only separation between a
+  regular user and a privileged agent is the role claims in the JWT.
+  If the agent's client_secret is leaked or discoverable, any party can
+  mint an agent-level token and access elevated tools.
+
+  On easy, the AI operations assistant freely discloses the agent client_secret
+  when asked. On medium, social engineering is required. On hard, the assistant
+  is hardened, but the agent secret appears as an audit_token in the service
+  configuration — a realistic operational pattern that creates the same exposure.
+module_name: "shared_idp_pollution"
+transport: "A"
+lane: 2
+objectives:
+  - Enumerate the identity topology via platform.get_service_config
+  - Obtain the agent client_secret via platform.ask_assistant (easy/medium) or audit_token discovery (hard)
+  - Mint an agent-role token using platform.mint_token with client_credentials grant
+  - Execute the privileged operation with the agent token to retrieve the flag
+hints:
+  - "Easy: ask_assistant will disclose the agent secret if asked directly"
+  - "Medium: frame the request as an operational task rather than a direct secret request"
+  - "Hard: inspect the audit_token field returned by get_service_config"
+tools:
+  - platform.get_service_config
+  - platform.ask_assistant
+  - platform.mint_token
+  - platform.execute_privileged_op
+canary_location: "platform.execute_privileged_op flag field contains CZTZ{ when agent token is used"
+owasp_mcp: "MCP05"
+references:
+  - title: "OWASP MCP Top 10 — MCP-05 Unauthorized Access / Privilege Escalation"
+    url: "https://owasp.org/www-project-mcp-top-10/"
+  - title: "RFC 6749 — OAuth 2.0 Client Credentials Grant"
+    url: "https://datatracker.ietf.org/doc/html/rfc6749#section-4.4"
+  - title: "RFC 9449 — DPoP (Proof-of-Possession Token Binding)"
+    url: "https://datatracker.ietf.org/doc/html/rfc9449"
+agentic:
+  primary_lane: 2
+  secondary_lanes:
+    - 1
+  transport: "A"
+  blurb: "User delegates to agent via shared IdP; leaked client_secret enables token cross-pollution"

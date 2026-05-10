@@ -3,9 +3,9 @@
 
 <p align="center">
 <img src="https://img.shields.io/badge/python-3.12%2B-3776ab?style=flat-square&logo=python&logoColor=white" alt="Python 3.12+">
-<img src="https://img.shields.io/badge/tests-802_passing-10b981?style=flat-square" alt="785 tests">
+<img src="https://img.shields.io/badge/tests-819_passing-10b981?style=flat-square" alt="785 tests">
 <img src="https://img.shields.io/badge/coverage-100%25-10b981?style=flat-square" alt="100% coverage">
-<img src="https://img.shields.io/badge/modules-40_labs-dc2626?style=flat-square" alt="40 labs">
+<img src="https://img.shields.io/badge/modules-41_labs-dc2626?style=flat-square" alt="41 labs">
 <img src="https://img.shields.io/badge/identity_lanes-5%C3%975-60a5fa?style=flat-square" alt="5 lanes × 5 transports">
 <img src="https://img.shields.io/badge/Red_Team_Playbook-14%2F14-10b981?style=flat-square" alt="Playbook 14/14">
 <img src="https://img.shields.io/badge/license-MIT-a89cb8?style=flat-square" alt="MIT License">
@@ -592,12 +592,12 @@ make help           # show all targets
   checks, 3 exploit chain automations, regression baselines
 - **Golden path v3** — Machine Identity section (Phase 0b) for agent auth
   via Teleport, OWASP MCP Top 10 mapping updates
-- **Threat Map** — `/threat-map` page with 7 category groups, 40 labs
+- **Threat Map** — `/threat-map` page with 7 category groups, 41 labs
   cards (originally 28), localStorage-based progress tracking, and
   contextual walkthrough links from challenges and scenarios
 - **Observer signal tiers** — `signal_tier`, `reason_code`, tighter
   confused-deputy detection, signal filter in Enhanced tab
-- **QA checks for all 40 labs** — every lab covered in the QA harness
+- **QA checks for all 41 labs** — every lab covered in the QA harness
 - **Operator Console** — guided walkthroughs for the original 25 labs at medium
   guardrails with telemetry strip
 - **ZITADEL live flow wiring** — real HTTP token exchange, introspection,
