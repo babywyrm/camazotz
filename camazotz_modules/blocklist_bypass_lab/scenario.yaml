@@ -1,0 +1,48 @@
+threat_id: "MCP-T44"
+title: "Blocklist Bypass via Incomplete Input Filter"
+difficulty: medium
+category: injection
+description: >
+  A server-side blocklist is only as strong as its completeness. When an MCP
+  tool that executes diagnostic queries blocks common shells and interpreters
+  but misses others, attackers can find allowed execution paths that achieve
+  the same outcome.
+
+  The filter blocks bash, python3, common network tools, and shell metacharacters
+  (|, &, $, >, <). It does NOT block perl (easy/medium) or awk (hard), and it
+  does not block parentheses, braces, semicolons, or the qq{} quoting construct.
+
+  On easy/medium, perl with safe quoting (qq{} and POSIX::dup2 instead of > and
+  $) bypasses every filter check. On hard, perl is added to the blocklist but awk
+  with BEGIN{system(...)} remains allowed. The lesson: blocklists invite bypass
+  research. Defense requires allowlisting or sandboxed execution.
+module_name: "blocklist_bypass"
+transport: "A"
+lane: 2
+objectives:
+  - Identify the blocked terms and metacharacters from exec.list_approved and probe responses
+  - Discover that perl is not in the blocklist (easy/medium)
+  - Construct a perl invocation using only allowed characters (qq{} quoting, sysopen, POSIX)
+  - Stage and execute a payload that reaches the restricted flag path
+  - On hard, discover that awk is not blocked and use BEGIN{system(...)} instead
+hints:
+  - "Easy: try perl -e 'print 42' — note it passes the filter"
+  - "Medium: perl works but dollar signs and > are blocked; use qq{} instead of quotes and sysopen instead of >"
+  - "Hard: perl is blocked; try awk 'BEGIN{...}'"
+  - "The staged file path /tmp/r.pl becomes executable via perl /tmp/r.pl"
+tools:
+  - exec.run_query
+  - exec.list_approved
+canary_location: "exec.run_query output field contains CZTZ{ when perl reaches the flag path via staged execution"
+owasp_mcp: "MCP04"
+references:
+  - title: "OWASP MCP Top 10 — MCP-04 Insufficient Input Validation"
+    url: "https://owasp.org/www-project-mcp-top-10/"
+  - title: "CWE-184 — Incomplete List of Disallowed Inputs"
+    url: "https://cwe.mitre.org/data/definitions/184.html"
+  - title: "Perl POSIX module — dup2 and sysopen alternatives to shell metacharacters"
+    url: "https://perldoc.perl.org/POSIX"
+agentic:
+  primary_lane: 2
+  transport: "A"
+  blurb: "Agent calls diagnostic tool with filtered input; filter gap enables code execution via allowed interpreter"

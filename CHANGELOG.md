@@ -5,6 +5,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## blocklist_bypass_lab — MCP-T44 (2026-05-10)
+
+### New lab: Blocklist Bypass via Incomplete Input Filter
+
+- **`blocklist_bypass_lab`** (MCP-T44, Lane 2 / Transport A) — teaches that
+  server-side blocklists invite bypass research. The filter blocks common shells,
+  interpreters, and metacharacters (`|`, `&`, `$`, `>`, `<`) but misses `perl`
+  on easy/medium. Attackers use `qq{}` quoting and `sysopen` with numeric flags
+  to construct payloads using only allowed characters.
+- Two tools: `exec.list_approved` (discovery), `exec.run_query` (filtered execution).
+- Hard mode: `perl` is added to the blocklist; `awk BEGIN{system(...)}` is the gap.
+- 23 unit tests covering all three difficulty levels, full bypass chain, and
+  metacharacter enforcement. Badge count: 42 → 43 labs.
+
+---
+
 ## dpop_forgery_lab — MCP-T43 (2026-05-10)
 
 ### New lab: DPoP Key Exposure and JWT Forgery
