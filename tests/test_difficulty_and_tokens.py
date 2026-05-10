@@ -23,6 +23,26 @@ def test_config_includes_brain_metadata(monkeypatch) -> None:
     }
 
 
+def test_model_switch_updates_brain_metadata(monkeypatch) -> None:
+    from brain_gateway.app import config as cfg
+    monkeypatch.setenv("BRAIN_PROVIDER", "cloud")
+    monkeypatch.setenv("CAMAZOTZ_MODEL", "claude-original")
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    cfg.set_runtime_model("claude-new-model")
+    try:
+        client = TestClient(app)
+        payload = client.get("/config").json()
+        assert payload["brain"]["model"] == "claude-new-model"
+    finally:
+        cfg.set_runtime_model("")
+
+
+def test_model_switch_empty_string_rejected(monkeypatch) -> None:
+    client = TestClient(app)
+    resp = client.put("/config", json={"model": ""})
+    assert resp.status_code == 400
+
+
 def test_show_tokens_off_by_default(monkeypatch) -> None:
     monkeypatch.delenv("CAMAZOTZ_SHOW_TOKENS", raising=False)
     client = TestClient(app)

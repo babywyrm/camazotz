@@ -14,6 +14,7 @@ VALID_DIFFICULTIES: Final[tuple[Difficulty, ...]] = ("easy", "medium", "hard")
 
 _lock = threading.Lock()
 _runtime_difficulty: str | None = None
+_runtime_model: str | None = None
 
 
 def get_difficulty() -> str:
@@ -42,6 +43,20 @@ def reset_difficulty() -> None:
         _runtime_difficulty = None
 
 
+def get_runtime_model() -> str | None:
+    """Return the runtime model override, or None if none is set."""
+    with _lock:
+        return _runtime_model or None
+
+
+def set_runtime_model(model: str) -> str:
+    """Set a runtime model override. Pass empty string to clear."""
+    global _runtime_model
+    with _lock:
+        _runtime_model = model.strip() or None
+        return _runtime_model or ""
+
+
 def show_tokens() -> bool:
     """Whether to include ``_usage`` metadata in tool responses."""
     return os.getenv("CAMAZOTZ_SHOW_TOKENS", "").lower() in ("true", "1", "yes")
@@ -50,12 +65,14 @@ def show_tokens() -> bool:
 def get_brain_metadata() -> dict[str, str]:
     """Return read-only metadata for the active inference backend."""
     provider = os.getenv("BRAIN_PROVIDER", "cloud").lower().strip() or "cloud"
+    runtime = get_runtime_model()
     if provider == "local":
-        model = get_ollama_model()
+        model = runtime or get_ollama_model()
         mode = "live"
     elif provider == "bedrock":
         model = (
-            os.getenv("CAMAZOTZ_BEDROCK_MODEL")
+            runtime
+            or os.getenv("CAMAZOTZ_BEDROCK_MODEL")
             or os.getenv("CAMAZOTZ_MODEL")
             or ""
         ).strip()
@@ -67,7 +84,7 @@ def get_brain_metadata() -> dict[str, str]:
             mode = "live"
     else:
         provider = "cloud"
-        model = os.getenv("CAMAZOTZ_MODEL", "claude-sonnet-4-20250514")
+        model = runtime or os.getenv("CAMAZOTZ_MODEL", "claude-sonnet-4-20250514")
         mode = "live" if os.getenv("ANTHROPIC_API_KEY", "").strip() else "stub"
 
     return {
