@@ -67,6 +67,43 @@ def test_base_layout_contains_brain_badge(frontend_client) -> None:
     assert b'id="brainModel"' in resp.data
 
 
+def test_brain_pill_is_interactive_when_multiple_models(frontend_client) -> None:
+    """When /api/config returns available_models with >1 entry, the pill has
+    data-brain-interactive='true' so JS enables the dropdown."""
+    client, _ = frontend_client
+    config_mock = MagicMock()
+    config_mock.status_code = 200
+    config_mock.json.return_value = {
+        "difficulty": "medium",
+        "show_tokens": False,
+        "idp_provider": "mock",
+        "idp_backed_labs": [],
+        "idp_backed_tools": [],
+        "brain": {
+            "provider": "local",
+            "model": "llama3.2:3b",
+            "mode": "live",
+            "available_models": [
+                {"id": "llama3.2:3b", "label": "llama3.2:3b", "source": "ollama"},
+                {"id": "qwen3.5:0.8b", "label": "qwen3.5:0.8b", "source": "ollama"},
+            ],
+        },
+    }
+    config_mock.raise_for_status = MagicMock()
+    scenarios_mock = MagicMock()
+    scenarios_mock.status_code = 200
+    scenarios_mock.json.return_value = []
+    scenarios_mock.raise_for_status = MagicMock()
+
+    def _side_effect(url, **kw):
+        return config_mock if "config" in url else scenarios_mock
+
+    with patch.object(httpx, "get", side_effect=_side_effect):
+        resp = client.get("/")
+    assert resp.status_code == 200
+    assert b'data-brain-interactive="true"' in resp.data
+
+
 def test_playground_page(frontend_client) -> None:
     client, mod = frontend_client
     tools_result = {"tools": [
