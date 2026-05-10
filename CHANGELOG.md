@@ -5,6 +5,24 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## agent_chain_direct_api_lab — MCP-T45 (2026-05-10)
+
+### New lab: Agent-to-Agent Identity Dilution via Direct API Credential Forwarding
+
+- **`agent_chain_direct_api_lab`** (MCP-T45, Lane 4+3 / Transport B) — fills
+  the **Lane 4 / Transport B** matrix gap. Agent A calls Agent B via direct
+  REST/HTTP API, forwarding the credential without audience narrowing or
+  act-chain claims. Agent B audits the action as the forwarded credential's
+  original subject — creating an attribution gap.
+- Three tools: `chain.get_service_manifest` (topology discovery),
+  `chain.call_downstream` (forwarded credential execution), and
+  `chain.inspect_audit_log` (attribution gap exposure).
+- Hard mode: Agent B validates the aud claim, but it passes because Agent A's
+  token has the same audience — the forwarding still succeeds.
+- 12 unit tests. Badge count: 43 → 44 labs. Fills Lane 4 / Transport B gap.
+
+---
+
 ## blocklist_bypass_lab — MCP-T44 (2026-05-10)
 
 ### New lab: Blocklist Bypass via Incomplete Input Filter

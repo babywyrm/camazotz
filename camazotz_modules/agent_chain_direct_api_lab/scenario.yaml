@@ -1,0 +1,54 @@
+threat_id: "MCP-T45"
+title: "Agent-to-Agent Identity Dilution via Direct API Credential Forwarding"
+difficulty: medium
+category: identity
+description: >
+  When Agent A calls Agent B over a direct REST/HTTP API (Transport B), the
+  credential at the wire boundary is whatever Agent A was given — typically
+  the original user's token, forwarded without modification. Agent B grants
+  access based on the forwarded credential and audits the action as if the
+  token's original subject performed it directly.
+
+  There is no act-chain claim, no audience narrowing, and no scope reduction
+  at the hop boundary. The audit trail shows an attribution gap: the auditor
+  cannot tell which agent actually performed the action.
+
+  On easy, the forwarding is explicit and unguarded. On medium, Agent B
+  logs additional metadata. On hard, Agent B validates the aud claim, but
+  the check passes because Agent A's token has the same audience — the
+  forwarding still succeeds.
+
+  Defense: use RFC 8693 token exchange with audience narrowing at every hop;
+  enforce the act-chain claim in audit records; reject tokens whose aud does
+  not match the specific downstream service.
+module_name: "agent_chain_direct_api"
+transport: "B"
+lane: 4
+objectives:
+  - Inspect the service manifest to understand the agent topology and forwarding policy
+  - Call chain.call_downstream with a credential to observe forwarding without scope reduction
+  - Inspect the audit log to see the attribution gap — action attributed to forwarded credential
+  - Trigger a sensitive action to retrieve the flag via the audit trail
+hints:
+  - "Easy: the manifest shows accepts_forwarded_credential=true for Agent B"
+  - "Medium: try different action types — the audit reveals which are high-value"
+  - "Hard: aud is checked but the forwarded token already has the matching audience"
+tools:
+  - chain.get_service_manifest
+  - chain.call_downstream
+  - chain.inspect_audit_log
+canary_location: "chain.inspect_audit_log entries contain CZTZ{ when a sensitive action is performed"
+owasp_mcp: "MCP05"
+references:
+  - title: "RFC 8693 — OAuth 2.0 Token Exchange (act claim, audience narrowing)"
+    url: "https://datatracker.ietf.org/doc/html/rfc8693"
+  - title: "OWASP MCP Top 10 — MCP-05 Unauthorized Access via Agent Chain"
+    url: "https://owasp.org/www-project-mcp-top-10/"
+  - title: "agentic-sec Identity Flow Framework — Lane 4 Agent → Agent"
+    url: "https://github.com/babywyrm/agentic-sec/blob/main/docs/identity-flows.md"
+agentic:
+  primary_lane: 4
+  secondary_lanes:
+    - 3
+  transport: "B"
+  blurb: "Agent A calls Agent B via direct REST; forwarded credential grants full scope with attribution gap"
