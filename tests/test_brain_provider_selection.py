@@ -338,3 +338,40 @@ def test_registry_discover_handles_bad_module() -> None:
     with patch("brain_gateway.app.modules.registry.pkgutil.walk_packages", side_effect=mock_walk):
         reg = LabRegistry()
     assert len(reg._modules) >= 7
+
+
+def test_cloud_provider_uses_runtime_model_over_env(monkeypatch) -> None:
+    from brain_gateway.app import config as cfg
+    monkeypatch.setenv("BRAIN_PROVIDER", "cloud")
+    monkeypatch.setenv("CAMAZOTZ_MODEL", "claude-env-model")
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    cfg.set_runtime_model("claude-runtime-model")
+    reset_provider()
+    try:
+        p = get_provider()
+        result = p.generate("test")
+        assert result.model == "claude-runtime-model"
+    finally:
+        cfg.set_runtime_model("")
+        reset_provider()
+
+
+def test_local_provider_uses_runtime_model_over_env(monkeypatch) -> None:
+    from brain_gateway.app import config as cfg
+    monkeypatch.setenv("BRAIN_PROVIDER", "local")
+    monkeypatch.setenv("CAMAZOTZ_OLLAMA_MODEL", "llama-env")
+    cfg.set_runtime_model("qwen3.5:0.8b")
+    reset_provider()
+    try:
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "response": "ok", "eval_count": 1, "prompt_eval_count": 1
+        }
+        with patch("brain_gateway.app.brain.local_ollama.httpx.post", return_value=mock_resp):
+            p = get_provider()
+            result = p.generate("test")
+        assert result.model == "qwen3.5:0.8b"
+    finally:
+        cfg.set_runtime_model("")
+        reset_provider()

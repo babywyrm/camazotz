@@ -25,7 +25,14 @@ class BedrockClaudeProvider:
     name: str = "bedrock"
 
     def __init__(self) -> None:
+        from brain_gateway.app.config import get_runtime_model
         self._region: str = os.getenv("AWS_REGION") or os.getenv("AWS_DEFAULT_REGION") or ""
+        self._model: str = (
+            get_runtime_model()
+            or os.getenv("CAMAZOTZ_BEDROCK_MODEL")
+            or os.getenv("CAMAZOTZ_MODEL")
+            or ""
+        ).strip()
         self._client: anthropic.AnthropicBedrock | None
         if os.getenv("CAMAZOTZ_BEDROCK_STUB", "").lower() in ("1", "true", "yes"):
             self._client = None
@@ -40,8 +47,7 @@ class BedrockClaudeProvider:
         if self._client is None:
             return BrainResult(text=f"[bedrock-stub] {prompt}")
 
-        model = (os.getenv("CAMAZOTZ_BEDROCK_MODEL") or os.getenv("CAMAZOTZ_MODEL") or "").strip()
-        if not model:
+        if not self._model:
             return BrainResult(
                 text=(
                     "[bedrock-error] Set CAMAZOTZ_MODEL or CAMAZOTZ_BEDROCK_MODEL "
@@ -50,7 +56,7 @@ class BedrockClaudeProvider:
             )
         try:
             resp = self._client.messages.create(
-                model=model,
+                model=self._model,
                 max_tokens=512,
                 system=system or "You are a tool inside the Camazotz MCP security lab.",
                 messages=[{"role": "user", "content": prompt}],

@@ -12,8 +12,12 @@ class LocalOllamaProvider:
     name = "local"
 
     def __init__(self) -> None:
+        from brain_gateway.app.config import get_runtime_model
         self._base_url = os.getenv("OLLAMA_HOST", _DEFAULT_OLLAMA_URL).rstrip("/")
-        self._model = os.getenv("CAMAZOTZ_OLLAMA_MODEL", _DEFAULT_MODEL)
+        self._model = (
+            get_runtime_model()
+            or os.getenv("CAMAZOTZ_OLLAMA_MODEL", _DEFAULT_MODEL)
+        )
 
     def generate(self, prompt: str, system: str = "") -> BrainResult:
         payload: dict = {
