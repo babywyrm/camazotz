@@ -6,6 +6,7 @@ import threading
 from brain_gateway.app.brain.bedrock_claude import BedrockClaudeProvider
 from brain_gateway.app.brain.cloud_claude import CloudClaudeProvider
 from brain_gateway.app.brain.local_ollama import LocalOllamaProvider
+from brain_gateway.app.brain.openai_provider import OpenAIProvider
 from brain_gateway.app.brain.provider import BrainProvider
 
 _lock = threading.Lock()
@@ -22,6 +23,8 @@ def get_provider() -> BrainProvider:
                 _instance = LocalOllamaProvider()
             elif mode == "bedrock":
                 _instance = BedrockClaudeProvider()
+            elif mode == "openai":
+                _instance = OpenAIProvider()
             else:
                 _instance = CloudClaudeProvider()
         return _instance

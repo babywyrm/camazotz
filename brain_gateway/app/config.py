@@ -82,6 +82,9 @@ def get_brain_metadata() -> dict[str, str]:
             mode = "unconfigured"
         else:
             mode = "live"
+    elif provider == "openai":
+        model = runtime or os.getenv("CAMAZOTZ_MODEL", "gpt-4o")
+        mode = "live" if os.getenv("OPENAI_API_KEY", "").strip() else "stub"
     else:
         provider = "cloud"
         model = runtime or os.getenv("CAMAZOTZ_MODEL", "claude-sonnet-4-20250514")
@@ -148,6 +151,9 @@ def get_available_models(provider: str, ollama_host: str) -> list[dict[str, str]
         "claude-haiku-4-5",
         "claude-opus-4-7",
     ]
+    if provider == "openai":
+        active = get_runtime_model() or os.getenv("CAMAZOTZ_MODEL", "gpt-4o")
+        _CLOUD_DEFAULTS = ["gpt-4o", "gpt-4o-mini", "o1", "o3-mini"]
     ids = list(dict.fromkeys([active] + _CLOUD_DEFAULTS))  # active first, deduped
     return [{"id": m, "label": m, "source": "builtin"} for m in ids]
 

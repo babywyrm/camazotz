@@ -375,3 +375,55 @@ def test_local_provider_uses_runtime_model_over_env(monkeypatch) -> None:
     finally:
         cfg.set_runtime_model("")
         reset_provider()
+
+
+def test_openai_provider_selected(monkeypatch) -> None:
+    reset_provider()
+    monkeypatch.setenv("BRAIN_PROVIDER", "openai")
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    provider = get_provider()
+    assert provider.name == "openai"
+    result = provider.generate("hello")
+    assert "[openai-stub]" in result.text
+    assert result.input_tokens == 0
+    reset_provider()
+
+
+def test_openai_provider_uses_runtime_model_over_env(monkeypatch) -> None:
+    from brain_gateway.app import config as cfg
+    monkeypatch.setenv("BRAIN_PROVIDER", "openai")
+    monkeypatch.setenv("CAMAZOTZ_MODEL", "gpt-4o")
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    cfg.set_runtime_model("gpt-4o-mini")
+    reset_provider()
+    try:
+        provider = get_provider()
+        result = provider.generate("test")
+        assert result.model == "gpt-4o-mini"
+    finally:
+        cfg.set_runtime_model("")
+        reset_provider()
+
+
+def test_openai_provider_calls_api_when_key_set(monkeypatch) -> None:
+    reset_provider()
+    monkeypatch.setenv("BRAIN_PROVIDER", "openai")
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test-fake")
+    monkeypatch.setenv("CAMAZOTZ_MODEL", "gpt-4o")
+    mock_response = MagicMock()
+    mock_response.choices = [MagicMock()]
+    mock_response.choices[0].message.content = "hello from openai"
+    mock_response.usage.prompt_tokens = 5
+    mock_response.usage.completion_tokens = 10
+    mock_response.model = "gpt-4o"
+    with patch("brain_gateway.app.brain.openai_provider.openai.OpenAI") as mock_cls:
+        mock_client = MagicMock()
+        mock_cls.return_value = mock_client
+        mock_client.chat.completions.create.return_value = mock_response
+        provider = get_provider()
+        result = provider.generate("test prompt")
+    assert result.text == "hello from openai"
+    assert result.input_tokens == 5
+    assert result.output_tokens == 10
+    assert result.model == "gpt-4o"
+    reset_provider()
