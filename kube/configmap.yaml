@@ -24,4 +24,9 @@ data:
   CAMAZOTZ_IDP_CLIENT_ID: "camazotz-gateway"
   GATEWAY_URL: "http://brain-gateway:8080"
   OBSERVER_POLL_INTERVAL: "2"
+  OBSERVER_BUFFER_SIZE: "50"
   LOG_LEVEL: "info"
+  # Move OPENAI_API_KEY to secret.yaml — it should not live in a ConfigMap.
+  # This entry is kept blank for backward compat with older kustomize configs.
+  # Prefer camazotz-secrets.OPENAI_API_KEY (see kube/secret.yaml).
+  OPENAI_API_KEY: ""

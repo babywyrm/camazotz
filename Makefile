@@ -36,14 +36,6 @@ up-policed: env ## Start stack with the nullfield sidecar overlay (adds :9090 po
 	@echo "  Run the agentic feedback loop: make feedback-loop-print"
 	@echo "  Run with Claude AI analysis:   CLAUDE=1 make campaign SCENARIO=customer-support-bot"
 	@echo ""
-	@echo ""
-	@echo "  Portal:  http://localhost:3000"
-	@echo "  Gateway: http://localhost:8080"
-	@echo "  Ollama:  http://localhost:11434"
-	@echo ""
-	@echo "  Model will be pulled automatically by ollama-init."
-	@echo "  Run 'make logs-init' to watch progress."
-	@echo ""
 
 down: ## Stop all services and remove containers
 	$(COMPOSE) --env-file $(ENV_FILE) --profile local down
