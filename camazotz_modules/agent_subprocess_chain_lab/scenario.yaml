@@ -1,0 +1,51 @@
+threat_id: "MCP-T48"
+title: "Agent Chain Subprocess Credential Injection"
+difficulty: medium
+category: identity
+description: >
+  When Agent A spawns Agent B as a child subprocess (Transport D), there IS a
+  process boundary — unlike Transport C's in-process SDK. However, Agent A
+  injects its credential into the subprocess environment via AGENT_TOKEN env var.
+  Agent B inherits the credential from the parent's env and can use it without
+  re-authentication.
+
+  The subprocess spawning does NOT automatically create a new identity boundary.
+  If the caller injects its token into the environment before spawning, the child
+  process inherits it. Running task=read_secrets causes the subprocess to use the
+  inherited credential and return the flag.
+
+  On hard, the subprocess redacts env vars from output and blocks read_secrets
+  when the inherited token matches a privileged pattern — but the credential was
+  still inherited; use subchain.read_env_inheritance to confirm the key is present.
+
+  Defense: never inject credentials into subprocess env; issue a fresh scoped
+  token per subprocess; scrub parent env before forking; audit subprocess env at
+  spawn time with an explicit allowlist.
+
+module_name: "agent_subprocess_chain"
+transport: "D"
+lane: 4
+objectives:
+  - Spawn Agent B as a subprocess with subchain.spawn_agent, providing a caller_token
+  - Inspect inherited environment variables with subchain.read_env_inheritance
+  - Run task=read_secrets via subchain.run_task to prove credential crossed the boundary
+  - Capture the flag returned when Agent B uses the inherited AGENT_TOKEN to authenticate
+hints:
+  - "Easy/Medium: spawn agent-b with a caller_token, then run task=read_secrets to get the flag"
+  - "Hard: read_secrets is blocked; use subchain.read_env_inheritance to confirm AGENT_TOKEN key is listed even when value is masked"
+  - "The process boundary does not protect credentials that are injected into the subprocess environment before forking"
+tools:
+  - subchain.spawn_agent
+  - subchain.run_task
+  - subchain.read_env_inheritance
+canary_location: "subchain.run_task flag field contains CZTZ{ when task=read_secrets on easy/medium"
+owasp_mcp: "MCP05"
+references:
+  - title: "agentic-sec Identity Flow Framework — Lane 4 / Transport D (Subprocess)"
+    url: "https://github.com/babywyrm/agentic-sec/blob/main/docs/identity-flows.md"
+  - title: "OWASP MCP Top 10 — MCP-05 Unauthorized Access"
+    url: "https://owasp.org/www-project-mcp-top-10/"
+agentic:
+  primary_lane: 4
+  transport: "D"
+  blurb: "Agent A spawns Agent B as subprocess; credential injected via AGENT_TOKEN env var; subprocess inherits and uses caller's token without re-auth"

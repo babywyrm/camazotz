@@ -3,6 +3,28 @@
 All notable changes to Camazotz are documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## agent_llm_chain_lab — MCP-T49 (2026-05-10)
+
+### New lab: Agent Chain LLM Function-Calling Context Leak
+
+- **`agent_llm_chain_lab`** (MCP-T49, Lane 4 / Transport E) — fills the **Lane 4 / Transport E** matrix gap. Agent A registers Agent B as a callable LLM function; the human's credential is embedded in the system prompt; when the LLM dispatches the function call, the full context — including the credential — is passed to Agent B.
+- Three tools: `llmchain.register_function` (stores context), `llmchain.call_with_context` (dispatches call with credential in args), `llmchain.inspect_context` (reveals raw context, even on hard).
+- Hard mode: `call_with_context` does not echo the credential; `inspect_context` still returns the raw system_context revealing it was passed.
+- 14 tests. Badge count: 47 → 48 labs.
+
+---
+
+## agent_subprocess_chain_lab — MCP-T48 (2026-05-10)
+
+### New lab: Agent Chain Subprocess Credential Injection
+
+- **`agent_subprocess_chain_lab`** (MCP-T48, Lane 4 / Transport D) — fills the **Lane 4 / Transport D** matrix gap. Agent A spawns Agent B as a subprocess and injects its bearer token via the `AGENT_TOKEN` environment variable. Agent B inherits it without re-authentication.
+- Three tools: `subchain.spawn_agent` (injects `AGENT_TOKEN` into subprocess env), `subchain.run_task` (task dispatched using inherited token), `subchain.read_env_inheritance` (diagnostic: shows env vars including `AGENT_TOKEN`).
+- Hard mode: `read_secrets` blocked; `AGENT_TOKEN` masked as `****` in env inspection output.
+- 14 tests. Badge count: 46 → 47 labs.
+
+---
+
 ---
 
 ## agent_sdk_chain_lab — MCP-T47 (2026-05-10)

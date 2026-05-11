@@ -1,0 +1,49 @@
+threat_id: "MCP-T49"
+title: "Agent Chain LLM Function-Calling Context Leak"
+difficulty: medium
+category: identity
+description: >
+  When Agent A registers Agent B as a callable function in an LLM's
+  function-calling interface (Transport E), the LLM passes the full
+  conversation context — including any credential embedded in the system
+  prompt — as part of the function arguments. Agent B receives the raw
+  context and can read the credential without any additional auth step.
+
+  On easy, call_with_context returns the extracted credential directly
+  alongside the flag. On medium, the credential is partially redacted in
+  the response but the flag is still returned and inspect_context reveals
+  the raw value. On hard, call_with_context does not echo the credential
+  back, but inspect_context exposes the full system_context that was
+  forwarded — proving the context leak occurred regardless.
+
+  Defense: strip credential fields from conversation context before
+  dispatching any LLM function call; scope each function's context to
+  only what it needs; log function-call payloads for audit; apply a
+  context sanitisation layer between the LLM and registered functions.
+module_name: "agent_llm_chain"
+transport: "E"
+lane: 4
+objectives:
+  - Register Agent B as a callable function with llmchain.register_function, embedding a credential in system_context
+  - Invoke the function via llmchain.call_with_context and observe the credential in the response
+  - Use llmchain.inspect_context to confirm the raw system_context (with credential) was forwarded
+  - Collect the flag returned when a credential is detected in the function-calling context
+hints:
+  - "Embed a recognisable credential (e.g. 'token: cztz-secret') in system_context when registering"
+  - "On hard, call_with_context won't echo the credential — use inspect_context to see what was actually passed"
+  - "Any function the LLM calls receives the full conversation context, not a scoped subset"
+tools:
+  - llmchain.register_function
+  - llmchain.call_with_context
+  - llmchain.inspect_context
+canary_location: "llmchain.call_with_context flag field contains CZTZ{ when system_context contains a credential"
+owasp_mcp: "MCP05"
+references:
+  - title: "agentic-sec Identity Flow Framework — Lane 4 / Transport E (LLM Function-Calling)"
+    url: "https://github.com/babywyrm/agentic-sec/blob/main/docs/identity-flows.md"
+  - title: "OWASP MCP Top 10 — MCP-05 Unauthorized Access"
+    url: "https://owasp.org/www-project-mcp-top-10/"
+agentic:
+  primary_lane: 4
+  transport: "E"
+  blurb: "LLM function-calling forwards full conversation context (including credentials) to every registered function Agent B can read"
