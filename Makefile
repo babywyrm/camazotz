@@ -76,6 +76,30 @@ test-zitadel-flows: ## Run dedicated ZITADEL flow tests
 test-v: ## Run pytest verbose
 	uv run pytest -v
 
+test-identity: ## Run identity/auth/delegation/DPoP labs only
+	uv run pytest -m identity -q --no-cov
+
+test-injection: ## Run prompt-injection/blocklist/SSRF labs only
+	uv run pytest -m injection -q --no-cov
+
+test-secrets: ## Run credential-leak/exfiltration/persistence labs only
+	uv run pytest -m secrets -q --no-cov
+
+test-governance: ## Run AI-governance/tool-mutation/hallucination labs only
+	uv run pytest -m governance -q --no-cov
+
+test-defense: ## Run policy-authoring/response-inspection/budget-tuning labs only
+	uv run pytest -m defense -q --no-cov
+
+test-teleport: ## Run Teleport machine-identity labs only
+	uv run pytest -m teleport -q --no-cov
+
+test-infra: ## Run infrastructure tests only (no lab tests)
+	uv run pytest -m infrastructure -q --no-cov
+
+test-fast: ## Run full suite, skip slow live-path tests
+	uv run pytest -m "not slow" -q --no-cov
+
 qa: ## Run QA harness against live gateway (all modules × all guardrails)
 	uv run python scripts/qa_harness.py
 
