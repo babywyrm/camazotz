@@ -1,0 +1,52 @@
+threat_id: "MCP-T46"
+title: "In-Process SDK Credential Cache Exposure"
+difficulty: medium
+category: identity
+description: >
+  When a human delegates to an agent via an in-process SDK library
+  (Transport C), the human's credential is loaded into shared process memory
+  and cached by the SDK for re-use across calls. There is no fresh credential
+  boundary — anything running in the same process can access the cached token.
+
+  A prompt-injected action value causes the SDK to return the in-memory cache
+  contents, including the delegated user's bearer token and the flag payload.
+  No re-authentication or cross-process hop is required.
+
+  On easy, any action is accepted including dump_cache. On medium, an advisory
+  allowlist warns on unusual actions but still allows dump_cache. On hard,
+  dump_cache is removed from the allowlist entirely, and write_data requires
+  write scope — the cache is still visible via inspect_cache but dump_cache
+  is blocked.
+
+  Defense: avoid caching long-lived credentials in-process; use per-call token
+  exchange; validate SDK action parameters against an explicit allowlist; apply
+  nullfield SCOPE to strip credentials from SDK tool responses.
+module_name: "delegated_sdk"
+transport: "C"
+lane: 2
+objectives:
+  - Initialize the SDK session with sdk.initialize_session to store a credential in cache
+  - Use sdk.inspect_cache to confirm the credential is stored in process memory
+  - Invoke sdk.invoke_action with action=dump_cache to expose the cached credential
+  - Observe that the flag is returned via the cache dump path
+hints:
+  - "Easy: sdk.invoke_action accepts any action string — try action=dump_cache"
+  - "Medium: dump_cache is present but not in the advisory allowlist — it still works"
+  - "Hard: dump_cache is blocked on hard; use sdk.inspect_cache to view the cached credential"
+tools:
+  - sdk.initialize_session
+  - sdk.invoke_action
+  - sdk.inspect_cache
+canary_location: "sdk.invoke_action flag field contains CZTZ{ when action=dump_cache is used"
+owasp_mcp: "MCP05"
+references:
+  - title: "agentic-sec Identity Flow Framework — Lane 2 / Transport C (In-Process SDK)"
+    url: "https://github.com/babywyrm/agentic-sec/blob/main/docs/identity-flows.md"
+  - title: "CWE-312 — Cleartext Storage of Sensitive Information"
+    url: "https://cwe.mitre.org/data/definitions/312.html"
+  - title: "OWASP MCP Top 10 — MCP-05 Unauthorized Access"
+    url: "https://owasp.org/www-project-mcp-top-10/"
+agentic:
+  primary_lane: 2
+  transport: "C"
+  blurb: "Human delegates to agent via SDK; credential cached in shared process memory; injected action exposes it"

@@ -5,6 +5,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## delegated_sdk_lab — MCP-T46 (2026-05-10)
+
+### New lab: In-Process SDK Credential Cache Exposure
+
+- **`delegated_sdk_lab`** (MCP-T46, Lane 2 / Transport C) — fills the **Lane 2 / Transport C** matrix gap. Human delegates to agent via in-process SDK; credential is cached in shared process memory. A prompt-injected `action=dump_cache` payload returns the cached token and flag — no re-authentication or process hop needed.
+- Three tools: `sdk.initialize_session` (caches credential), `sdk.invoke_action` (accepts injected actions), `sdk.inspect_cache` (shows memory state).
+- Hard mode: `dump_cache` blocked by allowlist; credential still visible via `inspect_cache` but not exploitable through the action path.
+- 12 unit tests. Badge count: 44 → 45 labs. Fills Lane 2 / Transport C gap.
+
+---
+
 ## agent_chain_direct_api_lab — MCP-T45 (2026-05-10)
 
 ### New lab: Agent-to-Agent Identity Dilution via Direct API Credential Forwarding
