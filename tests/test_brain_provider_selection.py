@@ -211,7 +211,7 @@ def test_registry_auto_discovery() -> None:
     reset_registry()
     registry = get_registry()
     names = {m.name for m in registry._modules}
-    assert names == {"agent_chain_direct_api", "agent_http_bypass", "ai_governance_bypass", "attribution", "audit", "auth", "blocklist_bypass", "bot_identity_theft", "budget_tuning", "cert_replay", "code_review", "comms", "config", "context", "cost", "cred_broker", "delegation", "delegation_depth", "dpop_forgery", "downgrade", "egress", "error", "function_calling", "hallucination", "indirect", "langchain_tool", "notification", "oauth", "policy_authoring", "rag", "rbac", "relay", "response_inspection", "revocation", "sdk_tamper", "secrets", "shadow", "shared_idp_pollution", "subprocess", "supply", "teleport_role_escalation", "temporal", "tenant", "tool"}
+    assert names == {"agent_chain_direct_api", "agent_http_bypass", "agent_sdk_chain", "ai_governance_bypass", "attribution", "audit", "auth", "blocklist_bypass", "bot_identity_theft", "budget_tuning", "cert_replay", "code_review", "comms", "config", "context", "cost", "cred_broker", "delegated_sdk", "delegation", "delegation_depth", "dpop_forgery", "downgrade", "egress", "error", "function_calling", "hallucination", "indirect", "langchain_tool", "notification", "oauth", "policy_authoring", "rag", "rbac", "relay", "response_inspection", "revocation", "sdk_tamper", "secrets", "shadow", "shared_idp_pollution", "subprocess", "supply", "teleport_role_escalation", "temporal", "tenant", "tool"}
     reset_registry()
 
 
