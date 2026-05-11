@@ -1,0 +1,49 @@
+threat_id: "MCP-T47"
+title: "Agent Chain In-Process SDK Identity Dilution"
+difficulty: medium
+category: identity
+description: >
+  When Agent A uses an in-process SDK library to invoke Agent B (Transport C),
+  there is no network hop, no token re-issuance, and no DPoP boundary.
+  Agent A's credential is forwarded implicitly and all of Agent B's actions
+  are attributed to Agent A in downstream audit logs — Agent B is invisible.
+
+  An escalate_privilege task delegated to Agent B succeeds because the SDK
+  dispatches it using Agent A's forwarded credential. No additional auth check
+  occurs at the in-process boundary. The flag is returned in the delegation
+  response.
+
+  On hard, the allowed task manifest blocks escalate_privilege; only
+  process_data, list_resources, and get_status are permitted.
+
+  Defense: issue a fresh, scoped token for each agent-to-agent hop; require
+  the SDK to log agent_b_id as a separate audit actor; restrict callable tasks
+  via a checked SDK manifest; apply nullfield SCOPE to redact credential fields
+  from delegation responses.
+module_name: "agent_sdk_chain"
+transport: "C"
+lane: 4
+objectives:
+  - Load agent-b in-process with chain.load_agent, providing a caller_token
+  - Confirm the audit log attributes actions to Agent A (chain.read_audit_log)
+  - Delegate task=escalate_privilege to agent-b with chain.delegate_task
+  - Observe that the flag is returned because the in-process SDK skips auth boundary
+hints:
+  - "Easy/Medium: delegate task=escalate_privilege directly — no scope check"
+  - "Hard: escalate_privilege is blocked; enumerate the task manifest from the description"
+  - "The audit log always shows Agent A as actor — Agent B's identity is lost"
+tools:
+  - chain.load_agent
+  - chain.delegate_task
+  - chain.read_audit_log
+canary_location: "chain.delegate_task flag field contains CZTZ{ when task=escalate_privilege"
+owasp_mcp: "MCP05"
+references:
+  - title: "agentic-sec Identity Flow Framework — Lane 4 / Transport C (In-Process SDK)"
+    url: "https://github.com/babywyrm/agentic-sec/blob/main/docs/identity-flows.md"
+  - title: "OWASP MCP Top 10 — MCP-05 Unauthorized Access"
+    url: "https://owasp.org/www-project-mcp-top-10/"
+agentic:
+  primary_lane: 4
+  transport: "C"
+  blurb: "Agent A loads Agent B as SDK library; no token re-issuance; Agent B's identity erased from audit logs"

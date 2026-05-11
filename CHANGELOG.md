@@ -5,6 +5,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## agent_sdk_chain_lab — MCP-T47 (2026-05-10)
+
+### New lab: Agent Chain In-Process SDK Identity Dilution
+
+- **`agent_sdk_chain_lab`** (MCP-T47, Lane 4 / Transport C) — fills the **Lane 4 / Transport C** matrix gap. Agent A loads Agent B as an in-process SDK library; Agent A's credential is forwarded implicitly, Agent B executes `escalate_privilege` using it, and Agent B's identity is completely absent from the audit log.
+- Three tools: `chain.load_agent` (registers sub-agent in-process), `chain.delegate_task` (dispatches task with forwarded cred), `chain.read_audit_log` (shows identity dilution).
+- Hard mode: SDK task manifest blocks `escalate_privilege`; only `process_data`, `list_resources`, `get_status` are permitted.
+- 12 unit tests. Badge count: 45 → 46 labs. Fills Lane 4 / Transport C gap. **Transport matrix now complete.**
+
+---
+
 ## delegated_sdk_lab — MCP-T46 (2026-05-10)
 
 ### New lab: In-Process SDK Credential Cache Exposure
