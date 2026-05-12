@@ -1,0 +1,139 @@
+# Campaign E: Enterprise AI-Ops Platform
+# ─────────────────────────────────────────────────────────────────────────────
+# Persona:  Enterprise AI-Ops platform — infrastructure agents that automate
+#           deployment approvals, config changes, and certificate rotation.
+#           Shared IdP, DPoP-bound tokens, command blocklist, in-process SDK
+#           sub-agents. Five-lab attack chain: MCP-T42 → T43 → T44 → T46 → T47.
+# Transports: A (MCP), C (in-process SDK)  |  Lanes: 1, 2, 3, 4
+# Generated from: mcpnuke --generate-policy + hand-tuned for this scenario
+#
+# Apply:  kubectl apply -f kube/policies/enterprise-ai-ops.yaml -n camazotz
+# Remove: kubectl delete -f kube/policies/enterprise-ai-ops.yaml -n camazotz
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: nullfield.io/v1alpha1
+kind: NullfieldPolicy
+metadata:
+  name: enterprise-ai-ops-policy
+  namespace: camazotz
+  labels:
+    scenario: enterprise-ai-ops
+    generated-by: mcpnuke
+spec:
+  selector:
+    matchLabels:
+      app: brain-gateway
+  rules:
+
+    # MCP-T42: Block cross-service token minting.
+    # Platform agent may not mint tokens with other services' scope.
+    - action: DENY
+      mcpMethod: tools/call
+      toolNames:
+        - "platform.mint_token"
+      reason: "Campaign E: Token scope must stay within platform-agent service boundary."
+
+    # MCP-T42: Redact shared IdP config from service discovery responses.
+    - action: SCOPE
+      mcpMethod: tools/call
+      toolNames:
+        - "platform.get_service_config"
+      reason: "Campaign E: Service config must not expose cross-service IdP topology."
+      scope:
+        response:
+          redactPatterns:
+            - "shared_idp_hint"
+            - "other_services"
+            - "client_secret"
+            - "idp_admin_token"
+
+    # MCP-T43: Redact DPoP key material from all service info responses.
+    - action: SCOPE
+      mcpMethod: tools/call
+      toolNames:
+        - "dpop.get_service_info"
+      reason: "Campaign E: DPoP private key material must never appear in tool responses."
+      scope:
+        response:
+          redactPatterns:
+            - "dpop_key_hint"
+            - "private_key"
+            - "key_material"
+            - "pem"
+
+    # MCP-T43: Require DPoP proof on all protected resource access calls.
+    - action: DENY
+      mcpMethod: tools/call
+      toolNames:
+        - "dpop.access_resource"
+      reason: "Campaign E: Resource access requires a valid DPoP proof — bare bearer tokens rejected."
+
+    # MCP-T43: Block URL redirects in DPoP tool calls (SSRF via open redirect).
+    - action: SCOPE
+      mcpMethod: tools/call
+      toolNames:
+        - "dpop.*"
+      reason: "Campaign E: DPoP tools must not follow URL redirects."
+      scope:
+        request:
+          blockRedirects: true
+
+    # MCP-T44: Block non-allowlisted exec interpreters.
+    # Perl, awk (exploit path), ruby, lua, php are not in the approved list.
+    - action: DENY
+      mcpMethod: tools/call
+      toolNames:
+        - "exec.run_query"
+      reason: "Campaign E: Only approved data-processing tools (jq, sed) are permitted. Interpreter bypass via perl/awk blocked."
+
+    # MCP-T46: Block SDK dump_cache action injection.
+    - action: DENY
+      mcpMethod: tools/call
+      toolNames:
+        - "sdk.invoke_action"
+      reason: "Campaign E: dump_cache is not a permitted SDK action. Inject via action parameter blocked."
+
+    # MCP-T46: Require short-lived tokens for SDK sessions.
+    - action: SCOPE
+      mcpMethod: tools/call
+      toolNames:
+        - "sdk.initialize_session"
+      reason: "Campaign E: SDK sessions require short-lived tokens. Long-lived credentials in SDK cache are a lateral movement surface."
+      scope:
+        response:
+          redactPatterns:
+            - "cached_credential"
+            - "cache_contents"
+
+    # MCP-T47: Block in-process sub-agent privilege escalation.
+    - action: DENY
+      mcpMethod: tools/call
+      toolNames:
+        - "chain.delegate_task"
+      reason: "Campaign E: escalate_privilege and write tasks may not be delegated to in-process sub-agents."
+
+    # MCP-T47: Require fresh scoped token for SDK sub-agent loading.
+    - action: HOLD
+      mcpMethod: tools/call
+      toolNames:
+        - "chain.load_agent"
+      reason: "Campaign E: Sub-agents must be initialized with a fresh scoped token. Forwarded caller credentials require manual review."
+
+    # Cross-cutting: redact credential fields from all platform/exec tool responses.
+    - action: SCOPE
+      mcpMethod: tools/call
+      toolNames:
+        - "platform.*"
+        - "exec.*"
+        - "sdk.*"
+        - "chain.*"
+        - "dpop.*"
+      reason: "Campaign E: All AI-Ops tool responses have credential fields stripped."
+      scope:
+        response:
+          redactPatterns:
+            - "token"
+            - "secret"
+            - "password"
+            - "api_key"
+            - "private_key"
+            - "flag"
