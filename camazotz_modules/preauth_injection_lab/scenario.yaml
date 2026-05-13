@@ -1,0 +1,34 @@
+threat_id: "MCP-T52"
+title: "Pre-Authentication Injection"
+difficulty: easy
+category: injection
+description: >
+  Some MCP servers expose a pre-authentication flow that accepts user-supplied
+  arguments before any identity is established. If that input is stored raw and
+  later inherited by authenticated session contexts, an anonymous attacker can
+  inject directives that influence the behavior of subsequent authenticated
+  sessions — without ever establishing an identity.
+
+objectives:
+  - Discover the pre-authentication endpoint that accepts free-form metadata
+  - Inject a directive into the metadata field before any credentials are presented
+  - Complete authentication with the poisoned session token and confirm the injected content is present in the authenticated context
+  - Retrieve the flag by demonstrating that injection in the session context is detected
+
+hints:
+  - Call preauth.start_session with a client_id and experiment with the metadata field
+  - Try including keywords like "ignore", "system:", or "admin" in the metadata value
+  - Use preauth.complete_auth with the session_token returned by start_session to see what ends up in the session context
+
+tools:
+  - preauth.start_session
+  - preauth.complete_auth
+  - preauth.inspect_session
+
+canary_location: "metadata field stored raw in session context; flag returned when injection detected in complete_auth"
+owasp_mcp: "MCP01"
+
+agentic:
+  primary_lane: 5
+  transport: "A"
+  blurb: "Pre-authentication metadata injection poisons the session context before identity is established"

@@ -3,9 +3,9 @@
 
 <p align="center">
 <img src="https://img.shields.io/badge/python-3.12%2B-3776ab?style=flat-square&logo=python&logoColor=white" alt="Python 3.12+">
-<img src="https://img.shields.io/badge/tests-1164_passing-10b981?style=flat-square" alt="1164 tests">
+<img src="https://img.shields.io/badge/tests-1209_passing-10b981?style=flat-square" alt="1164 tests">
 <img src="https://img.shields.io/badge/coverage-100%25-10b981?style=flat-square" alt="100% coverage">
-<img src="https://img.shields.io/badge/modules-48_labs-dc2626?style=flat-square" alt="48 labs">
+<img src="https://img.shields.io/badge/modules-51_labs-dc2626?style=flat-square" alt="48 labs">
 <img src="https://img.shields.io/badge/identity_lanes-5%C3%975-60a5fa?style=flat-square" alt="5 lanes × 5 transports">
 <img src="https://img.shields.io/badge/Red_Team_Playbook-14%2F14-10b981?style=flat-square" alt="Playbook 14/14">
 <img src="https://img.shields.io/badge/license-MIT-a89cb8?style=flat-square" alt="MIT License">

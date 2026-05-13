@@ -1,0 +1,39 @@
+threat_id: "MCP-T50"
+title: "Anonymous Tool Schema Over-Disclosure"
+difficulty: easy
+category: information_disclosure
+lane: 5
+transport: "A"
+description: >
+  The MCP specification requires tools/list to be accessible without
+  authentication so clients can discover server capabilities before
+  establishing identity.  This lab demonstrates how developers often
+  embed sensitive architectural details — internal service hostnames,
+  credential parameter names, bearer-token patterns, and internal URIs —
+  directly in tool descriptions and parameter schemas.  An anonymous caller
+  can harvest all of this without ever making a single authenticated tool
+  call.
+
+objectives:
+  - Enumerate the tool catalog anonymously via schema.list_surface
+  - Identify tool descriptions that contain internal hostnames, credential names, or bearer-token patterns
+  - Use schema.extract_credentials to confirm a cztz- prefixed credential is present in a description
+  - Obtain the flag by successfully extracting a credential pattern from the over-disclosed catalog
+
+hints:
+  - Call schema.list_surface with no arguments to receive the full simulated tool catalog
+  - Look for cztz- or CZTZ_ prefixed strings in the description fields of the returned tools
+  - Pass a suspicious description directly to schema.extract_credentials to extract and confirm the pattern
+
+tools:
+  - schema.list_surface
+  - schema.extract_credentials
+  - schema.probe_error
+
+canary_location: "tool descriptions in the verbose catalog contain cztz-svc-bearer-abc123 and CZTZ_SERVICE_KEY"
+owasp_mcp: "MCP09"
+
+agentic:
+  primary_lane: 5
+  transport: "A"
+  blurb: "Anonymous tool schema over-disclosure via tools/list"

@@ -3,6 +3,30 @@
 All notable changes to Camazotz are documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## preauth_injection_lab — MCP-T52 (2026-05-12)
+
+### New lab: Pre-Authentication Injection
+
+- **`preauth_injection_lab`** (MCP-T52, Lane 5 / Transport A) — pre-auth guest tool stores user metadata before any identity is established; injected directives are inherited by the authenticated session context. Flag returned when injection is confirmed in the session. Hard mode: metadata sanitized at storage time. 14 tests.
+
+---
+
+## anon_rate_exhaust_lab — MCP-T51 (2026-05-12)
+
+### New lab: Anonymous Rate-Limit Exhaustion
+
+- **`anon_rate_exhaust_lab`** (MCP-T51, Lane 5 / Transport A) — no per-caller accounting for anonymous traffic; global budget exhausted by anonymous flood; authenticated callers denied even though they are authorized. Hard mode: per-caller accounting; separate anonymous bucket cannot starve authenticated budget. 14 tests.
+
+---
+
+## anon_schema_harvest_lab — MCP-T50 (2026-05-12)
+
+### New lab: Anonymous Tool Schema Over-Disclosure
+
+- **`anon_schema_harvest_lab`** (MCP-T50, Lane 5 / Transport A) — tool descriptions on easy/medium contain internal hostnames, credential patterns (`cztz-svc-bearer-abc123`, `CZTZ_SERVICE_KEY`), and internal paths; anonymous caller harvests them via `schema.extract_credentials` without authenticating. Hard mode: descriptions sanitized. 14 tests. Badge count: 48 → 51 labs.
+
+---
+
 ## agent_llm_chain_lab — MCP-T49 (2026-05-10)
 
 ### New lab: Agent Chain LLM Function-Calling Context Leak
