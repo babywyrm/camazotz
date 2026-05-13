@@ -556,3 +556,44 @@ def test_agentic_block_required_keys_present() -> None:
         if missing:
             bad.append(f"{lab}: missing {sorted(missing)}")
     assert not bad, f"agentic: blocks with missing required keys:\n" + "\n".join(bad)
+
+
+def test_agentic_sec_taxonomy_in_sync() -> None:
+    """agentic-sec/docs/taxonomy/lanes.yaml must match every scenario.yaml exactly.
+
+    This is the cross-repo vocabulary drift guard. If a scenario.yaml is updated
+    without updating the taxonomy, or vice versa, this test catches it.
+    """
+    import yaml as _yaml
+
+    tax_path = pathlib.Path(__file__).parent.parent.parent / "agentic-sec" / "docs" / "taxonomy" / "lanes.yaml"
+    if not tax_path.exists():
+        pytest.skip("agentic-sec taxonomy not found at expected relative path")
+
+    tax = _yaml.safe_load(tax_path.read_text())
+    tax_by_lab = {t["camazotz_lab"]: t for t in tax.get("threats", [])}
+
+    errors = []
+    for lab, d in _all_scenarios():
+        if lab not in tax_by_lab:
+            errors.append(f"{lab}: not in taxonomy (add entry to agentic-sec/docs/taxonomy/lanes.yaml)")
+            continue
+        t = tax_by_lab[lab]
+        sc_tid = (d.get("threat_id") or "").strip('"')
+        ag = d.get("agentic") or {}
+        sc_lane = ag.get("primary_lane", d.get("lane", ""))
+        sc_transport = ag.get("transport", d.get("transport", ""))
+        if sc_tid != t["threat_id"]:
+            errors.append(f"{lab}: threat_id mismatch — scenario={sc_tid!r} taxonomy={t['threat_id']!r}")
+        if sc_lane != t["lane"]:
+            errors.append(f"{lab}: lane mismatch — scenario={sc_lane!r} taxonomy={t['lane']!r}")
+        if sc_transport != t["transport"]:
+            errors.append(f"{lab}: transport mismatch — scenario={sc_transport!r} taxonomy={t['transport']!r}")
+
+    # Also catch entries in taxonomy that don't have a matching lab
+    scenario_labs = {lab for lab, _ in _all_scenarios()}
+    for lab in tax_by_lab:
+        if lab not in scenario_labs:
+            errors.append(f"{lab}: in taxonomy but no camazotz_modules/{lab}/scenario.yaml found")
+
+    assert not errors, "agentic-sec taxonomy drift detected:\n" + "\n".join(errors)
