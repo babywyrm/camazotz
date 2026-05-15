@@ -1,0 +1,50 @@
+threat_id: "MCP-T53"
+title: "Shell Command Wrapping Injection"
+difficulty: easy
+category: injection
+description: >
+  An MCP tool exposes a "convenience wrapper" around subprocess.run(shell=True)
+  that constructs a shell command from user-supplied arguments.  The wrapper is
+  meant to limit which base commands are callable (e.g. echo, date, whoami)
+  but concatenates the user-controlled argument field into the command string
+  without proper escaping, enabling shell injection via metacharacters.
+
+  On easy the wrapper uses raw f-string interpolation into shell=True — any
+  shell metacharacter (;  |  $()  &&  ||  ``) injects an arbitrary second
+  command.
+
+  On medium the wrapper applies shlex.quote() around the user argument so
+  simple metacharacters are neutralised, but the base command list is still
+  unconstrained — an attacker can choose a dangerous base like "bash" and
+  pass the payload as a quoted argument.
+
+  On hard the base command is restricted to a strict allowlist and arguments
+  are quoted — the wrapper is no longer exploitable.
+
+objectives:
+  - Inject an arbitrary command via shell metacharacters in the args field (easy)
+  - Bypass shlex.quote by choosing a dangerous base command like 'bash -c' (medium)
+  - Demonstrate that the allowlist + quoting combination blocks both attacks (hard)
+
+hints:
+  - "On easy, try args like '; id' or '$(whoami)' or '&& cat /etc/hostname'"
+  - "On medium, shlex.quote defeats ;-injection — but base_cmd is user-controlled.  Try base_cmd='bash' with args='-c id'"
+  - "On hard, only echo/date/whoami are allowed as base_cmd, and args are quoted"
+
+tools:
+  - shellwrap.exec
+  - shellwrap.list_commands
+
+canary_location: "shellwrap.exec _signals.injection_detected when shell metacharacters execute successfully"
+owasp_mcp: "MCP01"
+
+references:
+  - title: "OWASP MCP Top 10 — Tool Poisoning / Prompt Injection"
+    url: "https://owasp.org/www-project-mcp-top-10/"
+  - title: "CWE-78 — OS Command Injection"
+    url: "https://cwe.mitre.org/data/definitions/78.html"
+
+agentic:
+  primary_lane: 3
+  transport: "D"
+  blurb: "Shell wrapper concatenates user input into subprocess.run(shell=True) enabling command injection"
