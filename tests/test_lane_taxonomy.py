@@ -491,7 +491,7 @@ def _all_scenarios():
     for p in sorted(modules_dir.glob("*/scenario.yaml")):
         try:
             d = yaml.safe_load(p.read_text()) or {}
-        except Exception:
+        except Exception:  # pragma: no cover
             d = {}
         yield p.parent.name, d
 
@@ -502,7 +502,7 @@ def test_all_threat_ids_follow_mcp_t_format() -> None:
     for lab, d in _all_scenarios():
         tid = d.get("threat_id", "")
         if tid and not _THREAT_ID_RE.match(tid):
-            bad.append(f"{lab}: {tid!r}")
+            bad.append(f"{lab}: {tid!r}")  # pragma: no cover
     assert not bad, f"Malformed threat_id values:\n" + "\n".join(bad)
 
 
@@ -513,9 +513,9 @@ def test_no_duplicate_threat_ids() -> None:
     for lab, d in _all_scenarios():
         tid = d.get("threat_id", "")
         if not tid:
-            continue
+            continue  # pragma: no cover
         if tid in seen:
-            dupes.append(f"{tid}: {seen[tid]} and {lab}")
+            dupes.append(f"{tid}: {seen[tid]} and {lab}")  # pragma: no cover
         seen[tid] = lab
     assert not dupes, f"Duplicate threat_ids:\n" + "\n".join(dupes)
 
@@ -527,10 +527,10 @@ def test_agentic_block_lane_ids_are_valid() -> None:
         ag = d.get("agentic") or {}
         pl = ag.get("primary_lane")
         if pl is not None and pl not in _VALID_LANE_IDS:
-            bad.append(f"{lab}: primary_lane={pl!r}")
+            bad.append(f"{lab}: primary_lane={pl!r}")  # pragma: no cover
         for sl in ag.get("secondary_lanes") or []:
             if sl not in _VALID_LANE_IDS:
-                bad.append(f"{lab}: secondary_lanes contains {sl!r}")
+                bad.append(f"{lab}: secondary_lanes contains {sl!r}")  # pragma: no cover
     assert not bad, f"Invalid lane IDs:\n" + "\n".join(bad)
 
 
@@ -541,7 +541,7 @@ def test_agentic_block_transport_codes_are_valid() -> None:
         ag = d.get("agentic") or {}
         t = ag.get("transport", "")
         if t and t.upper() not in _VALID_TRANSPORTS:
-            bad.append(f"{lab}: transport={t!r}")
+            bad.append(f"{lab}: transport={t!r}")  # pragma: no cover
     assert not bad, f"Invalid transport codes:\n" + "\n".join(bad)
 
 
@@ -551,10 +551,10 @@ def test_agentic_block_required_keys_present() -> None:
     for lab, d in _all_scenarios():
         ag = d.get("agentic") or {}
         if not ag:
-            continue  # no agentic block at all is allowed (non-agentic-lane labs)
+            continue  # pragma: no cover — non-agentic-lane labs
         missing = _AGENTIC_REQUIRED_KEYS - set(ag.keys())
         if missing:
-            bad.append(f"{lab}: missing {sorted(missing)}")
+            bad.append(f"{lab}: missing {sorted(missing)}")  # pragma: no cover
     assert not bad, f"agentic: blocks with missing required keys:\n" + "\n".join(bad)
 
 
@@ -568,7 +568,7 @@ def test_agentic_sec_taxonomy_in_sync() -> None:
 
     tax_path = pathlib.Path(__file__).parent.parent.parent / "agentic-sec" / "docs" / "taxonomy" / "lanes.yaml"
     if not tax_path.exists():
-        pytest.skip("agentic-sec taxonomy not found at expected relative path")
+        pytest.skip("agentic-sec taxonomy not found at expected relative path")  # pragma: no cover
 
     tax = _yaml.safe_load(tax_path.read_text())
     tax_by_lab = {t["camazotz_lab"]: t for t in tax.get("threats", [])}
@@ -576,24 +576,24 @@ def test_agentic_sec_taxonomy_in_sync() -> None:
     errors = []
     for lab, d in _all_scenarios():
         if lab not in tax_by_lab:
-            errors.append(f"{lab}: not in taxonomy (add entry to agentic-sec/docs/taxonomy/lanes.yaml)")
-            continue
+            errors.append(f"{lab}: not in taxonomy (add entry to agentic-sec/docs/taxonomy/lanes.yaml)")  # pragma: no cover
+            continue  # pragma: no cover
         t = tax_by_lab[lab]
         sc_tid = (d.get("threat_id") or "").strip('"')
         ag = d.get("agentic") or {}
         sc_lane = ag.get("primary_lane", d.get("lane", ""))
         sc_transport = ag.get("transport", d.get("transport", ""))
         if sc_tid != t["threat_id"]:
-            errors.append(f"{lab}: threat_id mismatch — scenario={sc_tid!r} taxonomy={t['threat_id']!r}")
+            errors.append(f"{lab}: threat_id mismatch — scenario={sc_tid!r} taxonomy={t['threat_id']!r}")  # pragma: no cover
         if sc_lane != t["lane"]:
-            errors.append(f"{lab}: lane mismatch — scenario={sc_lane!r} taxonomy={t['lane']!r}")
+            errors.append(f"{lab}: lane mismatch — scenario={sc_lane!r} taxonomy={t['lane']!r}")  # pragma: no cover
         if sc_transport != t["transport"]:
-            errors.append(f"{lab}: transport mismatch — scenario={sc_transport!r} taxonomy={t['transport']!r}")
+            errors.append(f"{lab}: transport mismatch — scenario={sc_transport!r} taxonomy={t['transport']!r}")  # pragma: no cover
 
     # Also catch entries in taxonomy that don't have a matching lab
     scenario_labs = {lab for lab, _ in _all_scenarios()}
     for lab in tax_by_lab:
         if lab not in scenario_labs:
-            errors.append(f"{lab}: in taxonomy but no camazotz_modules/{lab}/scenario.yaml found")
+            errors.append(f"{lab}: in taxonomy but no camazotz_modules/{lab}/scenario.yaml found")  # pragma: no cover
 
     assert not errors, "agentic-sec taxonomy drift detected:\n" + "\n".join(errors)

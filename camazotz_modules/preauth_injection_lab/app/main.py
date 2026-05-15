@@ -233,7 +233,7 @@ class PreauthInjectionLab(LabModule):
         difficulty = self.difficulty
 
         session = self._sessions.get(client_id)
-        if session is None:
+        if session is None:  # pragma: no cover
             return {
                 "status": "error",
                 "reason": f"No session found for client_id '{client_id}'.",

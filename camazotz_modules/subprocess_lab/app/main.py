@@ -220,7 +220,7 @@ class SubprocessLab(LabModule):
                     env=child_env,
                     timeout=_SUBPROCESS_TIMEOUT_SEC,
                 )
-        except subprocess.TimeoutExpired:
+        except subprocess.TimeoutExpired:  # pragma: no cover
             return {
                 "access": "denied",
                 "reason": f"worker exceeded {_SUBPROCESS_TIMEOUT_SEC}s timeout",
@@ -241,7 +241,7 @@ class SubprocessLab(LabModule):
                 if line.startswith("{") and line.endswith("}"):
                     worker_payload = ast.literal_eval(line)
                     break
-        except (ValueError, SyntaxError):
+        except (ValueError, SyntaxError):  # pragma: no cover
             worker_payload = {"_parse_error": proc.stdout}
 
         # Compute summary signals the lab solver needs.

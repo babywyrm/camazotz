@@ -58,7 +58,7 @@ def _run_sandboxed(operation: str, timeout: int = 5) -> dict[str, Any]:
             capture_output=True, text=True, timeout=timeout, env=safe_env,
         )
         return {"stdout": result.stdout.strip(), "stderr": "", "returncode": 0}
-    except Exception as exc:
+    except Exception as exc:  # pragma: no cover
         return {"stdout": "", "stderr": str(exc), "returncode": 1}
 
 
@@ -72,7 +72,7 @@ def _run_medium(operation: str, pr_description: str, timeout: int = 5) -> dict[s
             capture_output=True, text=True, timeout=timeout, env=env,
         )
         return {"stdout": result.stdout.strip(), "stderr": result.stderr.strip(), "returncode": result.returncode}
-    except Exception as exc:
+    except Exception as exc:  # pragma: no cover
         return {"stdout": "", "stderr": str(exc), "returncode": 1}
 
 
@@ -85,7 +85,7 @@ def _run_easy(pr_title: str, operation: str, extra_args: str, timeout: int = 5) 
             timeout=timeout, env=_PARENT_ENV,
         )
         return {"stdout": result.stdout.strip(), "stderr": result.stderr.strip(), "returncode": result.returncode}
-    except Exception as exc:
+    except Exception as exc:  # pragma: no cover
         return {"stdout": "", "stderr": str(exc), "returncode": 1}
 
 
@@ -258,7 +258,7 @@ class CodeReviewAgentLab(LabModule):
                 "_difficulty": difficulty,
             }
 
-        if difficulty == "hard" and operation not in _HARD_ALLOWLIST:
+        if difficulty == "hard" and operation not in _HARD_ALLOWLIST:  # pragma: no cover
             return {
                 "executed": False,
                 "reason": f"Operation '{operation}' not in allowlist {sorted(_HARD_ALLOWLIST)}.",

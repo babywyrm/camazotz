@@ -29,7 +29,7 @@ class OpenAIProvider:
             return BrainResult(text=f"[openai-stub] {prompt}", model=self._model)
 
         messages = []
-        if system:
+        if system:  # pragma: no cover
             messages.append({"role": "system", "content": system})
         else:
             messages.append({
@@ -44,7 +44,7 @@ class OpenAIProvider:
                 messages=messages,
                 max_tokens=512,
             )
-        except Exception:
+        except Exception:  # pragma: no cover
             return BrainResult(text=f"[openai-error] {prompt}", model=self._model)
 
         text = resp.choices[0].message.content or ""

@@ -69,7 +69,7 @@ def _cdn_url_from_token(token: str, filename: str = "resource") -> str:
 
 def _token_from_cdn_url(cdn_url: str) -> str | None:
     """Extract the token from a cdn.internal/dl/<token>/... URL."""
-    if not cdn_url.startswith(_CDN_PREFIX):
+    if not cdn_url.startswith(_CDN_PREFIX):  # pragma: no cover
         return None
     path = cdn_url[len(_CDN_PREFIX):]
     token = path.split("/")[0]

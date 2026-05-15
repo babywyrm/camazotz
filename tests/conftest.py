@@ -71,7 +71,7 @@ def _load_scenario(lab_name: str) -> dict:
             try:
                 import yaml
                 _scenario_cache[lab_name] = yaml.safe_load(p.read_text()) or {}
-            except Exception:
+            except Exception:  # pragma: no cover
                 _scenario_cache[lab_name] = {}
         else:
             _scenario_cache[lab_name] = {}
@@ -94,7 +94,7 @@ def pytest_collection_modifyitems(items: list) -> None:
         # ── Lab tests — derive lab name from file name ──────────────────────
         # test_<lab_module_name>_lab.py  or  test_<lab_module_name>.py
         m = re.match(r"test_(.+?)(?:_lab)?\.py$", fname)
-        if not m:
+        if not m:  # pragma: no cover
             continue
 
         candidate = m.group(1)

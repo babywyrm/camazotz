@@ -42,6 +42,105 @@ def test_model_switch_empty_string_rejected(monkeypatch) -> None:
     assert resp.status_code == 400
 
 
+def test_brain_metadata_local_provider(monkeypatch) -> None:
+    monkeypatch.setenv("BRAIN_PROVIDER", "local")
+    monkeypatch.setenv("CAMAZOTZ_OLLAMA_MODEL", "llama3.2:3b")
+    from brain_gateway.app.config import get_brain_metadata, set_runtime_model
+    set_runtime_model("")
+    meta = get_brain_metadata()
+    assert meta["provider"] == "local"
+    assert meta["model"] == "llama3.2:3b"
+    assert meta["mode"] == "live"
+
+
+def test_brain_metadata_bedrock_stub(monkeypatch) -> None:
+    monkeypatch.setenv("BRAIN_PROVIDER", "bedrock")
+    monkeypatch.setenv("CAMAZOTZ_BEDROCK_MODEL", "anthropic.claude-v2")
+    monkeypatch.setenv("CAMAZOTZ_BEDROCK_STUB", "1")
+    from brain_gateway.app.config import get_brain_metadata, set_runtime_model
+    set_runtime_model("")
+    meta = get_brain_metadata()
+    assert meta["provider"] == "bedrock"
+    assert meta["model"] == "anthropic.claude-v2"
+    assert meta["mode"] == "stub"
+
+
+def test_brain_metadata_bedrock_unconfigured(monkeypatch) -> None:
+    monkeypatch.setenv("BRAIN_PROVIDER", "bedrock")
+    monkeypatch.delenv("CAMAZOTZ_BEDROCK_MODEL", raising=False)
+    monkeypatch.delenv("CAMAZOTZ_MODEL", raising=False)
+    monkeypatch.delenv("CAMAZOTZ_BEDROCK_STUB", raising=False)
+    from brain_gateway.app.config import get_brain_metadata, set_runtime_model
+    set_runtime_model("")
+    meta = get_brain_metadata()
+    assert meta["provider"] == "bedrock"
+    assert meta["model"] == ""
+    assert meta["mode"] == "unconfigured"
+
+
+def test_brain_metadata_bedrock_live(monkeypatch) -> None:
+    monkeypatch.setenv("BRAIN_PROVIDER", "bedrock")
+    monkeypatch.setenv("CAMAZOTZ_BEDROCK_MODEL", "anthropic.claude-v2")
+    monkeypatch.delenv("CAMAZOTZ_BEDROCK_STUB", raising=False)
+    from brain_gateway.app.config import get_brain_metadata, set_runtime_model
+    set_runtime_model("")
+    meta = get_brain_metadata()
+    assert meta["provider"] == "bedrock"
+    assert meta["model"] == "anthropic.claude-v2"
+    assert meta["mode"] == "live"
+
+
+def test_brain_metadata_openai_provider(monkeypatch) -> None:
+    monkeypatch.setenv("BRAIN_PROVIDER", "openai")
+    monkeypatch.setenv("CAMAZOTZ_MODEL", "gpt-4o")
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    from brain_gateway.app.config import get_brain_metadata, set_runtime_model
+    set_runtime_model("")
+    meta = get_brain_metadata()
+    assert meta["provider"] == "openai"
+    assert meta["model"] == "gpt-4o"
+    assert meta["mode"] == "stub"
+
+
+def test_brain_metadata_openai_live(monkeypatch) -> None:
+    monkeypatch.setenv("BRAIN_PROVIDER", "openai")
+    monkeypatch.setenv("CAMAZOTZ_MODEL", "gpt-4o")
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+    from brain_gateway.app.config import get_brain_metadata, set_runtime_model
+    set_runtime_model("")
+    meta = get_brain_metadata()
+    assert meta["provider"] == "openai"
+    assert meta["mode"] == "live"
+
+
+def test_available_models_local_success(monkeypatch) -> None:
+    import json
+    from io import BytesIO
+    from brain_gateway.app.config import get_available_models
+    ollama_resp = json.dumps({"models": [
+        {"name": "llama3.2:3b"},
+        {"name": "mistral:7b"},
+    ]}).encode()
+    with patch("urllib.request.urlopen", return_value=BytesIO(ollama_resp)):
+        models = get_available_models("local", "http://localhost:11434")
+    assert len(models) == 2
+    assert models[0]["id"] == "llama3.2:3b"
+    assert models[1]["id"] == "mistral:7b"
+    assert all(m["source"] == "ollama" for m in models)
+
+
+def test_available_models_bedrock_fallback(monkeypatch) -> None:
+    monkeypatch.setenv("CAMAZOTZ_BEDROCK_MODEL", "anthropic.claude-v2")
+    monkeypatch.delenv("CAMAZOTZ_AVAILABLE_MODELS", raising=False)
+    monkeypatch.delenv("CAMAZOTZ_MODEL", raising=False)
+    from brain_gateway.app.config import get_available_models, set_runtime_model
+    set_runtime_model("")
+    models = get_available_models("bedrock", "http://localhost:11434")
+    assert len(models) == 1
+    assert models[0]["id"] == "anthropic.claude-v2"
+    assert models[0]["source"] == "config"
+
+
 def test_available_models_cloud_from_env(monkeypatch) -> None:
     monkeypatch.setenv("BRAIN_PROVIDER", "cloud")
     monkeypatch.setenv("CAMAZOTZ_MODEL", "claude-a")

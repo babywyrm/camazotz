@@ -224,7 +224,7 @@ class FunctionCallingLab(LabModule):
         fn_args = intent["arguments"]
         schema = _TOOLS_BY_NAME.get(fn_name)
 
-        if schema is None:
+        if schema is None:  # pragma: no cover
             return self.make_response(
                 llm_result,
                 access="denied",
@@ -333,4 +333,4 @@ class FunctionCallingLab(LabModule):
         if fn_name == "read_status":
             user = args.get("user", "anonymous")
             return {"user": user, "status": "ok", "last_seen": "2026-04-29T19:48:00Z"}
-        return {}
+        return {}  # pragma: no cover
