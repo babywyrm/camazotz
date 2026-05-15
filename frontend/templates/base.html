@@ -176,6 +176,15 @@ code,pre{font-family:var(--font-mono)}
 .brain-popover-item.active::before{content:'✓';font-size:.65rem}
 .brain-switching{display:none;font-size:.66rem;color:var(--yellow);margin-left:.3rem}
 .brain-switching.visible{display:inline}
+.brain-popover-section{padding:.25rem .8rem;font-size:.6rem;font-weight:700;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.06em;margin-top:.2rem}
+.brain-popover-divider{border:none;border-top:1px solid var(--border2);margin:.3rem 0}
+.brain-ollama-host-row{padding:.3rem .8rem;display:flex;align-items:center;gap:.4rem}
+.brain-ollama-host-input{flex:1;background:var(--surface);border:1px solid var(--border2);
+  border-radius:4px;color:var(--text);font-family:var(--font-mono);font-size:.72rem;
+  padding:.25rem .4rem;outline:none;transition:border-color .15s}
+.brain-ollama-host-input:focus{border-color:var(--blue)}
+.brain-ollama-host-label{font-size:.66rem;color:var(--muted);white-space:nowrap}
 .brain-switch-banner{display:none;position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);
   z-index:300;background:var(--surface2);border:1px solid var(--green);border-radius:8px;
   padding:.5rem 1.1rem;font-size:.76rem;color:var(--green);gap:.6rem;align-items:center;
@@ -292,23 +301,8 @@ code,pre{font-family:var(--font-mono)}
       strip.classList.add('visible');
     }
     if(d.brain&&strip){
-      var brainPillEl=document.getElementById('brainPill');
-      var brainModelEl=document.getElementById('brainModel');
-      var brainSelector=document.getElementById('brainSelector');
-      if(brainPillEl&&brainModelEl){
-        var mode=d.brain.mode||'unknown';
-        var brainModels=d.brain.available_models||[];
-        var brainCurrent=d.brain.model||'';
-        brainPillEl.textContent='Brain: '+(d.brain.provider||'unknown');
-        brainPillEl.className='brain-global-pill '+mode;
-        brainModelEl.textContent=brainCurrent+(mode==='live'?'':' · '+mode);
-        if(brainSelector){
-          var interactive=brainModels.length>1;
-          brainSelector.setAttribute('data-brain-interactive',interactive?'true':'false');
-          if(interactive)_buildBrainPopover(brainModels,brainCurrent);
-        }
-        strip.classList.add('visible');
-      }
+      _updateBrainStrip(d);
+      strip.classList.add('visible');
     }
   }).catch(()=>{});
 })();
@@ -358,22 +352,131 @@ function _switchIdpQuick(provider){
     .catch(function(){if(notice)notice.classList.remove('visible');});
 }
 
+var _brainProviders=[];
+var _currentBrainProvider='cloud';
+var _currentOllamaHost='';
+
+var _providerLabels={'cloud':'cloud (Claude)','local':'local (Ollama)','openai':'openai','bedrock':'bedrock'};
+
+function _updateBrainStrip(d){
+  var brainPillEl=document.getElementById('brainPill');
+  var brainModelEl=document.getElementById('brainModel');
+  var brainSelector=document.getElementById('brainSelector');
+  if(!brainPillEl||!brainModelEl)return;
+  var mode=d.brain.mode||'unknown';
+  var brainModels=d.brain.available_models||[];
+  var brainCurrent=d.brain.model||'';
+  _brainProviders=d.brain.available_providers||['cloud','local','bedrock','openai'];
+  _currentBrainProvider=d.brain.provider||'cloud';
+  _currentOllamaHost=d.brain.ollama_host||'';
+  brainPillEl.textContent='Brain: '+(_providerLabels[_currentBrainProvider]||_currentBrainProvider);
+  brainPillEl.className='brain-global-pill '+mode;
+  brainModelEl.textContent=brainCurrent+(mode==='live'?'':' · '+mode);
+  if(brainSelector){
+    brainSelector.setAttribute('data-brain-interactive','true');
+    _buildBrainPopover(brainModels,brainCurrent);
+  }
+}
+
 function _buildBrainPopover(models,current){
   var pop=document.getElementById('brainPopover');
   if(!pop)return;
   pop.innerHTML='';
+
+  var provHeader=document.createElement('div');
+  provHeader.className='brain-popover-section';
+  provHeader.textContent='Provider';
+  pop.appendChild(provHeader);
+
+  _brainProviders.forEach(function(p){
+    var item=document.createElement('div');
+    item.className='brain-popover-item'+(p===_currentBrainProvider?' active':'');
+    item.textContent=_providerLabels[p]||p;
+    item.addEventListener('click',function(e){e.stopPropagation();_switchBrainProvider(p);});
+    pop.appendChild(item);
+  });
+
+  if(_currentBrainProvider==='local'){
+    var divider1=document.createElement('hr');
+    divider1.className='brain-popover-divider';
+    pop.appendChild(divider1);
+
+    var hostRow=document.createElement('div');
+    hostRow.className='brain-ollama-host-row';
+    var hostLabel=document.createElement('span');
+    hostLabel.className='brain-ollama-host-label';
+    hostLabel.textContent='Ollama:';
+    var hostInput=document.createElement('input');
+    hostInput.className='brain-ollama-host-input';
+    hostInput.id='brainOllamaHostInput';
+    hostInput.type='text';
+    hostInput.placeholder='http://host:11434';
+    hostInput.value=_currentOllamaHost;
+    hostInput.addEventListener('keydown',function(e){
+      if(e.key==='Enter'){e.preventDefault();_applyOllamaHost(hostInput.value);}
+    });
+    hostInput.addEventListener('click',function(e){e.stopPropagation();});
+    hostRow.appendChild(hostLabel);
+    hostRow.appendChild(hostInput);
+    pop.appendChild(hostRow);
+  }
+
+  var divider2=document.createElement('hr');
+  divider2.className='brain-popover-divider';
+  pop.appendChild(divider2);
+
+  var modelHeader=document.createElement('div');
+  modelHeader.className='brain-popover-section';
+  modelHeader.textContent='Model';
+  pop.appendChild(modelHeader);
+
   models.forEach(function(m){
     var item=document.createElement('div');
     item.className='brain-popover-item'+(m.id===current?' active':'');
     item.textContent=m.id;
-    item.addEventListener('click',function(e){e.stopPropagation();_switchBrain(m.id);});
+    item.addEventListener('click',function(e){e.stopPropagation();_switchBrainModel(m.id);});
     pop.appendChild(item);
   });
 }
-function _switchBrain(modelId){
+
+function _switchBrainProvider(provider){
   var pop=document.getElementById('brainPopover');
   var notice=document.getElementById('brainSwitching');
-  var brainModelEl=document.getElementById('brainModel');
+  if(pop)pop.classList.remove('open');
+  if(notice)notice.classList.add('visible');
+  var payload={brain:{provider:provider}};
+  if(provider==='local'){
+    var hostInput=document.getElementById('brainOllamaHostInput');
+    payload.brain.ollama_host=hostInput?hostInput.value:_currentOllamaHost;
+  }
+  fetch('/api/config',{method:'PUT',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(payload)})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(notice)notice.classList.remove('visible');
+      if(d.brain)_updateBrainStrip(d);
+      _showBrainBanner('Provider switched to '+(_providerLabels[provider]||provider));
+    })
+    .catch(function(){if(notice)notice.classList.remove('visible');});
+}
+
+function _applyOllamaHost(host){
+  var notice=document.getElementById('brainSwitching');
+  if(notice)notice.classList.add('visible');
+  fetch('/api/config',{method:'PUT',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({brain:{provider:'local',ollama_host:host}})})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(notice)notice.classList.remove('visible');
+      if(d.brain)_updateBrainStrip(d);
+      _showBrainBanner('Ollama host updated to '+host);
+    })
+    .catch(function(){if(notice)notice.classList.remove('visible');});
+}
+
+function _switchBrainModel(modelId){
+  var pop=document.getElementById('brainPopover');
+  var notice=document.getElementById('brainSwitching');
   if(pop)pop.classList.remove('open');
   if(notice)notice.classList.add('visible');
   fetch('/api/config',{method:'PUT',headers:{'Content-Type':'application/json'},
@@ -381,20 +484,20 @@ function _switchBrain(modelId){
     .then(function(r){return r.json();})
     .then(function(d){
       if(notice)notice.classList.remove('visible');
-      if(d.brain&&brainModelEl){
-        var mode=d.brain.mode||'';
-        brainModelEl.textContent=d.brain.model+(mode==='live'?'':' · '+mode);
-        if(d.brain.available_models)_buildBrainPopover(d.brain.available_models,d.brain.model);
-      }
-      var banner=document.getElementById('brainSwitchBanner');
-      var msg=document.getElementById('brainSwitchMsg');
-      if(banner&&msg){
-        msg.textContent='Brain switched to '+modelId+' — takes effect on your next MCP session.';
-        banner.classList.add('visible');
-        setTimeout(function(){banner.classList.remove('visible');},6000);
-      }
+      if(d.brain)_updateBrainStrip(d);
+      _showBrainBanner('Model switched to '+modelId);
     })
     .catch(function(){if(notice)notice.classList.remove('visible');});
+}
+
+function _showBrainBanner(text){
+  var banner=document.getElementById('brainSwitchBanner');
+  var msg=document.getElementById('brainSwitchMsg');
+  if(banner&&msg){
+    msg.textContent=text+' — takes effect on your next MCP session.';
+    banner.classList.add('visible');
+    setTimeout(function(){banner.classList.remove('visible');},6000);
+  }
 }
 document.addEventListener('click',function(e){
   var brainSel=document.getElementById('brainSelector');

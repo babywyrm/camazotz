@@ -1,6 +1,5 @@
 """Singleton factory for the active LLM provider."""
 
-import os
 import threading
 
 from brain_gateway.app.brain.bedrock_claude import BedrockClaudeProvider
@@ -18,7 +17,9 @@ def get_provider() -> BrainProvider:
     global _instance
     with _lock:
         if _instance is None:
-            mode = os.getenv("BRAIN_PROVIDER", "cloud").lower()
+            from brain_gateway.app.config import get_brain_provider
+
+            mode = get_brain_provider()
             if mode == "local":
                 _instance = LocalOllamaProvider()
             elif mode == "bedrock":

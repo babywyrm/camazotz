@@ -21,13 +21,18 @@ from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 
 from brain_gateway.app.config import (
+    VALID_BRAIN_PROVIDERS,
     get_available_models,
     get_brain_metadata,
+    get_brain_provider,
     get_difficulty,
     get_idp_provider,
     get_ollama_host,
+    get_ollama_model,
     is_live_idp,
+    reset_brain_config,
     reset_idp_config,
+    set_brain_config,
     set_difficulty,
     set_idp_config,
     set_runtime_model,
@@ -135,6 +140,7 @@ def get_config() -> dict[str, object]:
     """Return current runtime configuration."""
     status = idp_status()
     brain_meta = get_brain_metadata()
+    ollama_host = get_ollama_host()
     config: dict[str, object] = {
         "difficulty": get_difficulty(),
         "show_tokens": show_tokens(),
@@ -145,8 +151,11 @@ def get_config() -> dict[str, object]:
         "idp_backed_tools": list(IDP_BACKED_TOOLS),
         "brain": {
             **brain_meta,
+            "ollama_host": ollama_host,
+            "ollama_model": get_ollama_model(),
+            "available_providers": list(VALID_BRAIN_PROVIDERS),
             "available_models": get_available_models(
-                brain_meta["provider"], get_ollama_host()
+                brain_meta["provider"], ollama_host
             ),
         },
     }
@@ -174,11 +183,19 @@ class _IdpConfigUpdate(BaseModel):
     client_secret: str = ""
 
 
+class _BrainConfigUpdate(BaseModel):
+    provider: str
+    ollama_host: str = ""
+    ollama_model: str = ""
+
+
 class _ConfigUpdate(BaseModel):
     difficulty: str | None = None
     model: str | None = None
     idp: _IdpConfigUpdate | None = None
     reset_idp: bool = False
+    brain: _BrainConfigUpdate | None = None
+    reset_brain: bool = False
 
 
 @app.put("/config")
@@ -221,7 +238,33 @@ def update_config(payload: _ConfigUpdate) -> dict[str, object]:
             get_registry().reset_all()
             _rate_limiter.reset()
 
+    if payload.reset_brain:
+        prev_brain = get_brain_provider()
+        new_brain = reset_brain_config()
+        reset_provider()
+        if new_brain != prev_brain:
+            get_registry().reset_all()
+            _rate_limiter.reset()
+    elif payload.brain is not None:
+        if payload.brain.provider not in VALID_BRAIN_PROVIDERS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"invalid brain provider: {payload.brain.provider!r}; "
+                       f"valid: {', '.join(VALID_BRAIN_PROVIDERS)}",
+            )
+        prev_brain = get_brain_provider()
+        new_brain = set_brain_config(
+            provider=payload.brain.provider,
+            ollama_host=payload.brain.ollama_host,
+            ollama_model=payload.brain.ollama_model,
+        )
+        reset_provider()
+        if new_brain != prev_brain:
+            get_registry().reset_all()
+            _rate_limiter.reset()
+
     brain_meta = get_brain_metadata()
+    ollama_host = get_ollama_host()
     status = idp_status()
     return {
         "difficulty": get_difficulty(),
@@ -230,8 +273,11 @@ def update_config(payload: _ConfigUpdate) -> dict[str, object]:
         "idp_degraded": status["idp_degraded"],
         "brain": {
             **brain_meta,
+            "ollama_host": ollama_host,
+            "ollama_model": get_ollama_model(),
+            "available_providers": list(VALID_BRAIN_PROVIDERS),
             "available_models": get_available_models(
-                brain_meta["provider"], get_ollama_host()
+                brain_meta["provider"], ollama_host
             ),
         },
     }

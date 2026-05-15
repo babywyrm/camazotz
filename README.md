@@ -3,7 +3,7 @@
 
 <p align="center">
 <img src="https://img.shields.io/badge/python-3.12%2B-3776ab?style=flat-square&logo=python&logoColor=white" alt="Python 3.12+">
-<img src="https://img.shields.io/badge/tests-1277_passing-10b981?style=flat-square" alt="1277 tests">
+<img src="https://img.shields.io/badge/tests-1298_passing-10b981?style=flat-square" alt="1298 tests">
 <img src="https://img.shields.io/badge/coverage-100%25-10b981?style=flat-square" alt="100% coverage">
 <img src="https://img.shields.io/badge/modules-52_labs-dc2626?style=flat-square" alt="52 labs">
 <img src="https://img.shields.io/badge/identity_lanes-5%C3%975-60a5fa?style=flat-square" alt="5 lanes × 5 transports">
@@ -22,8 +22,8 @@ Camazotz is a hands-on training platform for understanding how
 [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) tools
 can be exploited when backed by large language models. Every scenario is
 mapped to the [OWASP MCP Top 10 (2025)](https://owasp.org/www-project-mcp-top-10/)
-and backed by a live LLM (Anthropic API or Ollama by default; optional
-Amazon Bedrock via `BRAIN_PROVIDER=bedrock`) so exploits emerge from real
+and backed by a live LLM (Anthropic Claude, Ollama, OpenAI, or Amazon Bedrock —
+switchable at runtime via the UI or `PUT /config`) so exploits emerge from real
 AI behavior, not static mock responses.
 
 > **The core insight Camazotz teaches:** LLM guardrails are not security
@@ -46,8 +46,10 @@ make up-local     # start with Ollama (fully offline, no API key needed)
 ```
 
 Open **http://localhost:3000** — the Camazotz Security Portal.
-The top status strip shows the active AI brain (`cloud`, `local`, or
-`bedrock`) and the model currently driving inference.
+The top status strip shows the active AI brain provider and model.
+Click the **Brain** badge to switch providers (`cloud`, `local`, `openai`,
+`bedrock`) and models at runtime — no restart required. For `local` (Ollama),
+you can also change the Ollama host on the fly (e.g. point to a remote GPU box).
 
 For Kubernetes deployment: `make helm-deploy` (see [deploy/README.md](deploy/README.md)).
 

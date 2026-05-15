@@ -128,13 +128,46 @@ curl -s http://localhost:3000/api/config | jq '.brain'
 #   "provider": "cloud",
 #   "model": "claude-sonnet-4-20250514",
 #   "mode": "live",
+#   "ollama_host": "http://ollama:11434",
+#   "ollama_model": "llama3.2:3b",
+#   "available_providers": ["cloud", "local", "bedrock", "openai"],
 #   "available_models": [...]
 # }
 ```
 
-### Switching the active model at runtime
+### Switching the brain provider at runtime
 
-To switch the brain model without restarting the gateway:
+Switch between providers without restarting the gateway:
+
+```bash
+# Switch to local Ollama on a remote GPU box
+curl -s -X PUT http://localhost:8080/config \
+  -H "Content-Type: application/json" \
+  -d '{"brain": {"provider": "local", "ollama_host": "http://192.168.1.126:11434"}}'
+
+# Switch back to cloud
+curl -s -X PUT http://localhost:8080/config \
+  -H "Content-Type: application/json" \
+  -d '{"brain": {"provider": "cloud"}}'
+
+# Reset to env defaults
+curl -s -X PUT http://localhost:8080/config \
+  -H "Content-Type: application/json" \
+  -d '{"reset_brain": true}'
+
+# Check current state
+curl -s http://localhost:8080/config | jq '.brain'
+```
+
+Or click the **Brain** badge in the top status strip — it shows a popover with:
+- **Provider selector** — `cloud (Claude)`, `local (Ollama)`, `openai`, `bedrock`
+- **Ollama host input** — editable endpoint when `local` is active (e.g. a remote GPU box)
+- **Model selector** — available models for the active provider
+
+Switching providers resets all lab state (different model capabilities affect
+challenge behavior). Switching models within the same provider does not.
+
+### Switching the active model at runtime
 
 ```bash
 # List available models
@@ -149,12 +182,8 @@ curl -s -X PUT http://localhost:8080/config \
 curl -s http://localhost:8080/config | jq '.brain.model'
 ```
 
-Or click the **Brain** badge in the top status strip — when multiple models are
-available it becomes a dropdown. The selected model takes effect on the next
-MCP `tools/call`; any in-flight calls complete with the previous model.
-
 For **local (Ollama)** deployments, available models are fetched live from
-`OLLAMA_HOST/api/tags` — only pulled models appear.
+the Ollama `/api/tags` endpoint — only pulled models appear.
 
 For **cloud/bedrock**, set `CAMAZOTZ_AVAILABLE_MODELS=model-a,model-b` in
 `compose/.env` to populate the selector.
@@ -248,7 +277,7 @@ Edit `compose/.env` to tune behavior:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `BRAIN_PROVIDER` | `cloud` | `cloud`, `openai`, `bedrock`, or `local` |
+| `BRAIN_PROVIDER` | `cloud` | `cloud`, `openai`, `bedrock`, or `local` (switchable at runtime) |
 | `AWS_REGION` | — | Set for Bedrock |
 | `AWS_PROFILE` | — | Optional named profile |
 | `CAMAZOTZ_MODEL` | (see `.env.example`) | Model id for Anthropic API, OpenAI, or Bedrock |
@@ -257,7 +286,8 @@ Edit `compose/.env` to tune behavior:
 | `CAMAZOTZ_BEDROCK_STUB` | — | Set `1` for Bedrock stub without AWS |
 | `CAMAZOTZ_DIFFICULTY` | `medium` | `easy`, `medium`, or `hard` (switchable live from portal) |
 | `CAMAZOTZ_SHOW_TOKENS` | `false` | Show token usage and cost |
-| `CAMAZOTZ_OLLAMA_MODEL` | `llama3.2:3b` | Ollama model name |
+| `CAMAZOTZ_OLLAMA_MODEL` | `llama3.2:3b` | Ollama model name (overridable at runtime) |
+| `OLLAMA_HOST` | `http://ollama:11434` | Ollama endpoint (overridable at runtime via UI) |
 | `CAMAZOTZ_IDP_PROVIDER` | `zitadel` (deployment), `mock` (runtime fallback) | `mock` or `zitadel`. In `zitadel` mode, IDP-backed trio labs use live HTTP token/introspect/revoke calls with graceful degradation. Falls back to `mock` if ZITADEL config is incomplete. See [docs/identity/overview.md](docs/identity/overview.md). |
 
 See [README.md](README.md) for the full configuration reference.

@@ -3,6 +3,20 @@
 All notable changes to Camazotz are documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## Runtime Brain Provider Switching (2026-05-15)
+
+### Added
+
+- **Runtime brain provider switching** — switch between `cloud` (Claude), `local` (Ollama), `openai`, and `bedrock` at runtime via the UI or API, without restarting the gateway. Mirrors the existing IdP switching pattern.
+- **`PUT /config` brain field** — new `brain` payload (`provider`, `ollama_host`, `ollama_model`) and `reset_brain` flag to switch providers or revert to env defaults.
+- **Lab reset on provider change** — switching providers (e.g. cloud → local) automatically resets all lab state, since different model capabilities affect challenge behavior. Model switching within the same provider does not trigger a reset.
+- **Dynamic Ollama host** — the Ollama endpoint is configurable at runtime via the UI or API, supporting any deployment topology (Docker Compose, K8s, remote GPU boxes). Defaults to `OLLAMA_HOST` env var.
+- **Brain popover redesign** — the top status strip brain popover now shows a provider selector (with checkmarks), an inline Ollama host input (for `local` provider), and the model list — all switchable on the fly.
+- **`GET /config` brain extensions** — response now includes `ollama_host`, `ollama_model`, and `available_providers` for UI/API consumers.
+- 21 new tests in `test_runtime_brain_switching.py` covering config overrides, API switching, lab reset semantics, factory behavior, and GET/PUT response contracts. Total: **1298 tests**.
+
+---
+
 ## preauth_injection_lab — MCP-T52 (2026-05-12)
 
 ### New lab: Pre-Authentication Injection

@@ -81,6 +81,31 @@ sudo k3s kubectl -n camazotz patch configmap camazotz-config \
 sudo k3s kubectl -n camazotz rollout restart deployment/brain-gateway
 ```
 
+## Runtime Brain Provider Switching
+
+Switch between providers at runtime via the UI or API — no restart needed:
+
+```bash
+# Switch to a remote Ollama GPU box
+curl -s -X PUT http://<node-ip>:30080/config \
+  -H "Content-Type: application/json" \
+  -d '{"brain": {"provider": "local", "ollama_host": "http://192.168.1.126:11434"}}'
+
+# Switch back to cloud
+curl -s -X PUT http://<node-ip>:30080/config \
+  -H "Content-Type: application/json" \
+  -d '{"brain": {"provider": "cloud"}}'
+
+# Reset to ConfigMap defaults
+curl -s -X PUT http://<node-ip>:30080/config \
+  -H "Content-Type: application/json" \
+  -d '{"reset_brain": true}'
+```
+
+The Brain badge in the portal UI also supports provider switching with an
+inline Ollama host input. Switching providers resets lab state; switching
+models within the same provider does not.
+
 ## Services
 
 | Service | Type | Port | Access |

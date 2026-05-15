@@ -12,9 +12,15 @@ SONNET_INPUT_COST_PER_M: Final[float] = 3.00
 SONNET_OUTPUT_COST_PER_M: Final[float] = 15.00
 VALID_DIFFICULTIES: Final[tuple[Difficulty, ...]] = ("easy", "medium", "hard")
 
+BrainProviderType = Literal["cloud", "local", "bedrock", "openai"]
+VALID_BRAIN_PROVIDERS: Final[tuple[BrainProviderType, ...]] = (
+    "cloud", "local", "bedrock", "openai",
+)
+
 _lock = threading.Lock()
 _runtime_difficulty: str | None = None
 _runtime_model: str | None = None
+_runtime_brain_config: dict[str, str] | None = None
 
 
 def get_difficulty() -> str:
@@ -62,9 +68,52 @@ def show_tokens() -> bool:
     return os.getenv("CAMAZOTZ_SHOW_TOKENS", "").lower() in ("true", "1", "yes")
 
 
+def _brain_field(field: str, env_var: str, default: str = "") -> str:
+    """Read a brain config field: runtime override > env var."""
+    with _lock:
+        if _runtime_brain_config is not None:
+            return _runtime_brain_config.get(field, "").strip() or default
+    return os.getenv(env_var, default).strip() or default
+
+
+def get_brain_provider() -> BrainProviderType:
+    """Active brain provider (runtime override > env var > cloud)."""
+    with _lock:
+        if _runtime_brain_config is not None:
+            val = _runtime_brain_config.get("provider", "cloud").lower().strip()
+            return val if val in VALID_BRAIN_PROVIDERS else "cloud"  # type: ignore[return-value]
+    val = os.getenv("BRAIN_PROVIDER", "cloud").lower().strip()
+    return val if val in VALID_BRAIN_PROVIDERS else "cloud"  # type: ignore[return-value]
+
+
+def set_brain_config(
+    *,
+    provider: str,
+    ollama_host: str = "",
+    ollama_model: str = "",
+) -> BrainProviderType:
+    """Set runtime brain provider override."""
+    global _runtime_brain_config
+    with _lock:
+        _runtime_brain_config = {
+            "provider": provider.lower().strip(),
+            "ollama_host": ollama_host.strip(),
+            "ollama_model": ollama_model.strip(),
+        }
+    return get_brain_provider()
+
+
+def reset_brain_config() -> BrainProviderType:
+    """Clear runtime brain override so env/default takes effect again."""
+    global _runtime_brain_config
+    with _lock:
+        _runtime_brain_config = None
+    return get_brain_provider()
+
+
 def get_brain_metadata() -> dict[str, str]:
     """Return read-only metadata for the active inference backend."""
-    provider = os.getenv("BRAIN_PROVIDER", "cloud").lower().strip() or "cloud"
+    provider = get_brain_provider()
     runtime = get_runtime_model()
     if provider == "local":
         model = runtime or get_ollama_model()
@@ -168,11 +217,11 @@ def estimate_cost(input_tokens: int, output_tokens: int) -> float:
 
 
 def get_ollama_host() -> str:
-    return os.getenv("OLLAMA_HOST", "http://localhost:11434")
+    return _brain_field("ollama_host", "OLLAMA_HOST", "http://localhost:11434")
 
 
 def get_ollama_model() -> str:
-    return os.getenv("CAMAZOTZ_OLLAMA_MODEL", "llama3.2:3b")
+    return _brain_field("ollama_model", "CAMAZOTZ_OLLAMA_MODEL", "llama3.2:3b")
 
 
 IdpProvider = Literal["mock", "zitadel", "okta"]
