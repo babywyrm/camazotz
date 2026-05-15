@@ -178,6 +178,7 @@ class _ConfigUpdate(BaseModel):
     difficulty: str | None = None
     model: str | None = None
     idp: _IdpConfigUpdate | None = None
+    reset_idp: bool = False
 
 
 @app.put("/config")
@@ -199,20 +200,23 @@ def update_config(payload: _ConfigUpdate) -> dict[str, object]:
         set_runtime_model(payload.model)
         reset_provider()
 
-    if payload.idp is not None:
+    if payload.reset_idp:
         prev_provider = get_idp_provider()
-        if payload.idp.provider.lower().strip() == "mock":
-            new_provider = reset_idp_config()
-        else:
-            new_provider = set_idp_config(
-                provider=payload.idp.provider,
-                issuer_url=payload.idp.issuer_url,
-                token_endpoint=payload.idp.token_endpoint,
-                introspection_endpoint=payload.idp.introspection_endpoint,
-                revocation_endpoint=payload.idp.revocation_endpoint,
-                client_id=payload.idp.client_id,
-                client_secret=payload.idp.client_secret,
-            )
+        new_provider = reset_idp_config()
+        if new_provider != prev_provider:
+            get_registry().reset_all()
+            _rate_limiter.reset()
+    elif payload.idp is not None:
+        prev_provider = get_idp_provider()
+        new_provider = set_idp_config(
+            provider=payload.idp.provider,
+            issuer_url=payload.idp.issuer_url,
+            token_endpoint=payload.idp.token_endpoint,
+            introspection_endpoint=payload.idp.introspection_endpoint,
+            revocation_endpoint=payload.idp.revocation_endpoint,
+            client_id=payload.idp.client_id,
+            client_secret=payload.idp.client_secret,
+        )
         if new_provider != prev_provider:
             get_registry().reset_all()
             _rate_limiter.reset()

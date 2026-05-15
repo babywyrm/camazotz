@@ -495,7 +495,7 @@ async function resetIdpToEnv(){
   status.style.color='var(--yellow)';
   try{
     var resp=await fetch('/api/config',{method:'PUT',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({idp:{provider:'mock'}})});
+      body:JSON.stringify({reset_idp:true})});
     var d=await resp.json();
     status.textContent='Reset to env defaults ('+esc(d.idp_provider||'mock')+')';
     status.style.color='var(--green)';
@@ -506,6 +506,7 @@ async function resetIdpToEnv(){
     document.getElementById('idpSwitchRevoke').value='';
     document.getElementById('idpSwitchClientId').value='';
     document.getElementById('idpSwitchClientSecret').value='';
+    document.getElementById('idpSwitchProvider')._userEdited=false;
     checkHealth();
     setTimeout(function(){status.textContent='';},5000);
   }catch(e){

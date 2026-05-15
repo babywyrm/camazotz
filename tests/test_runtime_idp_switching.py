@@ -150,6 +150,40 @@ def test_put_config_idp_switches_to_mock() -> None:
         _cleanup()
 
 
+def test_put_config_idp_mock_overrides_env(monkeypatch) -> None:
+    """Sending idp.provider=mock forces mock even when env says zitadel."""
+    monkeypatch.setenv("CAMAZOTZ_IDP_PROVIDER", "zitadel")
+    monkeypatch.setenv("CAMAZOTZ_IDP_TOKEN_ENDPOINT", "https://z.example/token")
+    monkeypatch.setattr(identity_service, "_idp_is_reachable", lambda _url: True)
+    client = TestClient(app)
+    resp = client.put("/config", json={"idp": {"provider": "mock"}})
+    try:
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["idp_provider"] == "mock"
+    finally:
+        _cleanup()
+
+
+def test_put_config_reset_idp_clears_override(monkeypatch) -> None:
+    """reset_idp=true clears runtime override, falls back to env."""
+    monkeypatch.delenv("CAMAZOTZ_IDP_PROVIDER", raising=False)
+    monkeypatch.setattr(identity_service, "_idp_health_ok", None)
+    monkeypatch.setattr(identity_service, "_idp_health_checked_at", 0.0)
+    config_mod.set_idp_config(
+        provider="okta",
+        token_endpoint="https://okta.example/v1/token",
+    )
+    client = TestClient(app)
+    resp = client.put("/config", json={"reset_idp": True})
+    try:
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["idp_provider"] == "mock"
+    finally:
+        _cleanup()
+
+
 def test_put_config_idp_switches_to_live(monkeypatch) -> None:
     monkeypatch.setattr(identity_service, "_idp_is_reachable", lambda _url: False)
     client = TestClient(app)
