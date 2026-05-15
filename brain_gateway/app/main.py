@@ -27,7 +27,9 @@ from brain_gateway.app.config import (
     get_idp_provider,
     get_ollama_host,
     is_live_idp,
+    reset_idp_config,
     set_difficulty,
+    set_idp_config,
     set_runtime_model,
     show_tokens,
 )
@@ -162,14 +164,29 @@ def get_config() -> dict[str, object]:
     return config
 
 
+class _IdpConfigUpdate(BaseModel):
+    provider: str
+    issuer_url: str = ""
+    token_endpoint: str = ""
+    introspection_endpoint: str = ""
+    revocation_endpoint: str = ""
+    client_id: str = ""
+    client_secret: str = ""
+
+
 class _ConfigUpdate(BaseModel):
     difficulty: str | None = None
     model: str | None = None
+    idp: _IdpConfigUpdate | None = None
 
 
 @app.put("/config")
 def update_config(payload: _ConfigUpdate) -> dict[str, object]:
-    """Update runtime difficulty and/or active brain model."""
+    """Update runtime difficulty, active brain model, and/or IdP config.
+
+    When the IdP is changed, all lab state is automatically reset to
+    prevent stale token/session references from the previous provider.
+    """
     from fastapi import HTTPException
     from brain_gateway.app.brain.factory import reset_provider
 
@@ -182,10 +199,31 @@ def update_config(payload: _ConfigUpdate) -> dict[str, object]:
         set_runtime_model(payload.model)
         reset_provider()
 
+    if payload.idp is not None:
+        prev_provider = get_idp_provider()
+        if payload.idp.provider.lower().strip() == "mock":
+            new_provider = reset_idp_config()
+        else:
+            new_provider = set_idp_config(
+                provider=payload.idp.provider,
+                issuer_url=payload.idp.issuer_url,
+                token_endpoint=payload.idp.token_endpoint,
+                introspection_endpoint=payload.idp.introspection_endpoint,
+                revocation_endpoint=payload.idp.revocation_endpoint,
+                client_id=payload.idp.client_id,
+                client_secret=payload.idp.client_secret,
+            )
+        if new_provider != prev_provider:
+            get_registry().reset_all()
+            _rate_limiter.reset()
+
     brain_meta = get_brain_metadata()
+    status = idp_status()
     return {
         "difficulty": get_difficulty(),
         "show_tokens": show_tokens(),
+        "idp_provider": status["idp_provider"],
+        "idp_degraded": status["idp_degraded"],
         "brain": {
             **brain_meta,
             "available_models": get_available_models(

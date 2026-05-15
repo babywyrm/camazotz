@@ -81,30 +81,32 @@
 <div class="container">
   <div class="id-hero">
     <h1>Identity <span>Dashboard</span></h1>
-    <p>Live ZITADEL integration status, IDP-backed tool activity, and identity architecture reference.</p>
+    <p>Live identity provider status, runtime switching, IDP-backed tool activity, and architecture reference.</p>
   </div>
 
   <!-- ─── Status Panel ─── -->
   <div class="id-section">
     <div class="id-section-title">
-      <span class="dot {% if idp_provider == 'zitadel' and not idp_degraded %}ok{% elif idp_degraded %}warn{% else %}off{% endif %}"></span>
+      <span class="dot {% if idp_provider != 'mock' and not idp_degraded %}ok{% elif idp_degraded %}warn{% else %}off{% endif %}"></span>
       Provider Status
     </div>
     <div class="id-grid">
       <div class="id-card">
         <div class="id-card-label">Provider Mode</div>
         <div class="id-card-value">
-          <span class="id-pill {% if idp_provider == 'zitadel' %}{% if idp_degraded %}degraded{% else %}on{% endif %}{% else %}off{% endif %}">
+          <span class="id-pill {% if idp_provider != 'mock' %}{% if idp_degraded %}degraded{% else %}on{% endif %}{% else %}off{% endif %}">
             {{ idp_provider }}
           </span>
           {% if idp_degraded %}
           <span style="font-size:.78rem;color:var(--yellow);margin-left:.5rem">{{ idp_reason }}</span>
           {% endif %}
         </div>
+        {% if idp_provider == 'zitadel' %}
         <a href="{{ zitadel_console_url }}" target="_blank" rel="noopener" class="id-console-link">
           ZITADEL Console
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
         </a>
+        {% endif %}
       </div>
       <div class="id-card">
         <div class="id-card-label">IDP-Backed Labs</div>
@@ -124,7 +126,7 @@
 
     {% if idp_endpoints %}
     <div class="id-card" style="margin-top:1.25rem">
-      <div class="id-card-label">ZITADEL Endpoints</div>
+      <div class="id-card-label">Active Endpoints</div>
       <table class="id-endpoints">
         <tr><td>Issuer</td><td>{{ idp_endpoints.get('issuer', '—') }}</td></tr>
         <tr><td>Token</td><td>{{ idp_endpoints.get('token', '—') }}</td></tr>
@@ -137,6 +139,70 @@
     <div class="id-card" style="margin-top:1.25rem">
       <div class="id-card-label">Health Probe</div>
       <div id="healthResult" style="font-size:.82rem;color:var(--muted)">Checking...</div>
+    </div>
+  </div>
+
+  <!-- ─── Runtime IdP Switcher ─── -->
+  <div class="id-section">
+    <div class="id-section-title">
+      <span class="dot ok"></span>
+      Runtime IdP Switching
+    </div>
+    <div class="id-card">
+      <p style="font-size:.78rem;color:var(--text2);margin-bottom:1rem">
+        Switch the active identity provider at runtime. Changing provider resets all lab state
+        to prevent stale token references.
+      </p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem">
+        <div>
+          <label class="id-card-label">Provider</label>
+          <select id="idpSwitchProvider" style="width:100%;background:var(--surface2);color:var(--text);
+            border:1px solid var(--border);border-radius:6px;padding:.4rem .5rem;font-size:.82rem;font-family:inherit">
+            <option value="mock">mock</option>
+            <option value="zitadel">zitadel</option>
+            <option value="okta">okta</option>
+          </select>
+        </div>
+        <div>
+          <label class="id-card-label">Issuer URL</label>
+          <input id="idpSwitchIssuer" type="text" placeholder="https://..." style="width:100%;background:var(--surface2);
+            color:var(--text);border:1px solid var(--border);border-radius:6px;padding:.4rem .5rem;font-size:.82rem;font-family:inherit">
+        </div>
+        <div>
+          <label class="id-card-label">Token Endpoint</label>
+          <input id="idpSwitchToken" type="text" placeholder="/oauth/v2/token" style="width:100%;background:var(--surface2);
+            color:var(--text);border:1px solid var(--border);border-radius:6px;padding:.4rem .5rem;font-size:.82rem;font-family:inherit">
+        </div>
+        <div>
+          <label class="id-card-label">Introspection Endpoint</label>
+          <input id="idpSwitchIntrospect" type="text" placeholder="/oauth/v2/introspect" style="width:100%;background:var(--surface2);
+            color:var(--text);border:1px solid var(--border);border-radius:6px;padding:.4rem .5rem;font-size:.82rem;font-family:inherit">
+        </div>
+        <div>
+          <label class="id-card-label">Revocation Endpoint</label>
+          <input id="idpSwitchRevoke" type="text" placeholder="/oauth/v2/revoke" style="width:100%;background:var(--surface2);
+            color:var(--text);border:1px solid var(--border);border-radius:6px;padding:.4rem .5rem;font-size:.82rem;font-family:inherit">
+        </div>
+        <div>
+          <label class="id-card-label">Client ID</label>
+          <input id="idpSwitchClientId" type="text" placeholder="client-id" style="width:100%;background:var(--surface2);
+            color:var(--text);border:1px solid var(--border);border-radius:6px;padding:.4rem .5rem;font-size:.82rem;font-family:inherit">
+        </div>
+        <div style="grid-column:1/-1">
+          <label class="id-card-label">Client Secret</label>
+          <input id="idpSwitchClientSecret" type="password" placeholder="••••••••" style="width:100%;background:var(--surface2);
+            color:var(--text);border:1px solid var(--border);border-radius:6px;padding:.4rem .5rem;font-size:.82rem;font-family:inherit">
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:.8rem;margin-top:1rem">
+        <button id="idpApplyBtn" onclick="applyIdpSwitch()" style="background:var(--accent);color:#fff;border:none;
+          border-radius:6px;padding:.45rem 1.2rem;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit;
+          transition:opacity .2s">Apply</button>
+        <button onclick="resetIdpToEnv()" style="background:var(--surface2);color:var(--text2);border:1px solid var(--border);
+          border-radius:6px;padding:.45rem 1rem;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit;
+          transition:all .2s">Reset to ENV</button>
+        <span id="idpSwitchStatus" style="font-size:.78rem;color:var(--muted)"></span>
+      </div>
     </div>
   </div>
 
@@ -170,7 +236,7 @@
 
     <div class="id-ref">
       <h4>Data Flow</h4>
-      <p>How the Camazotz stack connects to ZITADEL. Only the oauth_delegation and revocation labs make live HTTP calls. The RBAC lab merges group claims from environment variables.</p>
+      <p>How the Camazotz stack connects to the identity provider. Only the oauth_delegation and revocation labs make live HTTP calls. The RBAC lab merges group claims from environment variables.</p>
       <div class="mermaid">
 flowchart LR
     subgraph client [MCP Client]
@@ -184,33 +250,31 @@ flowchart LR
         RBACLab["rbac_lab"]
     end
     subgraph idp [Identity Provider]
-        ZITADEL["ZITADEL :8180"]
-        ZDB["Postgres"]
+        IdP["ZITADEL / Okta"]
     end
     Agent -->|"POST /mcp"| Gateway
     Gateway --> OAuthLab
     Gateway --> RevLab
     Gateway --> RBACLab
-    OAuthLab -->|"token exchange"| ZITADEL
-    RevLab -->|"introspect / revoke"| ZITADEL
-    ZITADEL --> ZDB
+    OAuthLab -->|"token exchange"| IdP
+    RevLab -->|"introspect / revoke"| IdP
     Portal -->|"GET /config"| Gateway
       </div>
     </div>
 
     <div class="id-ref">
       <h4>Provider Selection and Degradation</h4>
-      <p>Two levels of degradation. <strong>Gateway-level</strong>: ZITADEL unreachable, entire runtime uses mock. <strong>Per-tool</strong>: ZITADEL reachable but a specific HTTP call fails, lab falls back to synthetic token.</p>
+      <p>Two levels of degradation. <strong>Gateway-level</strong>: IdP unreachable, entire runtime uses mock. <strong>Per-tool</strong>: IdP reachable but a specific HTTP call fails, lab falls back to synthetic token.</p>
       <div class="mermaid">
 flowchart TD
     Start["Request arrives"] --> CheckConfig{"CAMAZOTZ_IDP_PROVIDER?"}
     CheckConfig -->|"mock or unset"| UseMock["MockIdentityProvider"]
-    CheckConfig -->|"zitadel"| CheckEndpoint{"Token endpoint set?"}
+    CheckConfig -->|"zitadel / okta"| CheckEndpoint{"Token endpoint set?"}
     CheckEndpoint -->|"empty"| UseMock
-    CheckEndpoint -->|"set"| HealthProbe{"ZITADEL reachable?"}
-    HealthProbe -->|"yes"| UseZitadel["ZitadelIdentityProvider"]
+    CheckEndpoint -->|"set"| HealthProbe{"IdP reachable?"}
+    HealthProbe -->|"yes"| UseLive["Zitadel/OktaIdentityProvider"]
     HealthProbe -->|"no"| Degraded["MockIdentityProvider + degraded"]
-    UseZitadel --> LabCall["Lab calls provider method"]
+    UseLive --> LabCall["Lab calls provider method"]
     LabCall --> LabSuccess{"HTTP call succeeds?"}
     LabSuccess -->|"yes"| TagBacked["_idp_backed: true"]
     LabSuccess -->|"no"| TagDegraded["_idp_degraded: true"]
@@ -219,14 +283,14 @@ flowchart TD
 
     <div class="id-ref">
       <h4>Token Lifecycle</h4>
-      <p>The three live ZITADEL HTTP operations and which lab triggers each. All use form-encoded POST with client_id/client_secret auth and 5s timeout.</p>
+      <p>The three live IdP HTTP operations and which lab triggers each. All use form-encoded POST with client_id/client_secret auth and 5s timeout.</p>
       <div class="mermaid">
 sequenceDiagram
     participant C as MCP Client
     participant GW as Gateway
     participant OL as oauth_delegation_lab
     participant RL as revocation_lab
-    participant Z as ZITADEL
+    participant Z as IdP
 
     Note over GW,Z: Health probe (cached 10s)
     GW->>Z: GET host root
@@ -234,19 +298,19 @@ sequenceDiagram
 
     C->>GW: oauth.exchange_token
     GW->>OL: exchange(principal, service)
-    OL->>Z: POST /oauth/v2/token
+    OL->>Z: POST token endpoint
     Z-->>OL: access_token
     OL-->>C: result + _idp_backed
 
     C->>GW: revocation.use_token
     GW->>RL: use_token(token_id)
-    RL->>Z: POST /oauth/v2/introspect
+    RL->>Z: POST introspection endpoint
     Z-->>RL: active true/false
     RL-->>C: result + _idp_token_status
 
     C->>GW: revocation.revoke_principal
     GW->>RL: revoke(principal)
-    RL->>Z: POST /oauth/v2/revoke
+    RL->>Z: POST revocation endpoint
     Z-->>RL: 200 OK
     RL-->>C: result + _idp_revocation_hook
       </div>
@@ -254,16 +318,16 @@ sequenceDiagram
 
     <div class="id-ref">
       <h4>Real vs Synthetic</h4>
-      <p>What comes from live ZITADEL HTTP calls vs what the lab generates locally.</p>
+      <p>What comes from live IdP HTTP calls vs what the lab generates locally.</p>
       <table>
-        <thead><tr><th>Artifact</th><th>Mock</th><th>Zitadel (healthy)</th><th>Zitadel (degraded)</th></tr></thead>
+        <thead><tr><th>Artifact</th><th>Mock</th><th>Live (healthy)</th><th>Live (degraded)</th></tr></thead>
         <tbody>
-          <tr><td>Exchange access_token</td><td><code>mock-exchanged</code></td><td>Real ZITADEL token</td><td><code>zitadel-at-{hex}</code> fallback</td></tr>
-          <tr><td>Introspection</td><td>active for <code>mock-*</code> only</td><td>Live ZITADEL introspect</td><td>Exception, _idp_degraded</td></tr>
-          <tr><td>Revocation</td><td>Always revoked: true</td><td>Real ZITADEL revoke POST</td><td>Exception, _idp_degraded</td></tr>
+          <tr><td>Exchange access_token</td><td><code>mock-exchanged</code></td><td>Real IdP token</td><td>Synthetic fallback token</td></tr>
+          <tr><td>Introspection</td><td>active for <code>mock-*</code> only</td><td>Live IdP introspect</td><td>Exception, _idp_degraded</td></tr>
+          <tr><td>Revocation</td><td>Always revoked: true</td><td>Real IdP revoke POST</td><td>Exception, _idp_degraded</td></tr>
           <tr><td>Normalized claims</td><td>Not present</td><td>From env config</td><td>Same (env-driven)</td></tr>
           <tr><td>RBAC groups</td><td>Static config</td><td>Env-merged groups</td><td>Same (env-driven)</td></tr>
-          <tr><td>/config status</td><td>idp_provider: mock</td><td>zitadel, degraded: false</td><td>zitadel, degraded: true</td></tr>
+          <tr><td>/config status</td><td>idp_provider: mock</td><td>provider, degraded: false</td><td>provider, degraded: true</td></tr>
         </tbody>
       </table>
     </div>
@@ -271,7 +335,7 @@ sequenceDiagram
     <div class="id-ref">
       <h4>Per-Lab Integration</h4>
       <table>
-        <thead><tr><th>Lab</th><th>ZITADEL Calls</th><th>What's Real</th><th>What's Synthetic</th></tr></thead>
+        <thead><tr><th>Lab</th><th>IdP Calls</th><th>What's Real</th><th>What's Synthetic</th></tr></thead>
         <tbody>
           <tr>
             <td>oauth_delegation_lab</td>
@@ -378,17 +442,80 @@ async function checkHealth(){
     var resp=await fetch('/api/config');
     var ms=Math.round(performance.now()-t0);
     var d=await resp.json();
-    if(d.idp_provider==='zitadel'&&!d.idp_degraded){
-      el.innerHTML='<span style="color:var(--green);font-weight:600">Healthy</span> — ZITADEL reachable ('+ms+'ms round-trip to gateway /config)';
+    var prov=d.idp_provider||'mock';
+    if(prov!=='mock'&&!d.idp_degraded){
+      el.innerHTML='<span style="color:var(--green);font-weight:600">Healthy</span> — '+esc(prov)+' reachable ('+ms+'ms)';
     }else if(d.idp_degraded){
-      el.innerHTML='<span style="color:var(--yellow);font-weight:600">Degraded</span> — '+esc(d.idp_reason||'ZITADEL unreachable')+' ('+ms+'ms)';
+      el.innerHTML='<span style="color:var(--yellow);font-weight:600">Degraded</span> — '+esc(d.idp_reason||'IdP unreachable')+' ('+ms+'ms)';
     }else{
-      el.innerHTML='<span style="color:var(--muted);font-weight:600">Mock mode</span> — no ZITADEL connection ('+ms+'ms)';
+      el.innerHTML='<span style="color:var(--muted);font-weight:600">Mock mode</span> — no IdP connection ('+ms+'ms)';
     }
+    // sync switcher dropdown with current state
+    var sel=document.getElementById('idpSwitchProvider');
+    if(sel&&!sel._userEdited)sel.value=prov;
   }catch(e){
     el.innerHTML='<span style="color:var(--red);font-weight:600">Error</span> — gateway unreachable';
   }
 }
+
+async function applyIdpSwitch(){
+  var btn=document.getElementById('idpApplyBtn');
+  var status=document.getElementById('idpSwitchStatus');
+  var provider=document.getElementById('idpSwitchProvider').value;
+  btn.disabled=true;
+  status.textContent='Switching…';
+  status.style.color='var(--yellow)';
+  try{
+    var body={idp:{
+      provider:provider,
+      issuer_url:document.getElementById('idpSwitchIssuer').value,
+      token_endpoint:document.getElementById('idpSwitchToken').value,
+      introspection_endpoint:document.getElementById('idpSwitchIntrospect').value,
+      revocation_endpoint:document.getElementById('idpSwitchRevoke').value,
+      client_id:document.getElementById('idpSwitchClientId').value,
+      client_secret:document.getElementById('idpSwitchClientSecret').value
+    }};
+    var resp=await fetch('/api/config',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    var d=await resp.json();
+    status.textContent='Switched to '+esc(d.idp_provider||provider)+(d.idp_provider!==provider?' (labs reset)':'');
+    status.style.color='var(--green)';
+    checkHealth();
+    setTimeout(function(){status.textContent='';},5000);
+  }catch(e){
+    status.textContent='Failed: '+e.message;
+    status.style.color='var(--red)';
+  }finally{
+    btn.disabled=false;
+  }
+}
+
+async function resetIdpToEnv(){
+  var status=document.getElementById('idpSwitchStatus');
+  status.textContent='Resetting…';
+  status.style.color='var(--yellow)';
+  try{
+    var resp=await fetch('/api/config',{method:'PUT',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({idp:{provider:'mock'}})});
+    var d=await resp.json();
+    status.textContent='Reset to env defaults ('+esc(d.idp_provider||'mock')+')';
+    status.style.color='var(--green)';
+    document.getElementById('idpSwitchProvider').value=d.idp_provider||'mock';
+    document.getElementById('idpSwitchIssuer').value='';
+    document.getElementById('idpSwitchToken').value='';
+    document.getElementById('idpSwitchIntrospect').value='';
+    document.getElementById('idpSwitchRevoke').value='';
+    document.getElementById('idpSwitchClientId').value='';
+    document.getElementById('idpSwitchClientSecret').value='';
+    checkHealth();
+    setTimeout(function(){status.textContent='';},5000);
+  }catch(e){
+    status.textContent='Failed: '+e.message;
+    status.style.color='var(--red)';
+  }
+}
+
+// Mark dropdown as user-edited once touched
+document.getElementById('idpSwitchProvider').addEventListener('change',function(){this._userEdited=true;});
 
 checkHealth();
 fetchIdpEvents();

@@ -15,6 +15,13 @@ _idp_health_ok: bool | None = None
 _idp_health_checked_at = 0.0
 
 
+def invalidate_idp_health_cache() -> None:
+    """Reset the health probe cache so the next call re-probes the provider."""
+    global _idp_health_ok, _idp_health_checked_at
+    _idp_health_ok = None
+    _idp_health_checked_at = 0.0
+
+
 def _host_probe_url(issuer_or_token_endpoint: str) -> str:
     parsed = urlparse(issuer_or_token_endpoint)
     if parsed.scheme and parsed.netloc:

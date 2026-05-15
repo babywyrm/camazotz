@@ -179,9 +179,19 @@ IdpProvider = Literal["mock", "zitadel", "okta"]
 
 _LIVE_IDP_PROVIDERS: Final[frozenset[str]] = frozenset({"zitadel", "okta"})
 
+_runtime_idp_config: dict[str, str] | None = None
+
 
 def get_idp_provider() -> IdpProvider:
-    """Active identity provider: ``mock`` (default), ``zitadel``, or ``okta``."""
+    """Active identity provider (runtime override > env var > mock)."""
+    with _lock:
+        if _runtime_idp_config is not None:
+            value = _runtime_idp_config.get("provider", "mock").lower().strip()
+            if value not in _LIVE_IDP_PROVIDERS:
+                return "mock"
+            if not _runtime_idp_config.get("token_endpoint", "").strip():
+                return "mock"
+            return value  # type: ignore[return-value]
     value = os.getenv("CAMAZOTZ_IDP_PROVIDER", "mock").lower().strip()
     if value not in _LIVE_IDP_PROVIDERS:
         return "mock"
@@ -195,25 +205,72 @@ def is_live_idp() -> bool:
     return get_idp_provider() in _LIVE_IDP_PROVIDERS
 
 
+def set_idp_config(
+    *,
+    provider: str,
+    issuer_url: str = "",
+    token_endpoint: str = "",
+    introspection_endpoint: str = "",
+    revocation_endpoint: str = "",
+    client_id: str = "",
+    client_secret: str = "",
+) -> IdpProvider:
+    """Set runtime IdP override. Invalidates the health cache."""
+    global _runtime_idp_config
+    from brain_gateway.app.identity.service import invalidate_idp_health_cache
+
+    with _lock:
+        _runtime_idp_config = {
+            "provider": provider.lower().strip(),
+            "issuer_url": issuer_url.strip(),
+            "token_endpoint": token_endpoint.strip(),
+            "introspection_endpoint": introspection_endpoint.strip(),
+            "revocation_endpoint": revocation_endpoint.strip(),
+            "client_id": client_id.strip(),
+            "client_secret": client_secret.strip(),
+        }
+    invalidate_idp_health_cache()
+    return get_idp_provider()
+
+
+def reset_idp_config() -> IdpProvider:
+    """Clear runtime IdP override so env/default takes effect again."""
+    global _runtime_idp_config
+    from brain_gateway.app.identity.service import invalidate_idp_health_cache
+
+    with _lock:
+        _runtime_idp_config = None
+    invalidate_idp_health_cache()
+    return get_idp_provider()
+
+
+def _idp_field(field: str, env_var: str) -> str:
+    """Read an IdP config field: runtime override > env var."""
+    with _lock:
+        if _runtime_idp_config is not None:
+            return _runtime_idp_config.get(field, "").strip()
+    return os.getenv(env_var, "").strip()
+
+
 def get_idp_issuer_url() -> str:
-    return os.getenv("CAMAZOTZ_IDP_ISSUER_URL", "").strip()
+    return _idp_field("issuer_url", "CAMAZOTZ_IDP_ISSUER_URL")
 
 
 def get_idp_token_endpoint() -> str:
-    return os.getenv("CAMAZOTZ_IDP_TOKEN_ENDPOINT", "").strip()
+    return _idp_field("token_endpoint", "CAMAZOTZ_IDP_TOKEN_ENDPOINT")
 
 
 def get_idp_introspection_endpoint() -> str:
-    return os.getenv("CAMAZOTZ_IDP_INTROSPECTION_ENDPOINT", "").strip()
+    return _idp_field("introspection_endpoint", "CAMAZOTZ_IDP_INTROSPECTION_ENDPOINT")
 
 
 def get_idp_revocation_endpoint() -> str:
-    return os.getenv("CAMAZOTZ_IDP_REVOCATION_ENDPOINT", "").strip()
+    return _idp_field("revocation_endpoint", "CAMAZOTZ_IDP_REVOCATION_ENDPOINT")
 
 
 def get_idp_client_id() -> str:
-    return os.getenv("CAMAZOTZ_IDP_CLIENT_ID", "").strip()
+    return _idp_field("client_id", "CAMAZOTZ_IDP_CLIENT_ID")
 
 
 def get_idp_client_secret() -> str:
-    return os.getenv("CAMAZOTZ_IDP_CLIENT_SECRET", "").strip()
+    return _idp_field("client_secret", "CAMAZOTZ_IDP_CLIENT_SECRET")
