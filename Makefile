@@ -1,8 +1,10 @@
-.PHONY: help up up-local up-policed down logs test test-zitadel-flows build clean status ps env compose-gen helm-template qa qa-json smoke-local smoke-k8s smoke-local-llm smoke-k8s-llm smoke-local-identity smoke-k8s-identity smoke-local-identity-llm smoke-k8s-identity-llm smoke-local-lanes smoke-k8s-lanes smoke-k8s-policed feedback-loop-print feedback-loop-dry feedback-loop-apply campaign campaign-print campaign-list
+.PHONY: help up up-local up-okta up-policed down logs test test-zitadel-flows build clean status ps env compose-gen helm-template qa qa-json smoke-local smoke-k8s smoke-local-llm smoke-k8s-llm smoke-local-identity smoke-k8s-identity smoke-local-identity-llm smoke-k8s-identity-llm smoke-local-lanes smoke-k8s-lanes smoke-k8s-policed feedback-loop-print feedback-loop-dry feedback-loop-apply campaign campaign-print campaign-list
 
 COMPOSE := docker compose -f compose/docker-compose.yml
 COMPOSE_POLICED := docker compose -f compose/docker-compose.yml -f compose/docker-compose.nullfield.yml
+COMPOSE_OKTA := docker compose -f compose/docker-compose.yml -f compose/docker-compose.okta.yml
 ENV_FILE := compose/.env
+OKTA_ENV_FILE := compose/.env.okta
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | sort | \
@@ -24,6 +26,14 @@ up: env ## Start stack (gateway + portal; default brain: Anthropic API)
 
 up-local: env ## Start with local provider (Ollama)
 	BRAIN_PROVIDER=local $(COMPOSE) --env-file $(ENV_FILE) --profile local up -d --build
+
+up-okta: env ## Start stack with external Okta identity (no bundled ZITADEL)
+	@test -f $(OKTA_ENV_FILE) || (echo "Missing $(OKTA_ENV_FILE) — copy compose/.env.okta.example and fill in your Okta org values" && exit 1)
+	$(COMPOSE_OKTA) --env-file $(ENV_FILE) --env-file $(OKTA_ENV_FILE) up -d --build
+	@echo ""
+	@echo "  Portal:  http://localhost:3000"
+	@echo "  Gateway: http://localhost:8080  (identity: Okta)"
+	@echo ""
 
 up-policed: env ## Start stack with the nullfield sidecar overlay (adds :9090 policed + :9091 admin)
 	$(COMPOSE_POLICED) --env-file $(ENV_FILE) up -d --build

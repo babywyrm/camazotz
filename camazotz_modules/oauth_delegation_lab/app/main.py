@@ -16,7 +16,7 @@ import os
 import threading
 import uuid
 
-from brain_gateway.app.config import get_idp_provider
+from brain_gateway.app.config import get_idp_provider, is_live_idp
 from brain_gateway.app.identity.service import get_identity_provider
 from brain_gateway.app.identity.service import normalize_claims
 from camazotz_modules.base import LabModule
@@ -88,11 +88,11 @@ class OAuthDelegationLab(LabModule):
         with self._lock:
             self._reset_state()
 
-    def _zitadel_exchange_extras(self) -> dict:
-        if get_idp_provider() != "zitadel":
+    def _idp_exchange_extras(self) -> dict:
+        if not is_live_idp():
             return {}
         raw_json = os.getenv("CAMAZOTZ_LAB_IDENTITY_CLAIMS_JSON", "").strip()
-        out: dict = {"_idp_provider": "zitadel", "_idp_backed": True}
+        out: dict = {"_idp_provider": get_idp_provider(), "_idp_backed": True}
         if not raw_json:
             return out
         try:
@@ -113,7 +113,7 @@ class OAuthDelegationLab(LabModule):
         self, principal: str, service: str, scope: str, fallback_access: str,
     ) -> tuple[str, bool]:
         """Attempt provider-backed exchange; return (access_token, degraded)."""
-        if get_idp_provider() != "zitadel":
+        if not is_live_idp():
             return fallback_access, False
         try:
             provider = get_identity_provider()
@@ -128,8 +128,8 @@ class OAuthDelegationLab(LabModule):
             return fallback_access, True
 
     def _mint_exchanged_access(self, service: str) -> str:
-        if get_idp_provider() == "zitadel":
-            return f"zitadel-at-{uuid.uuid4().hex[:12]}"
+        if is_live_idp():
+            return f"{get_idp_provider()}-at-{uuid.uuid4().hex[:12]}"
         return f"cztz-{service}-new-{uuid.uuid4().hex[:8]}"
 
     def _exchange_ok(
@@ -150,7 +150,7 @@ class OAuthDelegationLab(LabModule):
             "scope": tok["scope"],
             "_difficulty": difficulty,
         }
-        out.update(self._zitadel_exchange_extras())
+        out.update(self._idp_exchange_extras())
         if degraded:
             out["_idp_degraded"] = True
             out["_idp_reason"] = "provider_call_failed"

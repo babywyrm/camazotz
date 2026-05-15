@@ -109,9 +109,9 @@ def _check_identity_probe(client: httpx.Client, gateway_url: str) -> None:
     resp.raise_for_status()
     body = resp.json()
     provider = body.get("idp_provider")
-    if provider not in ("mock", "zitadel"):
+    if provider not in ("mock", "zitadel", "okta"):
         raise RuntimeError(
-            f"identity probe: idp_provider must be 'mock' or 'zitadel', got {provider!r}"
+            f"identity probe: idp_provider must be 'mock', 'zitadel', or 'okta', got {provider!r}"
         )
     print(f"PASS identity probe (/config idp_provider={provider})")
 

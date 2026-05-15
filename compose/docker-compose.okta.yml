@@ -1,0 +1,42 @@
+# Okta identity provider overlay for the camazotz Compose stack.
+#
+# Replaces the bundled ZITADEL services with an external Okta org.
+# No new containers are added — Okta is SaaS.
+#
+# Usage:
+#   cp compose/.env.okta.example compose/.env.okta
+#   # edit .env.okta with your Okta Developer org values
+#
+#   docker compose \
+#     -f compose/docker-compose.yml \
+#     -f compose/docker-compose.okta.yml \
+#     --env-file compose/.env \
+#     --env-file compose/.env.okta \
+#     up -d
+#
+# Or simply: make up-okta
+#
+# Endpoints after `up`:
+#   :3000  portal
+#   :8080  brain-gateway (identity backed by external Okta)
+
+services:
+  brain-gateway:
+    environment:
+      CAMAZOTZ_IDP_PROVIDER: okta
+      CAMAZOTZ_IDP_ISSUER_URL: ${OKTA_ISSUER_URL}
+      CAMAZOTZ_IDP_TOKEN_ENDPOINT: ${OKTA_TOKEN_ENDPOINT}
+      CAMAZOTZ_IDP_INTROSPECTION_ENDPOINT: ${OKTA_INTROSPECTION_ENDPOINT}
+      CAMAZOTZ_IDP_REVOCATION_ENDPOINT: ${OKTA_REVOCATION_ENDPOINT}
+      CAMAZOTZ_IDP_CLIENT_ID: ${OKTA_CLIENT_ID}
+      CAMAZOTZ_IDP_CLIENT_SECRET: ${OKTA_CLIENT_SECRET}
+    depends_on:
+      zitadel: !reset
+      zitadel-postgres: !reset
+
+  # Disable the bundled ZITADEL stack when using external Okta.
+  zitadel:
+    profiles: [disabled]
+
+  zitadel-postgres:
+    profiles: [disabled]

@@ -335,7 +335,7 @@ def idp_checks_oauth(gw: GatewayClient, level: str) -> list[CheckResult]:
     })
     return [
         check("exchange.has_idp_backed_tag", lambda: r.get("_idp_backed") is True),
-        check("exchange.has_idp_provider", lambda: r.get("_idp_provider") == "zitadel"),
+        check("exchange.has_idp_provider", lambda: r.get("_idp_provider") in ("zitadel", "okta")),
     ]
 
 

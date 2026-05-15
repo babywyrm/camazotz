@@ -112,12 +112,12 @@ def run_qa(
         all_results.append(mr)
 
     idp_live = (
-        idp_status.get("idp_provider") == "zitadel"
+        idp_status.get("idp_provider") in ("zitadel", "okta")
         and not idp_status.get("idp_degraded")
     )
     if idp_live:
         if verbose:
-            print("\n  Running IDP-specific checks (zitadel live)...", flush=True)
+            print(f"\n  Running IDP-specific checks ({idp_status.get('idp_provider')} live)...", flush=True)
         for mod_name, idp_fn in IDP_MODULE_CHECKS.items():
             if mod_name not in (modules or MODULE_TESTS):
                 continue

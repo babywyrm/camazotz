@@ -363,7 +363,7 @@ def test_smoke_identity_probe_passes_when_degraded() -> None:
             "show_tokens": False,
             "idp_provider": "zitadel",
             "idp_degraded": True,
-            "idp_reason": "zitadel_unreachable",
+            "idp_reason": "idp_unreachable",
         },
     )
     try:

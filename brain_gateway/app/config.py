@@ -175,14 +175,24 @@ def get_ollama_model() -> str:
     return os.getenv("CAMAZOTZ_OLLAMA_MODEL", "llama3.2:3b")
 
 
-def get_idp_provider() -> Literal["mock", "zitadel"]:
-    """Active identity provider: ``mock`` (default) or ``zitadel``."""
+IdpProvider = Literal["mock", "zitadel", "okta"]
+
+_LIVE_IDP_PROVIDERS: Final[frozenset[str]] = frozenset({"zitadel", "okta"})
+
+
+def get_idp_provider() -> IdpProvider:
+    """Active identity provider: ``mock`` (default), ``zitadel``, or ``okta``."""
     value = os.getenv("CAMAZOTZ_IDP_PROVIDER", "mock").lower().strip()
-    if value != "zitadel":
+    if value not in _LIVE_IDP_PROVIDERS:
         return "mock"
     if not os.getenv("CAMAZOTZ_IDP_TOKEN_ENDPOINT", "").strip():
         return "mock"
-    return "zitadel"
+    return value  # type: ignore[return-value]
+
+
+def is_live_idp() -> bool:
+    """True when a real (non-mock) identity provider is active."""
+    return get_idp_provider() in _LIVE_IDP_PROVIDERS
 
 
 def get_idp_issuer_url() -> str:

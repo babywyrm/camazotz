@@ -15,7 +15,7 @@ import threading
 import time
 import uuid
 
-from brain_gateway.app.config import get_idp_provider
+from brain_gateway.app.config import get_idp_provider, is_live_idp
 from brain_gateway.app.identity.service import get_identity_provider
 from camazotz_modules.base import LabModule
 
@@ -53,12 +53,12 @@ class RevocationLab(LabModule):
             self._revoked = set()
 
     def _idp_issue_tags(self) -> dict:
-        if get_idp_provider() != "zitadel":
+        if not is_live_idp():
             return {}
-        return {"_idp_provider": "zitadel", "_idp_backed": True}
+        return {"_idp_provider": get_idp_provider(), "_idp_backed": True}
 
     def _idp_use_tags(self, *, access_token: str | None = None) -> dict:
-        if get_idp_provider() != "zitadel":
+        if not is_live_idp():
             return {}
         if not access_token:
             return {"_idp_token_status": "token_missing", "_idp_backed": True}
@@ -241,7 +241,7 @@ class RevocationLab(LabModule):
             "principal": principal,
             "_difficulty": difficulty,
         }
-        if get_idp_provider() == "zitadel":
+        if is_live_idp():
             provider = get_identity_provider()
             revoke_degraded = False
             for tid in revoked_ids:
@@ -252,7 +252,7 @@ class RevocationLab(LabModule):
                         provider.revoke_token(token=access_token)
                     except Exception:
                         revoke_degraded = True
-            out["_idp_provider"] = "zitadel"
+            out["_idp_provider"] = get_idp_provider()
             out["_idp_backed"] = True
             out["_idp_revocation_hook"] = "provider.revoke_token"
             if revoke_degraded:

@@ -3,8 +3,8 @@ from typing import Literal, get_type_hints
 import pytest
 import httpx
 
-from brain_gateway.app.config import get_idp_provider
-from brain_gateway.app.identity import IdentityProvider, MockIdentityProvider
+from brain_gateway.app.config import get_idp_provider, is_live_idp
+from brain_gateway.app.identity import IdentityProvider, MockIdentityProvider, OidcIdentityProvider, OktaIdentityProvider
 from brain_gateway.app.identity.mock_provider import MockIdentityProvider as MockIdentityProviderDirect
 from brain_gateway.app.identity.provider import IdentityProvider as IdentityProviderProtocol
 import brain_gateway.app.identity.service as identity_service
@@ -56,10 +56,33 @@ def test_get_idp_provider_zitadel_without_token_endpoint_falls_back_to_mock(
     assert get_idp_provider() == "mock"
 
 
+def test_get_idp_provider_accepts_okta(monkeypatch) -> None:
+    monkeypatch.setenv("CAMAZOTZ_IDP_PROVIDER", "okta")
+    monkeypatch.setenv("CAMAZOTZ_IDP_TOKEN_ENDPOINT", "https://dev-example.okta.com/oauth2/default/v1/token")
+    assert get_idp_provider() == "okta"
+
+
+def test_is_live_idp_true_for_zitadel(monkeypatch) -> None:
+    monkeypatch.setenv("CAMAZOTZ_IDP_PROVIDER", "zitadel")
+    monkeypatch.setenv("CAMAZOTZ_IDP_TOKEN_ENDPOINT", "https://issuer.example/oauth/v2/token")
+    assert is_live_idp() is True
+
+
+def test_is_live_idp_true_for_okta(monkeypatch) -> None:
+    monkeypatch.setenv("CAMAZOTZ_IDP_PROVIDER", "okta")
+    monkeypatch.setenv("CAMAZOTZ_IDP_TOKEN_ENDPOINT", "https://dev-example.okta.com/oauth2/default/v1/token")
+    assert is_live_idp() is True
+
+
+def test_is_live_idp_false_for_mock(monkeypatch) -> None:
+    monkeypatch.delenv("CAMAZOTZ_IDP_PROVIDER", raising=False)
+    assert is_live_idp() is False
+
+
 def test_get_idp_provider_return_type_is_idp_literal() -> None:
     ret = get_type_hints(get_idp_provider)["return"]
-    assert ret == Literal["mock", "zitadel"]
-    assert getattr(ret, "__args__", ()) == ("mock", "zitadel")
+    assert ret == Literal["mock", "zitadel", "okta"]
+    assert getattr(ret, "__args__", ()) == ("mock", "zitadel", "okta")
 
 
 def test_get_identity_provider_return_type_is_protocol() -> None:
@@ -218,7 +241,7 @@ def test_get_identity_provider_returns_mock_by_default(monkeypatch) -> None:
 
 
 def test_get_identity_provider_returns_zitadel_when_configured(monkeypatch) -> None:
-    monkeypatch.setattr(identity_service, "_zitadel_is_reachable", lambda _p: True)
+    monkeypatch.setattr(identity_service, "_idp_is_reachable", lambda _url: True)
     monkeypatch.setenv("CAMAZOTZ_IDP_PROVIDER", "zitadel")
     monkeypatch.setenv("CAMAZOTZ_IDP_ISSUER_URL", "https://issuer.example")
     monkeypatch.setenv("CAMAZOTZ_IDP_TOKEN_ENDPOINT", "https://issuer.example/oauth/v2/token")
@@ -234,7 +257,7 @@ def test_get_identity_provider_returns_zitadel_when_configured(monkeypatch) -> N
 def test_get_identity_provider_falls_back_to_mock_when_zitadel_misconfigured(
     monkeypatch,
 ) -> None:
-    monkeypatch.setattr(identity_service, "_zitadel_is_reachable", lambda _p: True)
+    monkeypatch.setattr(identity_service, "_idp_is_reachable", lambda _url: True)
     monkeypatch.setenv("CAMAZOTZ_IDP_PROVIDER", "zitadel")
     monkeypatch.delenv("CAMAZOTZ_IDP_TOKEN_ENDPOINT", raising=False)
     p = get_identity_provider()
@@ -244,7 +267,7 @@ def test_get_identity_provider_falls_back_to_mock_when_zitadel_misconfigured(
 def test_get_identity_provider_falls_back_to_mock_when_zitadel_unreachable(
     monkeypatch,
 ) -> None:
-    monkeypatch.setattr(identity_service, "_zitadel_is_reachable", lambda _p: False)
+    monkeypatch.setattr(identity_service, "_idp_is_reachable", lambda _url: False)
     monkeypatch.setenv("CAMAZOTZ_IDP_PROVIDER", "zitadel")
     monkeypatch.setenv("CAMAZOTZ_IDP_TOKEN_ENDPOINT", "https://issuer.example/oauth/v2/token")
     p = get_identity_provider()
@@ -336,37 +359,26 @@ def test_host_probe_url_returns_input_when_missing_scheme_or_netloc() -> None:
     assert _host_probe_url("") == ""
 
 
-def test_zitadel_is_reachable_caches_recent_result(monkeypatch) -> None:
+def test_idp_is_reachable_caches_recent_result(monkeypatch) -> None:
     """Two calls within the TTL window reuse the cached health status."""
     import brain_gateway.app.identity.service as svc
 
-    monkeypatch.setattr(svc, "_zitadel_health_ok", True)
-    monkeypatch.setattr(svc, "_zitadel_health_checked_at", __import__("time").monotonic())
-
-    sentinel = object()
+    monkeypatch.setattr(svc, "_idp_health_ok", True)
+    monkeypatch.setattr(svc, "_idp_health_checked_at", __import__("time").monotonic())
 
     def _should_not_be_called(*a, **kw):  # pragma: no cover — asserts below guarantee it isn't
         raise AssertionError("urlopen must not be called when cache is fresh")
 
     monkeypatch.setattr(svc, "urlopen", _should_not_be_called)
-
-    provider = ZitadelIdentityProvider(
-        issuer_url="https://zitadel.example",
-        token_endpoint="https://zitadel.example/token",
-        introspection_endpoint="https://zitadel.example/introspect",
-        revocation_endpoint="https://zitadel.example/revoke",
-        client_id="c",
-        client_secret="s",
-    )
-    assert svc._zitadel_is_reachable(provider) is True
+    assert svc._idp_is_reachable("https://zitadel.example/token") is True
 
 
-def test_zitadel_is_reachable_success_path(monkeypatch) -> None:
+def test_idp_is_reachable_success_path(monkeypatch) -> None:
     """Fresh cache + successful urlopen sets health to True."""
     import brain_gateway.app.identity.service as svc
 
-    monkeypatch.setattr(svc, "_zitadel_health_ok", None)
-    monkeypatch.setattr(svc, "_zitadel_health_checked_at", 0.0)
+    monkeypatch.setattr(svc, "_idp_health_ok", None)
+    monkeypatch.setattr(svc, "_idp_health_checked_at", 0.0)
 
     class _FakeConn:
         def __enter__(self):
@@ -376,16 +388,7 @@ def test_zitadel_is_reachable_success_path(monkeypatch) -> None:
             return False
 
     monkeypatch.setattr(svc, "urlopen", lambda *a, **kw: _FakeConn())
-
-    provider = ZitadelIdentityProvider(
-        issuer_url="https://zitadel.example",
-        token_endpoint="https://zitadel.example/token",
-        introspection_endpoint="https://zitadel.example/introspect",
-        revocation_endpoint="https://zitadel.example/revoke",
-        client_id="c",
-        client_secret="s",
-    )
-    assert svc._zitadel_is_reachable(provider) is True
+    assert svc._idp_is_reachable("https://zitadel.example/token") is True
 
 
 def test_client_credentials_raises_when_access_token_missing(monkeypatch) -> None:
@@ -409,6 +412,113 @@ def test_client_credentials_raises_when_access_token_missing(monkeypatch) -> Non
     monkeypatch.setattr(httpx, "post", lambda *a, **kw: _EmptyResp())
     with pytest.raises(ValueError, match="no access token"):
         provider.client_credentials_token(audience="aud", scope="s")
+
+
+def test_okta_provider_inherits_oidc_base() -> None:
+    assert issubclass(OktaIdentityProvider, OidcIdentityProvider)
+    assert OktaIdentityProvider.provider_name == "okta"
+
+
+def test_zitadel_provider_inherits_oidc_base() -> None:
+    assert issubclass(ZitadelIdentityProvider, OidcIdentityProvider)
+    assert ZitadelIdentityProvider.provider_name == "zitadel"
+
+
+def test_okta_provider_from_env(monkeypatch) -> None:
+    monkeypatch.setenv("CAMAZOTZ_IDP_ISSUER_URL", "https://dev-test.okta.com/oauth2/default")
+    monkeypatch.setenv("CAMAZOTZ_IDP_TOKEN_ENDPOINT", "https://dev-test.okta.com/oauth2/default/v1/token")
+    monkeypatch.setenv("CAMAZOTZ_IDP_INTROSPECTION_ENDPOINT", "https://dev-test.okta.com/oauth2/default/v1/introspect")
+    monkeypatch.setenv("CAMAZOTZ_IDP_REVOCATION_ENDPOINT", "https://dev-test.okta.com/oauth2/default/v1/revoke")
+    monkeypatch.setenv("CAMAZOTZ_IDP_CLIENT_ID", "okta-client-id")
+    monkeypatch.setenv("CAMAZOTZ_IDP_CLIENT_SECRET", "okta-client-secret")
+    p = OktaIdentityProvider.from_env()
+    assert p.issuer_url == "https://dev-test.okta.com/oauth2/default"
+    assert p.client_id == "okta-client-id"
+    assert p.provider_name == "okta"
+
+
+def test_okta_provider_methods_return_typed_shapes(monkeypatch) -> None:
+    provider = OktaIdentityProvider(
+        issuer_url="https://dev-test.okta.com/oauth2/default",
+        token_endpoint="https://dev-test.okta.com/oauth2/default/v1/token",
+        introspection_endpoint="https://dev-test.okta.com/oauth2/default/v1/introspect",
+        revocation_endpoint="https://dev-test.okta.com/oauth2/default/v1/revoke",
+        client_id="okta-cid",
+        client_secret="okta-secret",
+    )
+
+    class _Resp:
+        def __init__(self, payload: dict[str, object]) -> None:
+            self._payload = payload
+
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict[str, object]:
+            return self._payload
+
+    def _fake_post(url: str, *, data: dict[str, str], timeout: float):
+        if "introspect" in url:
+            return _Resp({"active": True, "sub": "okta-user@example.com"})
+        return _Resp({"access_token": "okta-access-token"})
+
+    monkeypatch.setattr(httpx, "post", _fake_post)
+    cc = provider.client_credentials_token(audience="api://default", scope="openid")
+    assert cc["access_token"] == "okta-access-token"
+    ex = provider.exchange_token(
+        subject_token="subj", actor_token=None, audience="api://default", scope="s",
+    )
+    assert ex["access_token"] == "okta-access-token"
+    intro = provider.introspect_token(token="okta-tok")
+    assert intro["active"] is True
+    rev = provider.revoke_token(token="okta-tok-12345678")
+    assert rev["revoked"] is True
+
+
+def test_get_identity_provider_returns_okta_when_configured(monkeypatch) -> None:
+    monkeypatch.setattr(identity_service, "_idp_is_reachable", lambda _url: True)
+    monkeypatch.setenv("CAMAZOTZ_IDP_PROVIDER", "okta")
+    monkeypatch.setenv("CAMAZOTZ_IDP_ISSUER_URL", "https://dev-test.okta.com/oauth2/default")
+    monkeypatch.setenv("CAMAZOTZ_IDP_TOKEN_ENDPOINT", "https://dev-test.okta.com/oauth2/default/v1/token")
+    monkeypatch.setenv("CAMAZOTZ_IDP_INTROSPECTION_ENDPOINT", "https://dev-test.okta.com/oauth2/default/v1/introspect")
+    monkeypatch.setenv("CAMAZOTZ_IDP_REVOCATION_ENDPOINT", "https://dev-test.okta.com/oauth2/default/v1/revoke")
+    monkeypatch.setenv("CAMAZOTZ_IDP_CLIENT_ID", "okta-cid")
+    monkeypatch.setenv("CAMAZOTZ_IDP_CLIENT_SECRET", "okta-secret")
+    p = get_identity_provider()
+    assert isinstance(p, OktaIdentityProvider)
+    assert p.issuer_url == "https://dev-test.okta.com/oauth2/default"
+
+
+def test_oidc_provider_from_issuer_uses_discovery(monkeypatch) -> None:
+    """OidcIdentityProvider.from_issuer() fetches .well-known and populates endpoints."""
+    import brain_gateway.app.identity.oidc_provider as oidc_mod
+    import json as _json
+
+    discovery_response = _json.dumps({
+        "issuer": "https://dev-test.okta.com/oauth2/default",
+        "token_endpoint": "https://dev-test.okta.com/oauth2/default/v1/token",
+        "introspection_endpoint": "https://dev-test.okta.com/oauth2/default/v1/introspect",
+        "revocation_endpoint": "https://dev-test.okta.com/oauth2/default/v1/revoke",
+    }).encode()
+
+    class _FakeResp:
+        def read(self):
+            return discovery_response
+        def __enter__(self):
+            return self
+        def __exit__(self, *a):
+            return False
+
+    monkeypatch.setattr(oidc_mod, "urlopen", lambda *a, **kw: _FakeResp())
+    provider = OidcIdentityProvider.from_issuer(
+        "https://dev-test.okta.com/oauth2/default",
+        client_id="cid",
+        client_secret="secret",
+    )
+    assert provider.issuer_url == "https://dev-test.okta.com/oauth2/default"
+    assert provider.token_endpoint == "https://dev-test.okta.com/oauth2/default/v1/token"
+    assert provider.introspection_endpoint == "https://dev-test.okta.com/oauth2/default/v1/introspect"
+    assert provider.revocation_endpoint == "https://dev-test.okta.com/oauth2/default/v1/revoke"
 
 
 def test_exchange_token_raises_when_access_token_missing(monkeypatch) -> None:

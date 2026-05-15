@@ -15,7 +15,7 @@ import os
 import threading
 import uuid
 
-from brain_gateway.app.config import get_idp_provider
+from brain_gateway.app.config import get_idp_provider, is_live_idp
 from camazotz_modules.base import LabModule
 
 AGENT_REGISTRY: dict[str, dict] = {
@@ -101,7 +101,7 @@ class RbacLab(LabModule):
     def _effective_groups(self, principal: str) -> tuple[list[str], bool]:
         with self._lock:
             base = list(self._group_cache.get(principal, []))
-        if get_idp_provider() != "zitadel":
+        if not is_live_idp():
             return base, False
         sub = os.getenv("CAMAZOTZ_LAB_IDENTITY_SUB", "").strip()
         extra_raw = os.getenv("CAMAZOTZ_LAB_IDENTITY_GROUPS", "").strip()
@@ -272,7 +272,7 @@ class RbacLab(LabModule):
             "groups": user_groups,
             "_difficulty": difficulty,
         }
-        if get_idp_provider() == "zitadel":
+        if is_live_idp():
             out["_idp_backed"] = True
         if idp_merge:
             out["_idp_group_merge"] = True
@@ -355,7 +355,7 @@ class RbacLab(LabModule):
             "group_count": len(groups),
             "_difficulty": self.difficulty,
         }
-        if get_idp_provider() == "zitadel":
+        if is_live_idp():
             out["_idp_backed"] = True
         if idp_merge:
             out["_idp_group_merge"] = True

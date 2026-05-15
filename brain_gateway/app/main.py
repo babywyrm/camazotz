@@ -26,6 +26,7 @@ from brain_gateway.app.config import (
     get_difficulty,
     get_idp_provider,
     get_ollama_host,
+    is_live_idp,
     set_difficulty,
     set_runtime_model,
     show_tokens,
@@ -130,8 +131,6 @@ def health() -> dict[str, str]:
 @app.get("/config")
 def get_config() -> dict[str, object]:
     """Return current runtime configuration."""
-    from brain_gateway.app.identity.zitadel_provider import ZitadelIdentityProvider
-
     status = idp_status()
     brain_meta = get_brain_metadata()
     config: dict[str, object] = {
@@ -149,14 +148,17 @@ def get_config() -> dict[str, object]:
             ),
         },
     }
-    if status["idp_provider"] == "zitadel":
-        p = ZitadelIdentityProvider.from_env()
-        config["idp_endpoints"] = {
-            "issuer": p.issuer_url or "",
-            "token": p.token_endpoint or "",
-            "introspection": p.introspection_endpoint or "",
-            "revocation": p.revocation_endpoint or "",
-        }
+    if is_live_idp():
+        from brain_gateway.app.identity.service import get_identity_provider as _get_idp
+
+        p = _get_idp()
+        if hasattr(p, "issuer_url"):
+            config["idp_endpoints"] = {
+                "issuer": getattr(p, "issuer_url", "") or "",
+                "token": getattr(p, "token_endpoint", "") or "",
+                "introspection": getattr(p, "introspection_endpoint", "") or "",
+                "revocation": getattr(p, "revocation_endpoint", "") or "",
+            }
     return config
 
 

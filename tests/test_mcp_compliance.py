@@ -128,9 +128,9 @@ def test_config_exposes_idp_provider(monkeypatch) -> None:
 
 
 def test_config_reports_zitadel_when_reachable(monkeypatch) -> None:
-    monkeypatch.setattr(identity_service, "_zitadel_health_ok", None)
-    monkeypatch.setattr(identity_service, "_zitadel_health_checked_at", 0.0)
-    monkeypatch.setattr(identity_service, "_zitadel_is_reachable", lambda _p: True)
+    monkeypatch.setattr(identity_service, "_idp_health_ok", None)
+    monkeypatch.setattr(identity_service, "_idp_health_checked_at", 0.0)
+    monkeypatch.setattr(identity_service, "_idp_is_reachable", lambda _url: True)
     monkeypatch.setenv("CAMAZOTZ_IDP_PROVIDER", "zitadel")
     monkeypatch.setenv("CAMAZOTZ_IDP_ISSUER_URL", "https://issuer.example")
     monkeypatch.setenv(
@@ -153,9 +153,9 @@ def test_config_reports_zitadel_when_reachable(monkeypatch) -> None:
 
 
 def test_config_reports_degraded_when_zitadel_unreachable(monkeypatch) -> None:
-    monkeypatch.setattr(identity_service, "_zitadel_health_ok", None)
-    monkeypatch.setattr(identity_service, "_zitadel_health_checked_at", 0.0)
-    monkeypatch.setattr(identity_service, "_zitadel_is_reachable", lambda _p: False)
+    monkeypatch.setattr(identity_service, "_idp_health_ok", None)
+    monkeypatch.setattr(identity_service, "_idp_health_checked_at", 0.0)
+    monkeypatch.setattr(identity_service, "_idp_is_reachable", lambda _url: False)
     monkeypatch.setenv("CAMAZOTZ_IDP_PROVIDER", "zitadel")
     monkeypatch.setenv(
         "CAMAZOTZ_IDP_TOKEN_ENDPOINT", "https://issuer.example/oauth/v2/token"
@@ -164,7 +164,7 @@ def test_config_reports_degraded_when_zitadel_unreachable(monkeypatch) -> None:
     payload = client.get("/config").json()
     assert payload["idp_provider"] == "zitadel"
     assert payload["idp_degraded"] is True
-    assert payload["idp_reason"] == "zitadel_unreachable"
+    assert payload["idp_reason"] == "idp_unreachable"
 
 
 def test_gateway_config_put_difficulty() -> None:

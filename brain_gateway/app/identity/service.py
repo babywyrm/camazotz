@@ -4,15 +4,15 @@ import time
 from urllib.parse import urlparse
 from urllib.request import urlopen
 
-from brain_gateway.app.config import get_idp_provider
+from brain_gateway.app.config import get_idp_provider, is_live_idp
 from brain_gateway.app.identity.mock_provider import MockIdentityProvider
 from brain_gateway.app.identity.provider import IdentityProvider
 from brain_gateway.app.identity.types import DelegationGuardrailResult, NormalizedClaimsEnvelope
 from brain_gateway.app.identity.zitadel_provider import ZitadelIdentityProvider
 
-_ZITADEL_HEALTH_TTL_SECONDS = 10.0
-_zitadel_health_ok: bool | None = None
-_zitadel_health_checked_at = 0.0
+_IDP_HEALTH_TTL_SECONDS = 10.0
+_idp_health_ok: bool | None = None
+_idp_health_checked_at = 0.0
 
 
 def _host_probe_url(issuer_or_token_endpoint: str) -> str:
@@ -22,37 +22,54 @@ def _host_probe_url(issuer_or_token_endpoint: str) -> str:
     return issuer_or_token_endpoint
 
 
-def _zitadel_is_reachable(provider: ZitadelIdentityProvider) -> bool:
-    global _zitadel_health_ok, _zitadel_health_checked_at
+def _idp_is_reachable(issuer_or_token_endpoint: str) -> bool:
+    global _idp_health_ok, _idp_health_checked_at
 
     now = time.monotonic()
     if (
-        _zitadel_health_ok is not None
-        and (now - _zitadel_health_checked_at) < _ZITADEL_HEALTH_TTL_SECONDS
+        _idp_health_ok is not None
+        and (now - _idp_health_checked_at) < _IDP_HEALTH_TTL_SECONDS
     ):
-        return _zitadel_health_ok
+        return _idp_health_ok
 
-    target = provider.issuer_url or provider.token_endpoint
     try:
-        with urlopen(_host_probe_url(target), timeout=1):
-            _zitadel_health_ok = True
+        with urlopen(_host_probe_url(issuer_or_token_endpoint), timeout=1):
+            _idp_health_ok = True
     except Exception:
-        _zitadel_health_ok = False
-    _zitadel_health_checked_at = now
-    return bool(_zitadel_health_ok)
+        _idp_health_ok = False
+    _idp_health_checked_at = now
+    return bool(_idp_health_ok)
+
+
+def _build_live_provider() -> IdentityProvider | None:
+    """Instantiate the configured live provider, or None if not reachable."""
+    provider_name = get_idp_provider()
+    if provider_name == "zitadel":
+        provider = ZitadelIdentityProvider.from_env()
+        probe_url = provider.issuer_url or provider.token_endpoint
+        if provider.token_endpoint and _idp_is_reachable(probe_url):
+            return provider
+    elif provider_name == "okta":
+        from brain_gateway.app.identity.okta_provider import OktaIdentityProvider
+
+        provider = OktaIdentityProvider.from_env()
+        probe_url = provider.issuer_url or provider.token_endpoint
+        if provider.token_endpoint and _idp_is_reachable(probe_url):
+            return provider
+    return None
 
 
 def get_identity_provider() -> IdentityProvider:
-    if get_idp_provider() == "zitadel":
-        provider = ZitadelIdentityProvider.from_env()
-        if provider.token_endpoint and _zitadel_is_reachable(provider):
-            return provider
+    if is_live_idp():
+        live = _build_live_provider()
+        if live is not None:
+            return live
     return MockIdentityProvider()
 
 
 def is_idp_degraded() -> bool:
-    """True when configured for zitadel but runtime fell back to mock."""
-    return get_idp_provider() == "zitadel" and isinstance(
+    """True when configured for a live IdP but runtime fell back to mock."""
+    return is_live_idp() and isinstance(
         get_identity_provider(), MockIdentityProvider
     )
 
@@ -64,7 +81,7 @@ def idp_status() -> dict[str, object]:
     return {
         "idp_provider": provider_name,
         "idp_degraded": degraded,
-        "idp_reason": "zitadel_unreachable" if degraded else "ok",
+        "idp_reason": "idp_unreachable" if degraded else "ok",
     }
 
 
