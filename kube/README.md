@@ -89,7 +89,7 @@ Switch between providers at runtime via the UI or API — no restart needed:
 # Switch to a remote Ollama GPU box
 curl -s -X PUT http://<node-ip>:30080/config \
   -H "Content-Type: application/json" \
-  -d '{"brain": {"provider": "local", "ollama_host": "http://192.168.1.126:11434"}}'
+  -d '{"brain": {"provider": "local", "ollama_host": "http://<ollama-host>:11434"}}'
 
 # Switch back to cloud
 curl -s -X PUT http://<node-ip>:30080/config \

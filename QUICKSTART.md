@@ -143,7 +143,7 @@ Switch between providers without restarting the gateway:
 # Switch to local Ollama on a remote GPU box
 curl -s -X PUT http://localhost:8080/config \
   -H "Content-Type: application/json" \
-  -d '{"brain": {"provider": "local", "ollama_host": "http://192.168.1.126:11434"}}'
+  -d '{"brain": {"provider": "local", "ollama_host": "http://<ollama-host>:11434"}}'
 
 # Switch back to cloud
 curl -s -X PUT http://localhost:8080/config \
