@@ -106,6 +106,11 @@ The Brain badge in the portal UI also supports provider switching with an
 inline Ollama host input. Switching providers resets lab state; switching
 models within the same provider does not.
 
+> **Credentials are not part of the runtime switch.** API keys must be
+> pre-configured in K8s secrets (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`) or
+> via IAM roles (Bedrock). Switching to a provider without credentials
+> gives stub mode. Only `local` (Ollama) needs no API key.
+
 ## Services
 
 | Service | Type | Port | Access |

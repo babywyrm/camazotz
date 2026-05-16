@@ -13,6 +13,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Dynamic Ollama host** — the Ollama endpoint is configurable at runtime via the UI or API, supporting any deployment topology (Docker Compose, K8s, remote GPU boxes). Defaults to `OLLAMA_HOST` env var.
 - **Brain popover redesign** — the top status strip brain popover now shows a provider selector (with checkmarks), an inline Ollama host input (for `local` provider), and the model list — all switchable on the fly.
 - **`GET /config` brain extensions** — response now includes `ollama_host`, `ollama_model`, and `available_providers` for UI/API consumers.
+- **Stub fallback** — switching to a provider without pre-configured credentials (API keys, IAM roles) gracefully falls to stub mode instead of erroring. Only `local` (Ollama) requires no API key.
 - 21 new tests in `test_runtime_brain_switching.py` covering config overrides, API switching, lab reset semantics, factory behavior, and GET/PUT response contracts. Total: **1298 tests**.
 
 ---

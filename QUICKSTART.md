@@ -167,6 +167,20 @@ Or click the **Brain** badge in the top status strip — it shows a popover with
 Switching providers resets all lab state (different model capabilities affect
 challenge behavior). Switching models within the same provider does not.
 
+> **Note:** API keys and credentials are **not** part of the runtime switch —
+> they must be pre-configured at deployment time. If you switch to `cloud`
+> without `ANTHROPIC_API_KEY` set, inference falls to **stub mode** (canned
+> responses, no real LLM). Same for `openai` without `OPENAI_API_KEY` and
+> `bedrock` without AWS credentials. Only `local` (Ollama) needs no API key —
+> just a reachable Ollama endpoint.
+>
+> | Provider | Credential required | Set via |
+> |----------|-------------------|---------|
+> | `cloud` | `ANTHROPIC_API_KEY` | env var, K8s secret, or `.env` |
+> | `openai` | `OPENAI_API_KEY` | env var, K8s secret, or `.env` |
+> | `bedrock` | AWS IAM credentials | IAM role, env vars, or `~/.aws` |
+> | `local` | None (just Ollama endpoint) | `ollama_host` in UI or API |
+
 ### Switching the active model at runtime
 
 ```bash
