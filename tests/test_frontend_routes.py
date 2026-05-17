@@ -347,3 +347,144 @@ def test_fetch_gateway_config_falls_back_on_httpx_error(frontend_client) -> None
         "idp_backed_labs": [],
         "idp_backed_tools": [],
     }
+
+
+# ── Benchmark routes ──────────────────────────────────────────────────────────
+
+def _mock_get(url, **kw):
+    m = MagicMock()
+    m.status_code = 200
+    m.raise_for_status = MagicMock()
+    if "config" in url:
+        m.json.return_value = {
+            "difficulty": "medium",
+            "idp_provider": "mock",
+            "idp_backed_labs": [],
+            "idp_backed_tools": [],
+            "brain": {"provider": "local", "model": "qwen:7b", "mode": "live",
+                      "available_models": []},
+        }
+    else:
+        m.json.return_value = {}
+    return m
+
+
+def test_benchmark_page_renders(frontend_client) -> None:
+    client, _ = frontend_client
+    with patch.object(httpx, "get", side_effect=_mock_get):
+        resp = client.get("/benchmark")
+    assert resp.status_code == 200
+    html = resp.data.decode()
+    assert "Benchmark" in html
+    assert "Run Benchmark" in html
+    assert "qwen:7b" in html
+
+
+def test_benchmark_nav_link_present(frontend_client) -> None:
+    client, _ = frontend_client
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = []
+    mock_resp.raise_for_status = MagicMock()
+    with patch.object(httpx, "get", return_value=mock_resp):
+        resp = client.get("/")
+    assert b'href="/benchmark"' in resp.data
+
+
+def test_api_bench_run_proxies_to_gateway(frontend_client) -> None:
+    client, _ = frontend_client
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.raise_for_status = MagicMock()
+    mock_resp.json.return_value = {
+        "run_id": "abc", "model": "qwen:7b", "provider": "local",
+        "total_probes": 10, "passed": 8, "failed": 2,
+        "avg_latency_ms": 250.0, "probes": [],
+    }
+    with patch.object(httpx, "post", return_value=mock_resp):
+        resp = client.post("/api/bench/run", json={})
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data["run_id"] == "abc"
+    assert data["model"] == "qwen:7b"
+
+
+def test_api_bench_run_gateway_error(frontend_client) -> None:
+    client, _ = frontend_client
+    with patch.object(httpx, "post", side_effect=httpx.ConnectError("refused")):
+        resp = client.post("/api/bench/run", json={})
+    assert resp.status_code == 502
+
+
+def test_api_bench_results_returns_list(frontend_client) -> None:
+    client, _ = frontend_client
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.raise_for_status = MagicMock()
+    mock_resp.json.return_value = {"count": 1, "runs": [{"run_id": "r1", "model": "qwen:7b"}]}
+    with patch.object(httpx, "get", return_value=mock_resp):
+        resp = client.get("/api/bench/results")
+    assert resp.status_code == 200
+    assert resp.get_json()["count"] == 1
+
+
+def test_api_bench_results_fallback_on_error(frontend_client) -> None:
+    client, _ = frontend_client
+    with patch.object(httpx, "get", side_effect=httpx.ConnectError("refused")):
+        resp = client.get("/api/bench/results")
+    assert resp.status_code == 200
+    assert resp.get_json() == {"count": 0, "runs": []}
+
+
+def test_api_bench_latest_returns_run(frontend_client) -> None:
+    client, _ = frontend_client
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.raise_for_status = MagicMock()
+    mock_resp.json.return_value = {"run_id": "latest", "model": "qwen:7b"}
+    with patch.object(httpx, "get", return_value=mock_resp):
+        resp = client.get("/api/bench/results/latest")
+    assert resp.status_code == 200
+    assert resp.get_json()["run_id"] == "latest"
+
+
+def test_api_bench_latest_404_becomes_null(frontend_client) -> None:
+    client, _ = frontend_client
+    mock_resp = MagicMock()
+    mock_resp.status_code = 404
+    mock_resp.raise_for_status = MagicMock()
+    with patch.object(httpx, "get", return_value=mock_resp):
+        resp = client.get("/api/bench/results/latest")
+    assert resp.status_code == 200
+    assert resp.get_json() is None
+
+
+def test_api_bench_compare_returns_summaries(frontend_client) -> None:
+    client, _ = frontend_client
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.raise_for_status = MagicMock()
+    mock_resp.json.return_value = {"n": 2, "runs": [{"model": "qwen:7b"}, {"model": "qwen:1.5b"}]}
+    with patch.object(httpx, "get", return_value=mock_resp):
+        resp = client.get("/api/bench/compare?n=2")
+    assert resp.status_code == 200
+    assert resp.get_json()["n"] == 2
+
+
+def test_api_bench_clear(frontend_client) -> None:
+    client, _ = frontend_client
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.raise_for_status = MagicMock()
+    mock_resp.json.return_value = {"cleared": True}
+    with patch.object(httpx, "delete", return_value=mock_resp):
+        resp = client.delete("/api/bench/results")
+    assert resp.status_code == 200
+    assert resp.get_json()["cleared"] is True
+
+
+def test_api_bench_clear_gateway_error(frontend_client) -> None:
+    client, _ = frontend_client
+    with patch.object(httpx, "delete", side_effect=httpx.ConnectError("refused")):
+        resp = client.delete("/api/bench/results")
+    assert resp.status_code == 502

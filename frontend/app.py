@@ -510,6 +510,74 @@ def api_walkthrough_step():
     })
 
 
+@app.route("/benchmark")
+def benchmark():
+    cfg = _fetch_gateway_config()
+    return render_template(
+        "benchmark.html",
+        brain_model=cfg.get("brain", {}).get("model", "unknown"),
+        brain_provider=cfg.get("brain", {}).get("provider", "unknown"),
+    )
+
+
+@app.route("/api/bench/run", methods=["POST"])
+def api_bench_run():
+    body = request.get_json(silent=True) or {}
+    try:
+        resp = httpx.post(f"{GATEWAY_URL}/bench/run", json=body, timeout=120.0)
+        resp.raise_for_status()
+        return jsonify(resp.json())
+    except (httpx.HTTPError, ValueError) as exc:
+        return jsonify({"error": f"Benchmark failed: {exc}"}), 502
+
+
+@app.route("/api/bench/results")
+def api_bench_results():
+    limit = request.args.get("limit", type=int)
+    params = {}
+    if limit is not None:
+        params["limit"] = limit
+    try:
+        resp = httpx.get(f"{GATEWAY_URL}/bench/results", params=params, timeout=10.0)
+        resp.raise_for_status()
+        return jsonify(resp.json())
+    except (httpx.HTTPError, ValueError):
+        return jsonify({"count": 0, "runs": []})
+
+
+@app.route("/api/bench/results/latest")
+def api_bench_latest():
+    try:
+        resp = httpx.get(f"{GATEWAY_URL}/bench/results/latest", timeout=5.0)
+        if resp.status_code == 404:
+            return jsonify(None)
+        resp.raise_for_status()
+        return jsonify(resp.json())
+    except (httpx.HTTPError, ValueError):
+        return jsonify(None)
+
+
+@app.route("/api/bench/compare")
+def api_bench_compare():
+    n = request.args.get("n", 2, type=int)
+    try:
+        resp = httpx.get(f"{GATEWAY_URL}/bench/compare", params={"n": n}, timeout=5.0)
+        resp.raise_for_status()
+        return jsonify(resp.json())
+    except (httpx.HTTPError, ValueError):
+        return jsonify({"n": 0, "runs": []})
+
+
+@app.route("/api/bench/results", methods=["DELETE"])
+def api_bench_clear():
+    try:
+        resp = httpx.delete(f"{GATEWAY_URL}/bench/results", timeout=5.0)
+        resp.raise_for_status()
+        return jsonify(resp.json())
+    except (httpx.HTTPError, ValueError):
+        return jsonify({"cleared": False, "error": "Gateway unreachable"}), 502
+
+
 @app.route("/health")
 def health():
     return jsonify({"status": "ok", "service": "camazotz-portal"})
