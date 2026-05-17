@@ -11,7 +11,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from brain_gateway.app.bench.probes import PROBE_SUITE
-from brain_gateway.app.bench.runner import run_benchmark
+from brain_gateway.app.bench.runner import run_benchmark, run_benchmark_stream
 from brain_gateway.app.bench.store import clear, compare_last, get_latest, get_runs, save_run
 from brain_gateway.app.bench.types import BenchmarkRun, ProbeResult
 from brain_gateway.app.brain.provider import BrainResult
@@ -336,3 +336,142 @@ class TestBenchAPI:
                     client.post("/bench/run", json={})
         resp = client.get("/bench/results?limit=2")
         assert resp.json()["count"] == 2
+
+
+# ── Unit tests: run_benchmark_stream ────────────────────────────────────────
+
+class TestRunBenchmarkStream:
+    """Tests for the async streaming runner."""
+
+    def _collect(self, prov=None, **kwargs):
+        """Run the async generator synchronously and collect all (event, data) pairs."""
+        import asyncio
+
+        async def _run():
+            events = []
+            async for event_type, data in run_benchmark_stream(prov, **kwargs):
+                events.append((event_type, data))
+            return events
+
+        return asyncio.run(_run())
+
+    def test_emits_run_start_first(self, monkeypatch) -> None:
+        monkeypatch.setenv("BRAIN_PROVIDER", "local")
+        monkeypatch.setenv("CAMAZOTZ_OLLAMA_MODEL", "test-model")
+        events = self._collect(_make_provider())
+        assert events[0][0] == "run_start"
+
+    def test_emits_run_complete_last(self, monkeypatch) -> None:
+        monkeypatch.setenv("BRAIN_PROVIDER", "local")
+        events = self._collect(_make_provider())
+        assert events[-1][0] == "run_complete"
+
+    def test_emits_probe_start_and_done_per_probe(self, monkeypatch) -> None:
+        monkeypatch.setenv("BRAIN_PROVIDER", "local")
+        events = self._collect(_make_provider())
+        probe_starts = [e for e in events if e[0] == "probe_start"]
+        probe_dones = [e for e in events if e[0] == "probe_done"]
+        assert len(probe_starts) == len(PROBE_SUITE)
+        assert len(probe_dones) == len(PROBE_SUITE)
+
+    def test_run_start_contains_model_and_total(self, monkeypatch) -> None:
+        monkeypatch.setenv("BRAIN_PROVIDER", "local")
+        monkeypatch.setenv("CAMAZOTZ_OLLAMA_MODEL", "qwen:7b")
+        events = self._collect(_make_provider())
+        _, d = events[0]
+        assert d["total_probes"] == len(PROBE_SUITE)
+        assert "run_id" in d
+        assert "timestamp" in d
+
+    def test_probe_done_contains_cumulative_tokens(self, monkeypatch) -> None:
+        monkeypatch.setenv("BRAIN_PROVIDER", "local")
+        events = self._collect(_make_provider())
+        dones = [e for e in events if e[0] == "probe_done"]
+        # Each probe returns 20 output tokens; cumulative should grow
+        tok_series = [d["cumulative_out_tokens"] for _, d in dones]
+        assert tok_series[-1] >= tok_series[0]
+        assert tok_series[-1] > 0
+
+    def test_run_complete_matches_benchmarkrun_shape(self, monkeypatch) -> None:
+        monkeypatch.setenv("BRAIN_PROVIDER", "local")
+        events = self._collect(_make_provider())
+        _, final = events[-1]
+        assert "run_id" in final
+        assert "total_probes" in final
+        assert "probes" in final
+        assert final["total_probes"] == len(PROBE_SUITE)
+
+    def test_probe_done_has_elapsed_ms(self, monkeypatch) -> None:
+        monkeypatch.setenv("BRAIN_PROVIDER", "local")
+        events = self._collect(_make_provider())
+        dones = [d for _, d in events if _ == "probe_done"]
+        assert all("elapsed_ms" in d for d in dones)
+        assert all(d["elapsed_ms"] >= 0 for d in dones)
+
+    def test_stream_saves_to_store(self, monkeypatch) -> None:
+        import asyncio
+        from brain_gateway.app.bench.store import clear, get_latest
+
+        monkeypatch.setenv("BRAIN_PROVIDER", "local")
+        clear()
+
+        async def _run():
+            async for _ in run_benchmark_stream(_make_provider()):
+                pass
+
+        asyncio.run(_run())
+        assert get_latest() is not None
+
+
+# ── SSE endpoint: GET /bench/run/stream ──────────────────────────────────────
+
+class TestBenchStreamEndpoint:
+    """Smoke-tests for the SSE streaming endpoint via TestClient."""
+
+    def test_stream_endpoint_returns_event_stream(self, monkeypatch) -> None:
+        from unittest.mock import AsyncMock, patch
+
+        monkeypatch.setenv("BRAIN_PROVIDER", "local")
+        monkeypatch.setenv("CAMAZOTZ_OLLAMA_MODEL", "stream-model")
+
+        prov = _make_provider()
+
+        async def _fake_stream(provider):
+            yield "run_start", {"run_id": "x", "model": "stream-model",
+                                "provider": "local", "ollama_host": "http://ollama:11434",
+                                "total_probes": 1, "timestamp": "2026-01-01T00:00:00"}
+            yield "run_complete", {"run_id": "x", "total_probes": 1, "passed": 1,
+                                   "failed": 0, "model": "stream-model", "provider": "local",
+                                   "ollama_host": "", "probes": [], "avg_latency_ms": 0,
+                                   "total_input_tokens": 0, "total_output_tokens": 0,
+                                   "injection_resistance_rate": 0, "tool_accuracy_rate": 0,
+                                   "timestamp": "2026-01-01T00:00:00"}
+
+        with patch("brain_gateway.app.bench.runner.run_benchmark_stream", side_effect=_fake_stream):
+            with patch("brain_gateway.app.brain.factory.get_provider", return_value=prov):
+                client = TestClient(app)
+                resp = client.get("/bench/run/stream")
+
+        assert resp.status_code == 200
+        assert "text/event-stream" in resp.headers.get("content-type", "")
+
+    def test_stream_endpoint_model_override_accepted(self, monkeypatch) -> None:
+        """Verify the endpoint does not 422 when ?model= is provided."""
+        from unittest.mock import patch
+
+        monkeypatch.setenv("BRAIN_PROVIDER", "local")
+        prov = _make_provider()
+
+        async def _fake_stream(provider):
+            yield "run_complete", {}
+            return
+
+        with patch("brain_gateway.app.bench.runner.run_benchmark_stream", side_effect=_fake_stream):
+            with patch("brain_gateway.app.brain.factory.get_provider", return_value=prov):
+                with patch("brain_gateway.app.brain.factory.reset_provider"):
+                    with patch("brain_gateway.app.config.set_runtime_model"):
+                        with patch("brain_gateway.app.config.get_runtime_model", return_value="qwen:7b"):
+                            client = TestClient(app)
+                            resp = client.get("/bench/run/stream?model=qwen:1.5b")
+
+        assert resp.status_code == 200

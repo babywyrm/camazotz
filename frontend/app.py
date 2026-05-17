@@ -5,7 +5,7 @@ import sys
 import time
 
 import httpx
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, Response, stream_with_context
 
 _scripts_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), os.pardir, "scripts")
 if os.path.isdir(_scripts_dir) and _scripts_dir not in sys.path:
@@ -517,6 +517,42 @@ def benchmark():
         "benchmark.html",
         brain_model=cfg.get("brain", {}).get("model", "unknown"),
         brain_provider=cfg.get("brain", {}).get("provider", "unknown"),
+    )
+
+
+@app.route("/api/bench/run/stream")
+def api_bench_run_stream():
+    """SSE proxy — streams probe events from the gateway to the browser.
+
+    Query params:
+        model: optional model override forwarded to the gateway (run-scoped only).
+    """
+    params = {}
+    if model := request.args.get("model", ""):
+        params["model"] = model
+
+    def _generate():
+        try:
+            with httpx.stream(
+                "GET",
+                f"{GATEWAY_URL}/bench/run/stream",
+                params=params,
+                timeout=None,
+            ) as resp:
+                for chunk in resp.iter_bytes():
+                    yield chunk
+        except Exception as exc:  # noqa: BLE001
+            yield f'event: error\ndata: {json.dumps({"error": str(exc)})}\n\n'.encode()
+
+    return Response(
+        stream_with_context(_generate()),
+        content_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+        },
+        direct_passthrough=True,
     )
 
 

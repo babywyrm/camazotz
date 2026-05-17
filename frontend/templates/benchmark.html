@@ -1,473 +1,886 @@
 {% extends "base.html" %}
-{% block title %}Benchmark — Camazotz{% endblock %}
 
-{% block extra_css %}
-<style>
-.bench-header{padding:3rem 0 1.5rem;text-align:center}
-.bench-header h1{font-size:2.2rem;font-weight:800;letter-spacing:-.03em;margin-bottom:.5rem}
-.bench-header p{color:var(--text2);font-size:1rem;max-width:600px;margin:0 auto}
-
-.bench-meta{display:flex;align-items:center;justify-content:center;gap:1.5rem;
-  margin:.75rem 0 2rem;flex-wrap:wrap;font-size:.82rem}
-.bench-meta-item{display:flex;align-items:center;gap:.4rem;color:var(--text2)}
-.bench-meta-item strong{color:var(--text);font-family:var(--font-mono)}
-
-.bench-actions{display:flex;align-items:center;gap:1rem;margin-bottom:2rem;justify-content:center;flex-wrap:wrap}
-.bench-btn{padding:.6rem 1.4rem;border-radius:8px;font-size:.85rem;font-weight:700;
-  cursor:pointer;font-family:inherit;transition:all .2s;letter-spacing:.01em;border:none}
-.bench-btn-primary{background:var(--accent);color:#fff}
-.bench-btn-primary:hover{background:#b91c1c;transform:translateY(-1px)}
-.bench-btn-primary:disabled{opacity:.45;cursor:not-allowed;transform:none}
-.bench-btn-secondary{background:var(--surface);color:var(--text2);border:1px solid var(--border)}
-.bench-btn-secondary:hover{border-color:var(--border2);color:var(--text)}
-.bench-btn-danger{background:var(--surface);color:#ef4444;border:1px solid rgba(239,68,68,.2)}
-.bench-btn-danger:hover{background:rgba(239,68,68,.08);border-color:#ef4444}
-
-.bench-spinner{display:none;align-items:center;gap:.6rem;color:var(--muted);font-size:.8rem}
-.bench-spinner.visible{display:flex}
-@keyframes spin{to{transform:rotate(360deg)}}
-.spinner-ring{width:18px;height:18px;border:2px solid var(--border);
-  border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
-
-.bench-alert{padding:.9rem 1.1rem;border-radius:8px;font-size:.82rem;margin-bottom:1.5rem;display:none}
-.bench-alert.visible{display:block}
-.bench-alert-error{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);color:#f87171}
-.bench-alert-success{background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);color:#34d399}
-
-/* ── Stats cards ── */
-.bench-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1rem;margin-bottom:2rem}
-.bench-stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
-  padding:1rem;text-align:center}
-.bench-stat-value{font-size:1.9rem;font-weight:800;font-family:var(--font-mono);line-height:1;margin-bottom:.3rem}
-.bench-stat-label{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
-.stat-green{color:var(--green)}
-.stat-red{color:var(--red)}
-.stat-yellow{color:var(--yellow)}
-.stat-blue{color:var(--blue)}
-.stat-muted{color:var(--text2)}
-
-/* ── Rate bars ── */
-.bench-rates{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-bottom:2rem}
-@media(max-width:640px){.bench-rates{grid-template-columns:1fr}}
-.bench-rate-card{background:var(--surface);border:1px solid var(--border);
-  border-radius:var(--radius);padding:1.25rem}
-.bench-rate-title{font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;
-  color:var(--muted);margin-bottom:.75rem}
-.bench-rate-pct{font-size:2.2rem;font-weight:800;font-family:var(--font-mono);margin-bottom:.5rem}
-.bench-rate-bar-bg{height:6px;background:var(--border);border-radius:3px;overflow:hidden}
-.bench-rate-bar-fill{height:100%;border-radius:3px;transition:width .6s ease}
-.fill-green{background:var(--green)}
-.fill-yellow{background:var(--yellow)}
-.fill-red{background:var(--red)}
-
-/* ── Probe table ── */
-.bench-section-title{font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
-  color:var(--muted);margin-bottom:.75rem;display:flex;align-items:center;gap:.5rem}
-.bench-table{width:100%;border-collapse:collapse;margin-bottom:2rem}
-.bench-table th{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
-  color:var(--muted);text-align:left;padding:.5rem .75rem;border-bottom:1px solid var(--border)}
-.bench-table td{padding:.5rem .75rem;font-size:.78rem;border-bottom:1px solid rgba(36,30,44,.5);vertical-align:middle}
-.bench-row{cursor:pointer;transition:background .15s}
-.bench-row:hover{background:var(--surface2)}
-.bench-row.pass td:first-child{border-left:3px solid var(--green)}
-.bench-row.fail td:first-child{border-left:3px solid var(--red)}
-.bench-row.error td:first-child{border-left:3px solid var(--yellow)}
-
-.cat-badge{display:inline-block;padding:.1rem .4rem;border-radius:5px;font-size:.65rem;
-  font-weight:700;text-transform:uppercase;letter-spacing:.03em}
-.cat-injection{background:rgba(239,68,68,.12);color:#f87171}
-.cat-tool_accuracy{background:rgba(59,130,246,.12);color:#60a5fa}
-.cat-instruction{background:rgba(234,179,8,.12);color:#facc15}
-.cat-efficiency{background:rgba(107,95,122,.15);color:var(--text2)}
-
-.outcome-pass{color:var(--green);font-weight:700}
-.outcome-fail{color:var(--red);font-weight:700}
-.outcome-error{color:var(--yellow);font-weight:700}
-.outcome-partial{color:var(--orange);font-weight:700}
-
-.probe-detail-row{display:none;background:var(--bg2)}
-.probe-detail-row.open{display:table-row}
-.probe-detail-cell{padding:.75rem 1rem;font-size:.77rem;color:var(--text2)}
-.probe-preview{font-family:var(--font-mono);background:var(--surface);
-  border:1px solid var(--border);border-radius:6px;padding:.6rem;
-  white-space:pre-wrap;word-break:break-word;font-size:.73rem;max-height:120px;overflow:auto}
-.probe-notes{color:var(--muted);font-size:.74rem;margin-top:.4rem;font-style:italic}
-
-/* ── Compare panel ── */
-.bench-compare{margin-top:2rem;display:none}
-.bench-compare.visible{display:block}
-.compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
-@media(max-width:640px){.compare-grid{grid-template-columns:1fr}}
-.compare-card{background:var(--surface);border:1px solid var(--border);
-  border-radius:var(--radius);padding:1.1rem}
-.compare-model{font-family:var(--font-mono);font-size:.85rem;font-weight:700;
-  color:var(--text);margin-bottom:.15rem}
-.compare-ts{font-size:.7rem;color:var(--muted);margin-bottom:.75rem}
-.compare-row{display:flex;justify-content:space-between;padding:.25rem 0;
-  border-bottom:1px solid rgba(36,30,44,.4);font-size:.78rem}
-.compare-row:last-child{border:none}
-.compare-key{color:var(--muted)}
-.compare-val{font-family:var(--font-mono);color:var(--text);font-weight:600}
-
-/* ── History section ── */
-.bench-history-list{display:flex;flex-direction:column;gap:.5rem;margin-bottom:2rem}
-.history-item{background:var(--surface);border:1px solid var(--border);border-radius:8px;
-  padding:.75rem 1rem;display:flex;justify-content:space-between;align-items:center;
-  cursor:pointer;transition:border-color .2s}
-.history-item:hover{border-color:var(--border2)}
-.history-item-left{display:flex;flex-direction:column;gap:.2rem}
-.history-model{font-family:var(--font-mono);font-size:.82rem;color:var(--text);font-weight:600}
-.history-ts{font-size:.7rem;color:var(--muted)}
-.history-item-right{display:flex;gap:.75rem;font-size:.75rem;font-family:var(--font-mono)}
-.hist-pass{color:var(--green)}
-.hist-fail{color:var(--red)}
-.hist-lat{color:var(--muted)}
-
-.bench-empty{padding:3rem;text-align:center;color:var(--muted);font-size:.85rem}
-.bench-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:1.5rem}
-.bench-tab{padding:.65rem 1.4rem;font-size:.85rem;font-weight:600;color:var(--muted);
-  background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;
-  font-family:inherit;transition:all .2s}
-.bench-tab.active{color:var(--text);border-bottom-color:var(--accent)}
-.bench-panel{display:none}
-.bench-panel.active{display:block}
-</style>
-{% endblock %}
+{% block title %}Model Benchmark — Camazotz{% endblock %}
 
 {% block content %}
-<div class="container">
+<div class="bench-page">
+
+  <!-- ── Header ─────────────────────────────────────────────── -->
   <div class="bench-header">
-    <h1>Model Benchmark</h1>
-    <p>Run the probe suite to measure how attack chain behaviour changes across model tiers.</p>
-  </div>
-
-  <div class="bench-meta">
-    <div class="bench-meta-item">
-      Brain <strong id="metaProvider">{{ brain_provider }}</strong>
+    <div>
+      <h1 class="bench-title">Model Benchmark</h1>
+      <p class="bench-subtitle">
+        Run the probe suite to measure how attack-chain behaviours change
+        as the inference model is swapped.
+      </p>
     </div>
-    <div class="bench-meta-item">
-      Model <strong id="metaModel">{{ brain_model }}</strong>
-    </div>
-    <div class="bench-meta-item" id="metaRunAt" style="display:none">
-      Last run <strong id="metaTs">—</strong>
+    <div class="bench-header-actions">
+      <button id="btnReload" class="btn btn-sm btn-secondary" onclick="loadLatest()">↺ Reload</button>
+      <button id="btnClear" class="btn btn-sm btn-danger" onclick="clearResults()">🗑 Clear</button>
     </div>
   </div>
 
-  <div class="bench-actions">
-    <button class="bench-btn bench-btn-primary" id="runBtn" onclick="runBenchmark()">
+  <!-- ── Network path ───────────────────────────────────────── -->
+  <div class="bench-path-card" title="Request flow for this benchmark run">
+    <span class="path-label">Path</span>
+    <div class="path-chain">
+      <span class="path-node node-browser">Browser</span>
+      <span class="path-sep">→</span>
+      <span class="path-node node-portal">Portal <span class="path-port">:3000</span></span>
+      <span class="path-sep">→</span>
+      <span class="path-node node-gateway">Gateway <span class="path-port">:8080</span></span>
+      <span class="path-sep">→</span>
+      <span class="path-node node-provider" id="pathProvider">{{ brain_provider }}</span>
+      <span class="path-sep">→</span>
+      <span class="path-node node-host" id="pathHost">—</span>
+      <span class="path-sep">→</span>
+      <span class="path-node node-model" id="pathModel">{{ brain_model }}</span>
+    </div>
+  </div>
+
+  <!-- ── Action bar ─────────────────────────────────────────── -->
+  <div class="bench-action-bar">
+    <div class="bench-model-group">
+      <label class="model-label" for="modelOverride">Model</label>
+      <input
+        id="modelOverride"
+        class="model-input"
+        type="text"
+        list="modelSuggestions"
+        placeholder="qwen:7b  (blank = active brain)"
+        autocomplete="off"
+      />
+      <datalist id="modelSuggestions"></datalist>
+    </div>
+    <button id="btnRun" class="btn btn-primary btn-run" onclick="startStream()">
       ▶ Run Benchmark
     </button>
-    <button class="bench-btn bench-btn-secondary" onclick="loadLatest()">Reload Latest</button>
-    <button class="bench-btn bench-btn-danger" onclick="clearRuns()">Clear History</button>
-    <div class="bench-spinner" id="spinner">
-      <div class="spinner-ring"></div>
-      <span id="spinnerMsg">Running probes…</span>
+  </div>
+
+  <!-- ── Live feed (visible during run) ────────────────────── -->
+  <div id="liveFeed" class="bench-live hidden">
+    <div class="live-header">
+      <div class="live-status">
+        <span class="live-dot"></span>
+        <span id="liveStatusText">Connecting…</span>
+      </div>
+      <div class="live-meta">
+        <span class="live-chip" id="liveModel">—</span>
+        <span class="live-chip" id="liveProvider">—</span>
+      </div>
+      <div class="live-counters">
+        <span class="live-counter-label">Tokens</span>
+        <span class="live-counter" id="liveTokIn" title="input tokens">0 ↑</span>
+        <span class="live-counter" id="liveTokOut" title="output tokens">0 ↓</span>
+        <span class="live-divider">|</span>
+        <span class="live-counter-label">Elapsed</span>
+        <span class="live-counter" id="liveElapsed">0 s</span>
+        <span class="live-divider">|</span>
+        <span class="live-counter" id="liveProgress">0 / 0</span>
+      </div>
+    </div>
+    <div class="live-probes" id="liveProbes"></div>
+  </div>
+
+  <!-- ── Stat cards (visible after run) ────────────────────── -->
+  <div id="statArea" class="stat-area hidden">
+    <div class="stat-cards">
+      <div class="stat-card">
+        <div class="stat-value" id="statTotal">—</div>
+        <div class="stat-label">Probes</div>
+      </div>
+      <div class="stat-card stat-pass">
+        <div class="stat-value" id="statPassed">—</div>
+        <div class="stat-label">Passed</div>
+      </div>
+      <div class="stat-card stat-fail">
+        <div class="stat-value" id="statFailed">—</div>
+        <div class="stat-label">Failed</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="statLatency">—</div>
+        <div class="stat-label">Avg Latency</div>
+      </div>
+      <div class="stat-card stat-tok-in">
+        <div class="stat-value" id="statTokIn">—</div>
+        <div class="stat-label">Input Tokens</div>
+      </div>
+      <div class="stat-card stat-tok-out">
+        <div class="stat-value" id="statTokOut">—</div>
+        <div class="stat-label">Output Tokens</div>
+      </div>
+    </div>
+
+    <!-- Rate bars -->
+    <div class="rate-bars">
+      <div class="rate-row">
+        <div class="rate-meta">
+          <span class="rate-name">Injection Resistance</span>
+          <span class="rate-risk" id="riskInjection">—</span>
+        </div>
+        <div class="rate-track">
+          <div class="rate-fill fill-injection" id="fillInjection" style="width:0%"></div>
+        </div>
+        <span class="rate-pct" id="pctInjection">—</span>
+      </div>
+      <div class="rate-row">
+        <div class="rate-meta">
+          <span class="rate-name">Tool Accuracy</span>
+          <span class="rate-risk" id="riskTool">—</span>
+        </div>
+        <div class="rate-track">
+          <div class="rate-fill fill-tool" id="fillTool" style="width:0%"></div>
+        </div>
+        <span class="rate-pct" id="pctTool">—</span>
+      </div>
     </div>
   </div>
 
-  <div class="bench-alert bench-alert-error" id="alertError"></div>
-  <div class="bench-alert bench-alert-success" id="alertSuccess"></div>
+  <!-- ── Tabs ───────────────────────────────────────────────── -->
+  <div id="tabArea" class="bench-tabs hidden">
+    <div class="tab-nav">
+      <button class="tab-btn active" onclick="switchTab('results', this)">Results</button>
+      <button class="tab-btn" onclick="switchTab('compare', this)">Compare</button>
+      <button class="tab-btn" onclick="switchTab('history', this)">History</button>
+    </div>
 
-  <!-- Tabs -->
-  <div class="bench-tabs">
-    <button class="bench-tab active" id="tab-results" onclick="switchTab('results')">Results</button>
-    <button class="bench-tab" id="tab-compare" onclick="switchTab('compare')">Compare</button>
-    <button class="bench-tab" id="tab-history" onclick="switchTab('history')">History</button>
-  </div>
-
-  <!-- Results panel -->
-  <div class="bench-panel active" id="panel-results">
-    <div id="statsArea" style="display:none">
-      <div class="bench-stats" id="statsCards"></div>
-      <div class="bench-rates">
-        <div class="bench-rate-card">
-          <div class="bench-rate-title">Injection Resistance</div>
-          <div class="bench-rate-pct" id="injRate">—</div>
-          <div class="bench-rate-bar-bg"><div class="bench-rate-bar-fill fill-green" id="injBar" style="width:0%"></div></div>
-        </div>
-        <div class="bench-rate-card">
-          <div class="bench-rate-title">Tool Call Accuracy</div>
-          <div class="bench-rate-pct" id="accRate">—</div>
-          <div class="bench-rate-bar-bg"><div class="bench-rate-bar-fill fill-blue" id="accBar" style="width:0%"></div></div>
-        </div>
+    <!-- Results tab -->
+    <div id="tab-results" class="tab-pane">
+      <div class="probe-filters">
+        <button class="filter-btn active" onclick="filterProbes('all', this)">All</button>
+        <button class="filter-btn" onclick="filterProbes('pass', this)">Pass</button>
+        <button class="filter-btn" onclick="filterProbes('fail', this)">Fail</button>
+        <button class="filter-btn" onclick="filterProbes('injection', this)">Injection</button>
+        <button class="filter-btn" onclick="filterProbes('tool_accuracy', this)">Tool Accuracy</button>
+        <button class="filter-btn" onclick="filterProbes('instruction', this)">Instruction</button>
+        <button class="filter-btn" onclick="filterProbes('efficiency', this)">Efficiency</button>
       </div>
-
-      <div class="bench-section-title">Probe Details</div>
-      <table class="bench-table" id="probeTable">
+      <table class="probe-table" id="probeTable">
         <thead>
           <tr>
-            <th>ID</th>
+            <th></th>
+            <th>Probe</th>
             <th>Category</th>
             <th>Description</th>
-            <th>Outcome</th>
-            <th>Latency</th>
-            <th>Tokens in/out</th>
+            <th class="col-num">Latency</th>
+            <th class="col-num">In tok</th>
+            <th class="col-num">Out tok</th>
           </tr>
         </thead>
-        <tbody id="probeTbody"></tbody>
+        <tbody id="probeTableBody"></tbody>
       </table>
     </div>
-    <div class="bench-empty" id="resultsEmpty">No results yet — hit <strong>Run Benchmark</strong> to start.</div>
-  </div>
 
-  <!-- Compare panel -->
-  <div class="bench-panel" id="panel-compare">
-    <div id="compareContent">
-      <div class="bench-empty">Run benchmark at least twice with different models to compare.</div>
+    <!-- Compare tab -->
+    <div id="tab-compare" class="tab-pane hidden">
+      <div id="compareContent">
+        <p class="compare-hint">Run two or more benchmarks to compare results.</p>
+      </div>
+    </div>
+
+    <!-- History tab -->
+    <div id="tab-history" class="tab-pane hidden">
+      <div id="historyContent">
+        <p class="compare-hint">No history yet.</p>
+      </div>
     </div>
   </div>
 
-  <!-- History panel -->
-  <div class="bench-panel" id="panel-history">
-    <div id="historyContent">
-      <div class="bench-empty">No benchmark runs recorded yet.</div>
-    </div>
-  </div>
 </div>
 {% endblock %}
 
-{% block extra_js %}
+{% block scripts %}
 <script>
-let _currentRun = null;
-let _currentTab = 'results';
+/* ── state ───────────────────────────────────────────────────── */
+let currentRun = null;
+let eventSource = null;
+let filterMode = 'all';
 
-function switchTab(name) {
-  _currentTab = name;
-  document.querySelectorAll('.bench-tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.bench-panel').forEach(p => p.classList.remove('active'));
-  document.getElementById('tab-' + name).classList.add('active');
-  document.getElementById('panel-' + name).classList.add('active');
+/* ── boot ────────────────────────────────────────────────────── */
+document.addEventListener('DOMContentLoaded', () => {
+  fetchModelSuggestions();
+  loadLatest();
+});
+
+/* ── model suggestions ───────────────────────────────────────── */
+async function fetchModelSuggestions() {
+  try {
+    const r = await fetch('/api/config');
+    const cfg = await r.json();
+    const dl = document.getElementById('modelSuggestions');
+    (cfg.available_models || []).forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m;
+      dl.appendChild(opt);
+    });
+  } catch (_) {}
+}
+
+/* ── streaming run ───────────────────────────────────────────── */
+function startStream() {
+  if (eventSource) { eventSource.close(); eventSource = null; }
+
+  const model = document.getElementById('modelOverride').value.trim();
+  const url = '/api/bench/run/stream' + (model ? `?model=${encodeURIComponent(model)}` : '');
+
+  // Reset UI
+  document.getElementById('liveFeed').classList.remove('hidden');
+  document.getElementById('statArea').classList.add('hidden');
+  document.getElementById('tabArea').classList.add('hidden');
+  document.getElementById('liveProbes').innerHTML = '';
+  document.getElementById('liveStatusText').textContent = 'Connecting…';
+  document.getElementById('liveTokIn').textContent = '0 ↑';
+  document.getElementById('liveTokOut').textContent = '0 ↓';
+  document.getElementById('liveElapsed').textContent = '0 s';
+  document.getElementById('liveProgress').textContent = '0 / 0';
+  document.getElementById('liveModel').textContent = model || '(active brain)';
+  document.getElementById('liveProvider').textContent = '…';
+  document.getElementById('btnRun').disabled = true;
+  document.getElementById('btnRun').textContent = '⏳ Running…';
+
+  currentRun = null;
+
+  eventSource = new EventSource(url);
+
+  eventSource.addEventListener('run_start', e => {
+    const d = JSON.parse(e.data);
+    document.getElementById('liveStatusText').textContent = `Running — ${d.total_probes} probes`;
+    document.getElementById('liveModel').textContent = d.model || '(active brain)';
+    document.getElementById('liveProvider').textContent = d.provider;
+    document.getElementById('liveProgress').textContent = `0 / ${d.total_probes}`;
+
+    updatePathChain({
+      model: d.model,
+      provider: d.provider,
+      ollama_host: d.ollama_host,
+    });
+
+    // Pre-render all probe rows as waiting
+    const body = document.getElementById('liveProbes');
+    body.innerHTML = '';
+    // We'll fill them as probe_start events arrive
+  });
+
+  eventSource.addEventListener('probe_start', e => {
+    const d = JSON.parse(e.data);
+    const row = makeLiveRow(d.probe_id, d.category, d.description, 'running', null, null, null);
+    document.getElementById('liveProbes').appendChild(row);
+  });
+
+  eventSource.addEventListener('probe_done', e => {
+    const d = JSON.parse(e.data);
+
+    // Update existing live row
+    const row = document.getElementById(`live-row-${d.probe_id}`);
+    if (row) updateLiveRow(row, d);
+
+    // Update running counters
+    document.getElementById('liveTokIn').textContent = `${d.cumulative_in_tokens} ↑`;
+    document.getElementById('liveTokOut').textContent = `${d.cumulative_out_tokens} ↓`;
+    document.getElementById('liveElapsed').textContent = fmtMs(d.elapsed_ms);
+    document.getElementById('liveProgress').textContent = `${d.index + 1} / ${d.total}`;
+    document.getElementById('liveStatusText').textContent =
+      `Running — ${d.index + 1} / ${d.total} probes · ${d.run_passed} pass, ${d.run_failed} fail`;
+  });
+
+  eventSource.addEventListener('run_complete', e => {
+    const run = JSON.parse(e.data);
+    currentRun = run;
+    eventSource.close();
+    eventSource = null;
+
+    document.getElementById('liveStatusText').textContent =
+      `Complete — ${run.passed}/${run.total_probes} passed`;
+    document.getElementById('liveFeed').querySelector('.live-dot').classList.add('dot-done');
+
+    renderStats(run);
+    renderProbeTable(run.probes);
+    document.getElementById('statArea').classList.remove('hidden');
+    document.getElementById('tabArea').classList.remove('hidden');
+    document.getElementById('btnRun').disabled = false;
+    document.getElementById('btnRun').textContent = '▶ Run Benchmark';
+
+    loadCompare();
+    loadHistory();
+  });
+
+  eventSource.addEventListener('error', e => {
+    let msg = 'Stream error';
+    try { msg = JSON.parse(e.data).error; } catch (_) {}
+    document.getElementById('liveStatusText').textContent = `Error: ${msg}`;
+    if (eventSource) { eventSource.close(); eventSource = null; }
+    document.getElementById('btnRun').disabled = false;
+    document.getElementById('btnRun').textContent = '▶ Run Benchmark';
+  });
+
+  eventSource.onerror = () => {
+    if (eventSource && eventSource.readyState === EventSource.CLOSED) {
+      document.getElementById('btnRun').disabled = false;
+      document.getElementById('btnRun').textContent = '▶ Run Benchmark';
+    }
+  };
+}
+
+/* ── live row helpers ────────────────────────────────────────── */
+function makeLiveRow(probeId, category, description, status, latency, tokIn, tokOut) {
+  const row = document.createElement('div');
+  row.className = 'live-row live-row-running';
+  row.id = `live-row-${probeId}`;
+  row.innerHTML = `
+    <span class="live-row-icon" id="icon-${probeId}">⟳</span>
+    <span class="live-row-id">${escHtml(probeId)}</span>
+    <span class="live-row-cat cat-${escHtml(category)}">${escHtml(category)}</span>
+    <span class="live-row-desc">${escHtml(description)}</span>
+    <span class="live-row-latency" id="lat-${probeId}">—</span>
+    <span class="live-row-tok" id="tok-${probeId}">—</span>
+  `;
+  return row;
+}
+
+function updateLiveRow(row, d) {
+  row.classList.remove('live-row-running');
+  row.classList.add(d.passed ? 'live-row-pass' : 'live-row-fail');
+  const icon = row.querySelector('.live-row-icon');
+  if (icon) icon.textContent = d.passed ? '✓' : '✗';
+  const lat = document.getElementById(`lat-${d.probe_id}`);
+  if (lat) lat.textContent = `${d.latency_ms} ms`;
+  const tok = document.getElementById(`tok-${d.probe_id}`);
+  if (tok) tok.textContent = `${d.input_tokens}↑ ${d.output_tokens}↓`;
+}
+
+/* ── stat rendering ──────────────────────────────────────────── */
+function renderStats(run) {
+  document.getElementById('statTotal').textContent = run.total_probes;
+  document.getElementById('statPassed').textContent = run.passed;
+  document.getElementById('statFailed').textContent = run.failed;
+  document.getElementById('statLatency').textContent = `${Math.round(run.avg_latency_ms)} ms`;
+  document.getElementById('statTokIn').textContent = run.total_input_tokens;
+  document.getElementById('statTokOut').textContent = run.total_output_tokens;
+
+  const injPct = Math.round((run.injection_resistance_rate || 0) * 100);
+  const toolPct = Math.round((run.tool_accuracy_rate || 0) * 100);
+
+  document.getElementById('fillInjection').style.width = `${injPct}%`;
+  document.getElementById('pctInjection').textContent = `${injPct}%`;
+  document.getElementById('riskInjection').textContent = riskLabel(injPct, true);
+  document.getElementById('riskInjection').className = `rate-risk risk-${riskClass(injPct, true)}`;
+
+  document.getElementById('fillTool').style.width = `${toolPct}%`;
+  document.getElementById('pctTool').textContent = `${toolPct}%`;
+  document.getElementById('riskTool').textContent = riskLabel(toolPct, false);
+  document.getElementById('riskTool').className = `rate-risk risk-${riskClass(toolPct, false)}`;
+}
+
+function riskLabel(pct, higherIsBetter) {
+  if (higherIsBetter) {
+    if (pct >= 75) return 'Low risk';
+    if (pct >= 40) return 'Medium risk';
+    return 'High risk';
+  } else {
+    if (pct >= 80) return 'Accurate';
+    if (pct >= 50) return 'Moderate';
+    return 'Unreliable';
+  }
+}
+
+function riskClass(pct, higherIsBetter) {
+  if (higherIsBetter) {
+    if (pct >= 75) return 'low';
+    if (pct >= 40) return 'med';
+    return 'high';
+  } else {
+    if (pct >= 80) return 'low';
+    if (pct >= 50) return 'med';
+    return 'high';
+  }
+}
+
+/* ── probe table ─────────────────────────────────────────────── */
+function renderProbeTable(probes) {
+  const body = document.getElementById('probeTableBody');
+  body.innerHTML = '';
+  (probes || []).forEach(p => body.appendChild(makeProbeRow(p)));
+  applyFilter();
+}
+
+function makeProbeRow(p) {
+  const tr = document.createElement('tr');
+  tr.className = `probe-row outcome-${p.outcome}`;
+  tr.dataset.category = p.category;
+  tr.dataset.outcome = p.outcome;
+  tr.innerHTML = `
+    <td class="col-outcome">${p.passed ? '<span class="badge badge-pass">✓</span>' : '<span class="badge badge-fail">✗</span>'}</td>
+    <td class="col-id"><code>${escHtml(p.probe_id)}</code></td>
+    <td class="col-cat"><span class="cat-badge cat-${escHtml(p.category)}">${escHtml(p.category)}</span></td>
+    <td class="col-desc">${escHtml(p.description)}</td>
+    <td class="col-num">${p.latency_ms} ms</td>
+    <td class="col-num">${p.input_tokens}</td>
+    <td class="col-num">${p.output_tokens}</td>
+  `;
+  tr.style.cursor = 'pointer';
+  tr.addEventListener('click', () => toggleDetail(tr, p));
+  return tr;
+}
+
+function toggleDetail(tr, p) {
+  const existingDetail = tr.nextElementSibling;
+  if (existingDetail && existingDetail.classList.contains('probe-detail-row')) {
+    existingDetail.remove();
+    return;
+  }
+  const detail = document.createElement('tr');
+  detail.className = 'probe-detail-row';
+  detail.innerHTML = `
+    <td colspan="7" class="probe-detail-cell">
+      <div class="probe-detail-inner">
+        <div class="detail-section">
+          <span class="detail-label">Response preview</span>
+          <pre class="detail-pre">${escHtml(p.response_preview || '(empty)')}</pre>
+        </div>
+        ${p.notes ? `<div class="detail-section"><span class="detail-label">Evaluator notes</span><div class="detail-notes">${escHtml(p.notes)}</div></div>` : ''}
+      </div>
+    </td>
+  `;
+  tr.insertAdjacentElement('afterend', detail);
+}
+
+/* ── filter ──────────────────────────────────────────────────── */
+function filterProbes(mode, btn) {
+  filterMode = mode;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  applyFilter();
+}
+
+function applyFilter() {
+  document.querySelectorAll('#probeTableBody .probe-row').forEach(tr => {
+    const cat = tr.dataset.category;
+    const outcome = tr.dataset.outcome;
+    const visible =
+      filterMode === 'all' ||
+      filterMode === cat ||
+      filterMode === outcome ||
+      (filterMode === 'pass' && outcome === 'pass') ||
+      (filterMode === 'fail' && outcome === 'fail');
+    tr.style.display = visible ? '' : 'none';
+    // Hide detail row for hidden rows
+    const next = tr.nextElementSibling;
+    if (next && next.classList.contains('probe-detail-row')) {
+      next.style.display = visible ? '' : 'none';
+    }
+  });
+}
+
+/* ── compare tab ─────────────────────────────────────────────── */
+async function loadCompare() {
+  try {
+    const r = await fetch('/api/bench/compare?n=2');
+    const data = await r.json();
+    const el = document.getElementById('compareContent');
+
+    if (!data.runs || data.runs.length < 2) {
+      el.innerHTML = '<p class="compare-hint">Run two benchmarks to compare.</p>';
+      return;
+    }
+
+    const [newer, older] = data.runs;
+    el.innerHTML = buildCompareTable(newer, older);
+  } catch (_) {}
+}
+
+function buildCompareTable(a, b) {
+  const delta = (va, vb, higherBetter = true, fmt = v => v) => {
+    const diff = va - vb;
+    if (Math.abs(diff) < 0.001) return `<span class="delta-neutral">—</span>`;
+    const better = higherBetter ? diff > 0 : diff < 0;
+    const arrow = diff > 0 ? '▲' : '▼';
+    const cls = better ? 'delta-good' : 'delta-bad';
+    return `<span class="${cls}">${arrow} ${fmt(Math.abs(diff))}</span>`;
+  };
+
+  const fmtPct = v => `${Math.round(v * 100)}%`;
+  const fmtMs = v => `${Math.round(v)} ms`;
+
+  const rows = [
+    ['Model', a.model || '—', b.model || '—', ''],
+    ['Provider', a.provider || '—', b.provider || '—', ''],
+    ['Ollama host', a.ollama_host || '—', b.ollama_host || '—', ''],
+    ['Passed', `${a.passed}/${a.total_probes}`, `${b.passed}/${b.total_probes}`,
+      delta(a.passed, b.passed, true, v => v)],
+    ['Avg Latency', `${Math.round(a.avg_latency_ms)} ms`, `${Math.round(b.avg_latency_ms)} ms`,
+      delta(a.avg_latency_ms, b.avg_latency_ms, false, fmtMs)],
+    ['Injection Resistance', fmtPct(a.injection_resistance_rate), fmtPct(b.injection_resistance_rate),
+      delta(a.injection_resistance_rate, b.injection_resistance_rate, true, v => `${Math.round(v * 100)}pp`)],
+    ['Tool Accuracy', fmtPct(a.tool_accuracy_rate), fmtPct(b.tool_accuracy_rate),
+      delta(a.tool_accuracy_rate, b.tool_accuracy_rate, true, v => `${Math.round(v * 100)}pp`)],
+    ['Input Tokens', a.total_input_tokens, b.total_input_tokens,
+      delta(a.total_input_tokens, b.total_input_tokens, false, v => v)],
+    ['Output Tokens', a.total_output_tokens, b.total_output_tokens,
+      delta(a.total_output_tokens, b.total_output_tokens, false, v => v)],
+  ];
+
+  const headerA = `<span class="cmp-newer-badge">newer</span>${escHtml(a.model || a.run_id.slice(0, 8))}`;
+  const headerB = escHtml(b.model || b.run_id.slice(0, 8));
+
+  return `
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th>Metric</th>
+          <th>${headerA}</th>
+          <th>${headerB}</th>
+          <th>Δ</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows.map(([label, va, vb, d]) => `
+          <tr>
+            <td class="cmp-label">${escHtml(label)}</td>
+            <td class="cmp-val">${escHtml(String(va))}</td>
+            <td class="cmp-val">${escHtml(String(vb))}</td>
+            <td class="cmp-delta">${d}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+    <p class="cmp-ts">
+      Newer: ${new Date(a.timestamp).toLocaleString()} ·
+      Older: ${new Date(b.timestamp).toLocaleString()}
+    </p>
+  `;
+}
+
+/* ── history tab ─────────────────────────────────────────────── */
+async function loadHistory() {
+  try {
+    const r = await fetch('/api/bench/results?limit=20');
+    const data = await r.json();
+    const el = document.getElementById('historyContent');
+
+    if (!data.runs || !data.runs.length) {
+      el.innerHTML = '<p class="compare-hint">No history yet.</p>';
+      return;
+    }
+
+    el.innerHTML = `
+      <table class="history-table">
+        <thead>
+          <tr>
+            <th>When</th>
+            <th>Model</th>
+            <th>Provider</th>
+            <th>Pass</th>
+            <th>Fail</th>
+            <th>Avg ms</th>
+            <th>Inj res.</th>
+            <th>Tool acc.</th>
+            <th>In tok</th>
+            <th>Out tok</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${data.runs.map(run => `
+            <tr class="${run === data.runs[0] ? 'history-latest' : ''}">
+              <td>${new Date(run.timestamp).toLocaleString()}</td>
+              <td><code>${escHtml(run.model || '—')}</code></td>
+              <td>${escHtml(run.provider || '—')}</td>
+              <td class="col-pass">${run.passed}</td>
+              <td class="col-fail">${run.failed}</td>
+              <td>${Math.round(run.avg_latency_ms)}</td>
+              <td>${Math.round((run.injection_resistance_rate || 0) * 100)}%</td>
+              <td>${Math.round((run.tool_accuracy_rate || 0) * 100)}%</td>
+              <td>${run.total_input_tokens}</td>
+              <td>${run.total_output_tokens}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+  } catch (_) {}
+}
+
+/* ── load latest on mount ────────────────────────────────────── */
+async function loadLatest() {
+  try {
+    const r = await fetch('/api/bench/results/latest');
+    const run = await r.json();
+    if (!run) return;
+
+    currentRun = run;
+    updatePathChain(run);
+    renderStats(run);
+    renderProbeTable(run.probes);
+    document.getElementById('statArea').classList.remove('hidden');
+    document.getElementById('tabArea').classList.remove('hidden');
+    loadCompare();
+    loadHistory();
+  } catch (_) {}
+}
+
+/* ── clear ───────────────────────────────────────────────────── */
+async function clearResults() {
+  if (!confirm('Clear all benchmark history?')) return;
+  try {
+    await fetch('/api/bench/results', { method: 'DELETE' });
+    document.getElementById('statArea').classList.add('hidden');
+    document.getElementById('tabArea').classList.add('hidden');
+    document.getElementById('liveFeed').classList.add('hidden');
+    currentRun = null;
+  } catch (_) {}
+}
+
+/* ── path chain ──────────────────────────────────────────────── */
+function updatePathChain(run) {
+  if (run.provider) document.getElementById('pathProvider').textContent = run.provider;
+  if (run.ollama_host) document.getElementById('pathHost').textContent = run.ollama_host;
+  if (run.model) document.getElementById('pathModel').textContent = run.model;
+}
+
+/* ── tab switching ───────────────────────────────────────────── */
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.add('hidden'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(`tab-${name}`).classList.remove('hidden');
+  btn.classList.add('active');
   if (name === 'compare') loadCompare();
   if (name === 'history') loadHistory();
 }
 
-function esc(s) {
-  if (s == null) return '';
-  const d = document.createElement('div');
-  d.textContent = String(s);
-  return d.innerHTML;
+/* ── utils ───────────────────────────────────────────────────── */
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
-function pct(rate) {
-  return Math.round((rate || 0) * 100) + '%';
+function fmtMs(ms) {
+  if (ms < 1000) return `${ms} ms`;
+  return `${(ms / 1000).toFixed(1)} s`;
 }
-
-function fmtTs(ts) {
-  if (!ts) return '';
-  try { return new Date(ts).toLocaleString(); } catch(_) { return ts; }
-}
-
-function setSpinner(on, msg) {
-  const el = document.getElementById('spinner');
-  const btn = document.getElementById('runBtn');
-  if (on) {
-    el.classList.add('visible');
-    document.getElementById('spinnerMsg').textContent = msg || 'Running probes…';
-    btn.disabled = true;
-  } else {
-    el.classList.remove('visible');
-    btn.disabled = false;
-  }
-}
-
-function showAlert(type, msg) {
-  const errEl = document.getElementById('alertError');
-  const okEl = document.getElementById('alertSuccess');
-  errEl.classList.remove('visible');
-  okEl.classList.remove('visible');
-  if (type === 'error') { errEl.textContent = msg; errEl.classList.add('visible'); }
-  if (type === 'success') { okEl.textContent = msg; okEl.classList.add('visible'); }
-}
-
-async function runBenchmark() {
-  setSpinner(true, 'Running ' + document.getElementById('metaModel').textContent + ' across all probes…');
-  showAlert(null, '');
-  try {
-    const resp = await fetch('/api/bench/run', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'});
-    const data = await resp.json();
-    if (data.error) { showAlert('error', data.error); return; }
-    _currentRun = data;
-    renderRun(data);
-    showAlert('success', 'Benchmark complete — ' + data.passed + '/' + data.total_probes + ' probes passed in ' + Math.round(data.avg_latency_ms) + 'ms avg.');
-  } catch(e) {
-    showAlert('error', 'Request failed: ' + e.message);
-  } finally {
-    setSpinner(false);
-  }
-}
-
-async function loadLatest() {
-  try {
-    const resp = await fetch('/api/bench/results/latest');
-    const data = await resp.json();
-    if (!data || data.error) { showAlert('error', 'No benchmark runs found.'); return; }
-    _currentRun = data;
-    renderRun(data);
-  } catch(e) {
-    showAlert('error', 'Could not load latest run.');
-  }
-}
-
-async function clearRuns() {
-  if (!confirm('Clear all benchmark run history?')) return;
-  await fetch('/api/bench/results', {method: 'DELETE'});
-  _currentRun = null;
-  document.getElementById('statsArea').style.display = 'none';
-  document.getElementById('resultsEmpty').style.display = '';
-  document.getElementById('compareContent').innerHTML = '<div class="bench-empty">Run benchmark at least twice with different models to compare.</div>';
-  document.getElementById('historyContent').innerHTML = '<div class="bench-empty">No benchmark runs recorded yet.</div>';
-  showAlert('success', 'Run history cleared.');
-}
-
-function renderRun(run) {
-  // Update meta
-  document.getElementById('metaModel').textContent = run.model || '—';
-  document.getElementById('metaProvider').textContent = run.provider || '—';
-  const runAtEl = document.getElementById('metaRunAt');
-  document.getElementById('metaTs').textContent = fmtTs(run.timestamp);
-  runAtEl.style.display = '';
-
-  // Stats cards
-  const rateColor = r => r >= 0.8 ? 'stat-green' : r >= 0.5 ? 'stat-yellow' : 'stat-red';
-  const cards = [
-    {val: run.total_probes, label: 'Total Probes', cls: 'stat-muted'},
-    {val: run.passed, label: 'Passed', cls: 'stat-green'},
-    {val: run.failed, label: 'Failed', cls: run.failed > 0 ? 'stat-red' : 'stat-muted'},
-    {val: Math.round(run.avg_latency_ms) + 'ms', label: 'Avg Latency', cls: 'stat-blue'},
-    {val: run.total_input_tokens, label: 'In Tokens', cls: 'stat-muted'},
-    {val: run.total_output_tokens, label: 'Out Tokens', cls: 'stat-muted'},
-  ];
-  document.getElementById('statsCards').innerHTML = cards.map(c =>
-    `<div class="bench-stat"><div class="bench-stat-value ${c.cls}">${esc(c.val)}</div><div class="bench-stat-label">${esc(c.label)}</div></div>`
-  ).join('');
-
-  // Rate bars
-  const injR = (run.injection_resistance_rate || 0);
-  const accR = (run.tool_accuracy_rate || 0);
-  document.getElementById('injRate').textContent = pct(injR);
-  document.getElementById('accRate').textContent = pct(accR);
-  const injFill = injR >= 0.8 ? 'fill-green' : injR >= 0.5 ? 'fill-yellow' : 'fill-red';
-  const accFill = accR >= 0.8 ? 'fill-green' : accR >= 0.5 ? 'fill-yellow' : 'fill-red';
-  const injBar = document.getElementById('injBar');
-  const accBar = document.getElementById('accBar');
-  injBar.style.width = pct(injR);
-  injBar.className = 'bench-rate-bar-fill ' + injFill;
-  accBar.style.width = pct(accR);
-  accBar.className = 'bench-rate-bar-fill ' + accFill;
-
-  // Probe table
-  const tbody = document.getElementById('probeTbody');
-  let rows = '';
-  (run.probes || []).forEach((p, i) => {
-    const outCls = 'outcome-' + (p.outcome || 'error');
-    rows += `<tr class="bench-row ${esc(p.outcome || 'error')}" onclick="toggleProbeDetail(${i})">
-      <td style="font-family:var(--font-mono);color:var(--muted)">${esc(p.probe_id)}</td>
-      <td><span class="cat-badge cat-${esc(p.category)}">${esc(p.category)}</span></td>
-      <td style="color:var(--text2);max-width:300px">${esc(p.description)}</td>
-      <td class="${outCls}">${esc(p.outcome)}</td>
-      <td style="font-family:var(--font-mono);color:var(--muted)">${p.latency_ms}ms</td>
-      <td style="font-family:var(--font-mono);color:var(--muted)">${p.input_tokens}/${p.output_tokens}</td>
-    </tr>
-    <tr class="probe-detail-row" id="probe-detail-${i}">
-      <td colspan="6" class="probe-detail-cell">
-        <div class="probe-preview">${esc(p.response_preview || '(no response)')}</div>
-        ${p.notes ? `<div class="probe-notes">${esc(p.notes)}</div>` : ''}
-      </td>
-    </tr>`;
-  });
-  tbody.innerHTML = rows;
-
-  document.getElementById('statsArea').style.display = '';
-  document.getElementById('resultsEmpty').style.display = 'none';
-}
-
-function toggleProbeDetail(i) {
-  const row = document.getElementById('probe-detail-' + i);
-  if (row) row.classList.toggle('open');
-}
-
-async function loadCompare() {
-  try {
-    const resp = await fetch('/api/bench/compare?n=2');
-    const data = await resp.json();
-    const runs = data.runs || [];
-    const el = document.getElementById('compareContent');
-    if (runs.length < 2) {
-      el.innerHTML = '<div class="bench-empty">Run benchmark at least twice with different models to compare.</div>';
-      return;
-    }
-    const fields = [
-      ['Total Probes', 'total_probes', v => v],
-      ['Passed', 'passed', v => v],
-      ['Failed', 'failed', v => v],
-      ['Avg Latency', 'avg_latency_ms', v => Math.round(v) + 'ms'],
-      ['Injection Resistance', 'injection_resistance_rate', v => pct(v)],
-      ['Tool Accuracy', 'tool_accuracy_rate', v => pct(v)],
-      ['Input Tokens', 'total_input_tokens', v => v],
-      ['Output Tokens', 'total_output_tokens', v => v],
-    ];
-    let html = '<div class="compare-grid">';
-    runs.forEach(r => {
-      html += `<div class="compare-card">
-        <div class="compare-model">${esc(r.model || '—')}</div>
-        <div class="compare-ts">${esc(fmtTs(r.timestamp))}</div>`;
-      fields.forEach(([label, key, fmt]) => {
-        html += `<div class="compare-row"><span class="compare-key">${esc(label)}</span><span class="compare-val">${esc(fmt(r[key]))}</span></div>`;
-      });
-      html += '</div>';
-    });
-    html += '</div>';
-    el.innerHTML = html;
-  } catch(e) {
-    document.getElementById('compareContent').innerHTML = '<div class="bench-empty">Could not load comparison data.</div>';
-  }
-}
-
-async function loadHistory() {
-  try {
-    const resp = await fetch('/api/bench/results?limit=10');
-    const data = await resp.json();
-    const runs = data.runs || [];
-    const el = document.getElementById('historyContent');
-    if (!runs.length) {
-      el.innerHTML = '<div class="bench-empty">No benchmark runs recorded yet.</div>';
-      return;
-    }
-    let html = '<div class="bench-history-list">';
-    runs.forEach((r, i) => {
-      html += `<div class="history-item" onclick="loadRunFromHistory(${i})">
-        <div class="history-item-left">
-          <div class="history-model">${esc(r.model || '—')}</div>
-          <div class="history-ts">${esc(fmtTs(r.timestamp))} &middot; ${esc(r.provider)}</div>
-        </div>
-        <div class="history-item-right">
-          <span class="hist-pass">✓ ${r.passed}</span>
-          <span class="hist-fail">✗ ${r.failed}</span>
-          <span class="hist-lat">${Math.round(r.avg_latency_ms)}ms</span>
-        </div>
-      </div>`;
-    });
-    html += '</div>';
-    el.innerHTML = html;
-    window._historyRuns = runs;
-  } catch(e) {
-    document.getElementById('historyContent').innerHTML = '<div class="bench-empty">Could not load history.</div>';
-  }
-}
-
-function loadRunFromHistory(i) {
-  const run = window._historyRuns && window._historyRuns[i];
-  if (!run) return;
-  _currentRun = run;
-  renderRun(run);
-  switchTab('results');
-}
-
-// Load latest on page open
-(function init(){
-  fetch('/api/bench/results/latest').then(r=>r.json()).then(data=>{
-    if (data && !data.error) { _currentRun = data; renderRun(data); }
-  }).catch(()=>{});
-})();
 </script>
+
+<style>
+/* ── page layout ─────────────────────────────────────────── */
+.bench-page { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+/* ── header ──────────────────────────────────────────────── */
+.bench-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 1.25rem; gap: 1rem; }
+.bench-title { font-size: 1.6rem; font-weight: 700; margin: 0 0 .25rem; }
+.bench-subtitle { color: var(--text-muted, #8892a4); margin: 0; font-size: .9rem; }
+.bench-header-actions { display: flex; gap: .5rem; flex-shrink: 0; padding-top: .25rem; }
+
+/* ── network path card ───────────────────────────────────── */
+.bench-path-card {
+  background: var(--surface-2, #1a2035);
+  border: 1px solid var(--border, #2a3557);
+  border-radius: 8px;
+  padding: .75rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  overflow-x: auto;
+}
+.path-label { font-size: .7rem; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--text-muted, #8892a4); white-space: nowrap; }
+.path-chain { display: flex; align-items: center; gap: .4rem; flex-wrap: nowrap; min-width: 0; }
+.path-node { padding: .2rem .55rem; border-radius: 4px; font-size: .78rem; font-weight: 600; white-space: nowrap; }
+.path-sep { color: var(--text-muted, #8892a4); font-size: .85rem; }
+.path-port { font-weight: 400; opacity: .7; }
+.node-browser { background: #1e3a5f; color: #60a5fa; }
+.node-portal  { background: #1e3a5f; color: #60a5fa; }
+.node-gateway { background: #1e3a5f; color: #60a5fa; }
+.node-provider { background: #1a3a2a; color: #34d399; }
+.node-host    { background: #1a3a2a; color: #6ee7b7; }
+.node-model   { background: #3b2a1a; color: #fbbf24; }
+
+/* ── action bar ──────────────────────────────────────────── */
+.bench-action-bar { display: flex; gap: .75rem; align-items: center; margin-bottom: 1.25rem; }
+.bench-model-group { display: flex; align-items: center; gap: .5rem; flex: 1; }
+.model-label { font-size: .8rem; font-weight: 600; color: var(--text-muted, #8892a4); white-space: nowrap; }
+.model-input {
+  flex: 1;
+  max-width: 320px;
+  background: var(--surface-2, #1a2035);
+  border: 1px solid var(--border, #2a3557);
+  border-radius: 6px;
+  color: var(--text, #e2e8f0);
+  padding: .45rem .75rem;
+  font-size: .88rem;
+}
+.model-input::placeholder { color: var(--text-muted, #8892a4); }
+.btn-run { padding: .5rem 1.25rem; font-size: .9rem; font-weight: 600; }
+.btn-run:disabled { opacity: .5; cursor: not-allowed; }
+
+/* ── live feed ───────────────────────────────────────────── */
+.bench-live {
+  background: var(--surface-2, #1a2035);
+  border: 1px solid var(--border, #2a3557);
+  border-radius: 8px;
+  margin-bottom: 1.25rem;
+  overflow: hidden;
+}
+.live-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: .65rem 1rem;
+  background: var(--surface-3, #111827);
+  border-bottom: 1px solid var(--border, #2a3557);
+  flex-wrap: wrap;
+}
+.live-status { display: flex; align-items: center; gap: .5rem; font-weight: 600; font-size: .88rem; }
+.live-dot {
+  width: 8px; height: 8px;
+  background: #ef4444;
+  border-radius: 50%;
+  animation: pulse-red 1.2s ease-in-out infinite;
+}
+.live-dot.dot-done { background: #22c55e; animation: none; }
+@keyframes pulse-red {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: .4; transform: scale(.8); }
+}
+.live-meta { display: flex; gap: .4rem; }
+.live-chip {
+  background: #2a3557;
+  border-radius: 4px;
+  padding: .15rem .5rem;
+  font-size: .75rem;
+  color: #94a3b8;
+  font-family: monospace;
+}
+.live-counters { display: flex; align-items: center; gap: .5rem; margin-left: auto; font-size: .8rem; }
+.live-counter-label { color: var(--text-muted, #8892a4); font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; }
+.live-counter { font-family: monospace; font-weight: 700; color: #e2e8f0; }
+.live-divider { color: var(--border, #2a3557); }
+
+.live-probes { padding: .5rem 0; }
+.live-row {
+  display: grid;
+  grid-template-columns: 1.5rem 5rem 7.5rem 1fr 5.5rem 7rem;
+  align-items: center;
+  gap: .5rem;
+  padding: .35rem 1rem;
+  font-size: .82rem;
+  border-bottom: 1px solid var(--border, #2a3557);
+  transition: background .15s;
+}
+.live-row:last-child { border-bottom: none; }
+.live-row-running { opacity: .75; }
+.live-row-pass { background: rgba(34, 197, 94, .05); }
+.live-row-fail { background: rgba(239, 68, 68, .05); }
+
+.live-row-icon { font-size: .85rem; text-align: center; }
+.live-row-running .live-row-icon { animation: spin 1.2s linear infinite; display: inline-block; }
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.live-row-pass .live-row-icon { color: #22c55e; }
+.live-row-fail .live-row-icon { color: #ef4444; }
+
+.live-row-id { font-family: monospace; color: #94a3b8; font-size: .77rem; }
+.live-row-desc { color: var(--text, #e2e8f0); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.live-row-latency { font-family: monospace; color: #fbbf24; text-align: right; }
+.live-row-tok { font-family: monospace; color: #60a5fa; text-align: right; font-size: .75rem; }
+
+/* ── stat cards ──────────────────────────────────────────── */
+.stat-area { margin-bottom: 1.25rem; }
+.stat-cards { display: grid; grid-template-columns: repeat(6, 1fr); gap: .75rem; margin-bottom: 1rem; }
+@media (max-width: 800px) { .stat-cards { grid-template-columns: repeat(3, 1fr); } }
+.stat-card {
+  background: var(--surface-2, #1a2035);
+  border: 1px solid var(--border, #2a3557);
+  border-radius: 8px;
+  padding: .75rem 1rem;
+  text-align: center;
+}
+.stat-value { font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.stat-label { font-size: .72rem; color: var(--text-muted, #8892a4); text-transform: uppercase; letter-spacing: .06em; margin-top: .2rem; }
+.stat-pass .stat-value { color: #22c55e; }
+.stat-fail .stat-value { color: #ef4444; }
+.stat-tok-in .stat-value { color: #60a5fa; }
+.stat-tok-out .stat-value { color: #a78bfa; }
+
+/* ── rate bars ───────────────────────────────────────────── */
+.rate-bars { display: flex; flex-direction: column; gap: .75rem; }
+.rate-row { display: grid; grid-template-columns: 200px 1fr 3.5rem; align-items: center; gap: .75rem; }
+.rate-meta { display: flex; align-items: center; gap: .6rem; }
+.rate-name { font-size: .82rem; font-weight: 600; }
+.rate-risk { font-size: .68rem; font-weight: 600; padding: .1rem .45rem; border-radius: 3px; text-transform: uppercase; letter-spacing: .05em; }
+.risk-low  { background: rgba(34,197,94,.15); color: #22c55e; }
+.risk-med  { background: rgba(251,191,36,.15); color: #fbbf24; }
+.risk-high { background: rgba(239,68,68,.15); color: #ef4444; }
+.rate-track { background: var(--surface-3, #111827); border-radius: 4px; height: 10px; overflow: hidden; }
+.rate-fill { height: 100%; border-radius: 4px; transition: width .6s ease; }
+.fill-injection { background: linear-gradient(90deg, #ef4444, #22c55e); }
+.fill-tool      { background: linear-gradient(90deg, #ef4444, #60a5fa); }
+.rate-pct { font-family: monospace; font-weight: 700; font-size: .85rem; text-align: right; }
+
+/* ── category badges (shared) ────────────────────────────── */
+.cat-injection, .cat-badge.cat-injection { background: rgba(239,68,68,.15); color: #f87171; }
+.cat-tool_accuracy, .cat-badge.cat-tool_accuracy { background: rgba(96,165,250,.15); color: #60a5fa; }
+.cat-instruction, .cat-badge.cat-instruction { background: rgba(167,139,250,.15); color: #a78bfa; }
+.cat-efficiency, .cat-badge.cat-efficiency { background: rgba(251,191,36,.15); color: #fbbf24; }
+.cat-badge { padding: .15rem .45rem; border-radius: 3px; font-size: .72rem; font-weight: 600; white-space: nowrap; }
+
+/* ── tabs ────────────────────────────────────────────────── */
+.bench-tabs { background: var(--surface-2, #1a2035); border: 1px solid var(--border, #2a3557); border-radius: 8px; overflow: hidden; }
+.tab-nav { display: flex; border-bottom: 1px solid var(--border, #2a3557); }
+.tab-btn { background: none; border: none; border-bottom: 2px solid transparent; padding: .65rem 1.25rem; font-size: .85rem; font-weight: 600; color: var(--text-muted, #8892a4); cursor: pointer; margin-bottom: -1px; transition: color .15s, border-color .15s; }
+.tab-btn:hover { color: var(--text, #e2e8f0); }
+.tab-btn.active { color: #60a5fa; border-bottom-color: #60a5fa; }
+.tab-pane { padding: 1rem; }
+
+/* ── probe filters ───────────────────────────────────────── */
+.probe-filters { display: flex; gap: .4rem; flex-wrap: wrap; margin-bottom: .75rem; }
+.filter-btn { background: var(--surface-3, #111827); border: 1px solid var(--border, #2a3557); border-radius: 4px; padding: .25rem .65rem; font-size: .75rem; font-weight: 600; color: var(--text-muted, #8892a4); cursor: pointer; }
+.filter-btn.active, .filter-btn:hover { background: #1d3461; color: #60a5fa; border-color: #60a5fa; }
+
+/* ── probe table ─────────────────────────────────────────── */
+.probe-table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+.probe-table th { text-align: left; padding: .45rem .6rem; color: var(--text-muted, #8892a4); font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; border-bottom: 1px solid var(--border, #2a3557); font-weight: 600; }
+.probe-row td { padding: .45rem .6rem; border-bottom: 1px solid var(--border, #2a3557); vertical-align: middle; }
+.probe-row:hover td { background: rgba(96,165,250,.04); }
+.probe-detail-row td { padding: 0; }
+.probe-detail-cell { padding: 0 !important; }
+.probe-detail-inner { padding: .75rem 1rem; background: var(--surface-3, #111827); border-bottom: 1px solid var(--border, #2a3557); }
+.detail-section { margin-bottom: .5rem; }
+.detail-label { font-size: .7rem; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted, #8892a4); }
+.detail-pre { margin: .3rem 0 0; font-size: .78rem; white-space: pre-wrap; word-break: break-word; color: #94a3b8; max-height: 120px; overflow-y: auto; background: var(--surface-2, #1a2035); border-radius: 4px; padding: .5rem .75rem; }
+.detail-notes { margin-top: .3rem; font-size: .8rem; color: #94a3b8; }
+
+.outcome-pass .col-id code { color: #22c55e; }
+.outcome-fail .col-id code { color: #f87171; }
+.outcome-error .col-id code { color: #fbbf24; }
+.col-num { text-align: right; font-family: monospace; }
+.col-outcome { width: 2rem; }
+.col-id { width: 5.5rem; }
+.col-cat { width: 8rem; }
+.badge-pass { color: #22c55e; font-weight: 700; }
+.badge-fail { color: #ef4444; font-weight: 700; }
+
+/* ── compare ─────────────────────────────────────────────── */
+.compare-hint { color: var(--text-muted, #8892a4); font-size: .85rem; text-align: center; padding: 2rem 0; }
+.compare-table { width: 100%; border-collapse: collapse; font-size: .83rem; }
+.compare-table th { padding: .45rem .75rem; text-align: left; color: var(--text-muted, #8892a4); font-size: .72rem; text-transform: uppercase; border-bottom: 1px solid var(--border, #2a3557); }
+.compare-table td { padding: .4rem .75rem; border-bottom: 1px solid var(--border, #2a3557); }
+.cmp-label { font-weight: 600; color: var(--text, #e2e8f0); }
+.cmp-val { font-family: monospace; color: #94a3b8; }
+.cmp-delta { font-family: monospace; font-weight: 700; }
+.delta-good { color: #22c55e; }
+.delta-bad  { color: #ef4444; }
+.delta-neutral { color: var(--text-muted, #8892a4); }
+.cmp-newer-badge { background: #1e3a5f; color: #60a5fa; border-radius: 3px; padding: .05rem .35rem; font-size: .65rem; font-weight: 700; margin-right: .35rem; vertical-align: middle; }
+.cmp-ts { font-size: .73rem; color: var(--text-muted, #8892a4); margin-top: .75rem; }
+
+/* ── history ─────────────────────────────────────────────── */
+.history-table { width: 100%; border-collapse: collapse; font-size: .8rem; }
+.history-table th { padding: .4rem .6rem; text-align: left; color: var(--text-muted, #8892a4); font-size: .7rem; text-transform: uppercase; border-bottom: 1px solid var(--border, #2a3557); }
+.history-table td { padding: .35rem .6rem; border-bottom: 1px solid var(--border, #2a3557); font-family: monospace; color: #94a3b8; }
+.history-latest td { color: #e2e8f0; background: rgba(96,165,250,.05); }
+.col-pass { color: #22c55e; font-weight: 700; }
+.col-fail { color: #ef4444; font-weight: 700; }
+
+.hidden { display: none !important; }
+</style>
 {% endblock %}
