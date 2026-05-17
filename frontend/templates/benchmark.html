@@ -464,7 +464,7 @@ function startStream() {
       'Running — ' + (d.index + 1) + '/' + d.total + ' · ' + d.run_passed + ' pass, ' + d.run_failed + ' fail';
   });
 
-  eventSource.addEventListener('run_complete', e => {
+  eventSource.addEventListener('run_complete', async e => {
     const run = JSON.parse(e.data);
     currentRun = run;
     eventSource.close(); eventSource = null;
