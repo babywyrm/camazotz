@@ -329,3 +329,84 @@ def verify_submitted_flag(payload: _FlagSubmission) -> dict[str, object]:
     """Validate a submitted canary flag against the expected value."""
     correct = verify_flag(payload.threat_id, payload.flag)
     return {"threat_id": payload.threat_id, "correct": correct}
+
+
+# ── Benchmarking ─────────────────────────────────────────────────────────────
+
+class _BenchRunRequest(BaseModel):
+    """Optional override for a one-off benchmark against a specific model."""
+
+    model: str | None = None  # if set, swap model for this run then restore
+
+
+@app.post("/bench/run")
+def bench_run(payload: _BenchRunRequest | None = None) -> dict[str, object]:
+    """Run the full probe suite against the current (or requested) brain model.
+
+    Probe results and aggregate stats are stored in the in-memory bench store
+    and returned immediately.  Switch the active model first via PUT /config
+    or pass ``model`` here for a one-shot run without persisting the change.
+    """
+    from brain_gateway.app.bench.runner import run_benchmark
+    from brain_gateway.app.bench.store import save_run
+    from brain_gateway.app.brain.factory import get_provider, reset_provider
+
+    override_model = payload.model if payload else None
+    original_model: str | None = None
+
+    if override_model:
+        from brain_gateway.app.config import get_runtime_model, set_runtime_model
+        original_model = get_runtime_model()
+        set_runtime_model(override_model)
+        reset_provider()
+
+    try:
+        provider = get_provider()
+        run = run_benchmark(provider)
+    finally:
+        if override_model and original_model is not None:
+            from brain_gateway.app.config import set_runtime_model
+            set_runtime_model(original_model)
+            reset_provider()
+        elif override_model:
+            from brain_gateway.app.config import reset_brain_config
+            reset_brain_config()
+            reset_provider()
+
+    save_run(run)
+    return run.to_dict()
+
+
+@app.get("/bench/results")
+def bench_results(limit: int | None = None) -> dict[str, object]:
+    """Return stored benchmark runs, newest first."""
+    from brain_gateway.app.bench.store import get_runs
+    runs = get_runs(limit=limit)
+    return {"count": len(runs), "runs": runs}
+
+
+@app.get("/bench/results/latest")
+def bench_latest() -> dict[str, object]:
+    """Return the most recent benchmark run, or 404 if none yet."""
+    from fastapi import HTTPException
+    from brain_gateway.app.bench.store import get_latest
+    run = get_latest()
+    if run is None:
+        raise HTTPException(status_code=404, detail="No benchmark runs recorded yet")
+    return run
+
+
+@app.get("/bench/compare")
+def bench_compare(n: int = 2) -> dict[str, object]:
+    """Return aggregate summaries for the last *n* runs for model comparison."""
+    from brain_gateway.app.bench.store import compare_last
+    summaries = compare_last(n=max(1, n))
+    return {"n": len(summaries), "runs": summaries}
+
+
+@app.delete("/bench/results")
+def bench_clear() -> dict[str, object]:
+    """Clear the in-memory benchmark run store."""
+    from brain_gateway.app.bench.store import clear
+    clear()
+    return {"cleared": True}
