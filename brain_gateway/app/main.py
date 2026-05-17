@@ -339,6 +339,40 @@ class _BenchRunRequest(BaseModel):
     model: str | None = None  # if set, swap model for this run then restore
 
 
+@app.get("/bench/run/stream")
+async def bench_run_stream(model: str | None = None) -> Response:
+    """SSE stream — run all probes and emit one event per probe as it completes.
+
+    Query params:
+        model: optional model override for this run only (does not change
+               the active brain model for other sessions).
+
+    Event types: ``run_start``, ``probe_start``, ``probe_done``, ``run_complete``.
+    """
+    from brain_gateway.app.bench.runner import run_benchmark_stream
+    from brain_gateway.app.brain.factory import get_provider, reset_provider
+    from brain_gateway.app.config import get_runtime_model, set_runtime_model
+
+    original_model: str | None = None
+    if model:
+        original_model = get_runtime_model()
+        set_runtime_model(model)
+        reset_provider()
+
+    provider = get_provider()
+
+    async def _events() -> AsyncIterator[dict[str, str]]:
+        try:
+            async for event_type, data in run_benchmark_stream(provider):
+                yield {"event": event_type, "data": json.dumps(data)}
+        finally:
+            if model:
+                set_runtime_model(original_model or "")
+                reset_provider()
+
+    return EventSourceResponse(_events())
+
+
 @app.post("/bench/run")
 def bench_run(payload: _BenchRunRequest | None = None) -> dict[str, object]:
     """Run the full probe suite against the current (or requested) brain model.
