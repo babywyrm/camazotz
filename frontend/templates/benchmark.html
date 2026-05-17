@@ -388,17 +388,31 @@ document.addEventListener('DOMContentLoaded', () => {
   loadLatest();
 });
 
+// Model suggestions: live available_models from gateway + unique models from run history
+const _seenModels = new Set();
+
 async function fetchModelSuggestions() {
   try {
     const r = await fetch('/api/config');
     const cfg = await r.json();
-    const dl = document.getElementById('modelSuggestions');
-    (cfg.available_models || []).forEach(m => {
-      const opt = document.createElement('option');
-      opt.value = m;
-      dl.appendChild(opt);
-    });
+    addModelSuggestions(cfg.available_models || []);
   } catch (_) {}
+}
+
+function addModelSuggestions(models) {
+  const dl = document.getElementById('modelSuggestions');
+  models.forEach(m => {
+    if (!m || _seenModels.has(m)) return;
+    _seenModels.add(m);
+    const opt = document.createElement('option');
+    opt.value = m;
+    dl.appendChild(opt);
+  });
+}
+
+function syncHistoryModelsToSuggestions() {
+  // Pull model names from run history into the datalist
+  addModelSuggestions(allRuns.map(r => r.model).filter(Boolean));
 }
 
 function startStream() {
@@ -463,7 +477,7 @@ function startStream() {
     document.getElementById('tabArea').classList.remove('hidden');
     document.getElementById('btnRun').disabled = false;
     document.getElementById('btnRun').textContent = '▶ Run Benchmark';
-    loadCompare();
+    await loadCompare();
     renderHistoryWithSelection();
   });
 
@@ -617,6 +631,7 @@ async function loadCompare() {
     const r = await fetch('/api/bench/results?limit=20');
     const data = await r.json();
     allRuns = data.runs || [];
+    syncHistoryModelsToSuggestions();
     populateCmpSelects();
     // Default: compare the two most recent
     if (cmpIdxA === null && allRuns.length >= 1) cmpIdxA = 0;
