@@ -1,0 +1,29 @@
+# TruffleHog v3 configuration for camazotz
+# This is an intentionally vulnerable CTF/security-research platform.
+# All credentials in lab modules, test fixtures, and scenario docs are
+# FAKE by design — they exist so agents/scanners can discover them as
+# part of the challenge. Suppress them here to surface only real leaks.
+
+exclude_paths:
+  # Python venvs — third-party library examples and test data
+  - .venv/
+  - 1/
+
+exclude_detectors:
+  # The Polygon and Pastebin detectors fire on botocore geo-data and
+  # pytest's RECORD checksums respectively — pure noise in this project.
+  - Polygon
+  - Pastebin
+  - URI          # too noisy from library examples; use git scan for URI
+
+# Individual known-fake strings to ignore (CTF lab fixtures)
+# Format: detector: [list of raw value substrings to skip]
+# NOTE: trufflehog v3 uses 'exclude_paths' not per-secret allow-lists;
+# the fake credentials live in these paths only.
+# Paths containing ONLY intentional fake secrets:
+#   camazotz_modules/*/app/main.py      — lab scenarios (fake DB/AWS creds)
+#   tests/test_cross_tool_chains.py     — integration tests (fake DSNs)
+#   kube/secret.yaml                    — example k8s manifest
+#   deploy/helm/                        — Helm values template
+#   compose/.env.example                — example env (not real keys)
+#   docs/scenarios.md                   — written scenario context
