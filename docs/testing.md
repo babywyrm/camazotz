@@ -1,6 +1,6 @@
 # Testing Guide
 
-Camazotz has **1100+ tests** that run in ~35 seconds with zero mocks for
+Camazotz has **1298+ tests** that run in ~35 seconds with zero mocks for
 the happy paths. This document explains the philosophy, how tests are
 structured, and how to run useful subsets.
 
@@ -28,7 +28,7 @@ files — the tagging happens at collection time.
 
 | Mark | What it covers | Example `-m` usage |
 |------|---------------|-------------------|
-| `lab` | All 44 lab-specific tests | `pytest -m lab` |
+| `lab` | All 52 lab-specific tests | `pytest -m lab` |
 | `identity` | Identity, auth, delegation, DPoP, agent chain | `pytest -m identity` |
 | `injection` | Prompt injection, blocklist bypass, indirect, RAG, SSRF | `pytest -m injection` |
 | `secrets` | Credential leak, exfiltration, persistence, audit | `pytest -m secrets` |

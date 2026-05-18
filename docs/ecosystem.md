@@ -14,7 +14,7 @@ brokers, webhook registrations. Every `tools/call` is a function invocation with
 side effects, triggered by an LLM that cannot be trusted to make authorization
 decisions.
 
-The attack surface is not theoretical. Camazotz demonstrates 35 distinct
+The attack surface is not theoretical. Camazotz demonstrates 52 distinct
 vulnerability patterns — from prompt injection that triggers secret exfiltration,
 to confused-deputy attacks where the AI grants admin access because the attacker
 wrote a convincing justification. These attacks work because:
@@ -167,7 +167,7 @@ session binding, HOLD gates, and replay detection block them.
                      │                   │                          │
                      │                   ▼                          │
                      │           brain-gateway (:8080)              │
-                     │           └── 35 vulnerable MCP labs         │
+                     │           └── 52 vulnerable MCP labs         │
                      │               (5 identity lanes × 5 transports)│
                      │                                              │
   mcpnuke ──────────▶│  Scans both Teleport infra + MCP tools       │
@@ -279,7 +279,7 @@ secrets, full audit). Together they implement the golden path: every request
 carries identity, every tool is registered and scoped, every secret lives in a
 secret manager, and the AI's output is never trusted as authorization.
 
-**The validation:** camazotz provides 35 intentionally vulnerable labs covering
+**The validation:** camazotz provides 52 intentionally vulnerable labs covering
 every OWASP MCP Top 10 risk. mcpnuke automates the attack sequences and
 reports whether your defenses hold. Run mcpnuke on hard difficulty — if the
 exploit chains fail and defenses hold, your golden path is working.

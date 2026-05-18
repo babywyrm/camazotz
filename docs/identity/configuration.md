@@ -1,20 +1,40 @@
 # Identity configuration
 
-All identity-related settings are optional, but deployment defaults now set `CAMAZOTZ_IDP_PROVIDER=zitadel` and deploy self-hosted `zitadel` + `zitadel-postgres` services. If ZITADEL config is incomplete or unreachable, provider selection falls back to `mock`.
+All identity-related settings are optional. Deployment defaults set `CAMAZOTZ_IDP_PROVIDER=zitadel` and deploy self-hosted `zitadel` + `zitadel-postgres` services. Three providers are supported: `mock`, `zitadel`, and `okta`. If the configured provider is unreachable or misconfigured, the gateway falls back to `mock` at runtime.
 
 ## Gateway / operator variables
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `CAMAZOTZ_IDP_PROVIDER` | `zitadel` (deployment), `mock` (code fallback) | `mock` or `zitadel`. Any other value → `mock`. If set to `zitadel` but token endpoint is empty or IdP host is unreachable, runtime falls back to `mock`. |
-| `CAMAZOTZ_IDP_ISSUER_URL` | (empty) | Issuer URL string (used for health probes; metadata discovery not implemented). |
-| `CAMAZOTZ_IDP_TOKEN_ENDPOINT` | (empty) | Required for live `client_credentials_token` / `exchange_token` HTTP calls when provider is `zitadel`. |
+| `CAMAZOTZ_IDP_PROVIDER` | `zitadel` (deployment), `mock` (code fallback) | `mock`, `zitadel`, or `okta`. Any other value → `mock`. Falls back to `mock` if provider is unreachable or token endpoint is empty. |
+| `CAMAZOTZ_IDP_ISSUER_URL` | (empty) | Issuer URL (used for health probes and Okta discovery). |
+| `CAMAZOTZ_IDP_TOKEN_ENDPOINT` | (empty) | Required for live `client_credentials_token` / `exchange_token` HTTP calls (zitadel and okta). |
 | `CAMAZOTZ_IDP_INTROSPECTION_ENDPOINT` | (empty) | Required for live `introspect_token` HTTP calls when invoked by IDP-backed labs. |
 | `CAMAZOTZ_IDP_REVOCATION_ENDPOINT` | (empty) | Required for live `revoke_token` HTTP calls when invoked by IDP-backed labs. |
-| `CAMAZOTZ_IDP_CLIENT_ID` | (empty) | Client id for future live HTTP calls. |
+| `CAMAZOTZ_IDP_CLIENT_ID` | (empty) | Client ID for token/exchange HTTP calls. |
 | `CAMAZOTZ_IDP_CLIENT_SECRET` | (empty) | Client secret; **treat as sensitive**. |
 
-There is **no** `CAMAZOTZ_IDP_AUTH_ENDPOINT` (or similar) wired in `brain_gateway/app/config.py` yet; PKCE/authorization flows are not implemented in-repo.
+> **Okta:** set `CAMAZOTZ_IDP_PROVIDER=okta`, `CAMAZOTZ_IDP_ISSUER_URL=https://<your-domain>/oauth2/default`, and the token/introspection/revocation endpoints from your Okta authorization server. See [`docs/guides/okta-setup.md`](../guides/okta-setup.md) for a step-by-step guide.
+
+PKCE / authorization-code flows are not wired into the brain gateway — the IdP integration covers server-side token exchange and introspection only.
+
+## Runtime IdP switching
+
+The active provider can be changed **without restarting the gateway** via `PUT /config`:
+
+```bash
+# Switch to Okta at runtime
+curl -sX PUT http://<gateway>:8080/config \
+  -H 'Content-Type: application/json' \
+  -d '{"idp_provider": "okta"}'
+
+# Switch back to mock
+curl -sX PUT http://<gateway>:8080/config \
+  -H 'Content-Type: application/json' \
+  -d '{"idp_provider": "mock"}'
+```
+
+`PUT /config` accepts: `difficulty`, `idp_provider`, and `model`. Changes take effect immediately for subsequent requests; the gateway logs the transition. `GET /config` reflects the active provider under `idp_provider`.
 
 ### Docker Compose
 
@@ -52,4 +72,4 @@ Used when `CAMAZOTZ_IDP_PROVIDER=zitadel` to inject **synthetic** identity-shape
 
 ## Runtime visibility
 
-`GET http://<gateway>:8080/config` returns JSON including `idp_provider`, `idp_degraded`, `idp_reason`, `idp_backed_labs`, and `idp_backed_tools`. `PUT /config` only updates difficulty; `idp_provider` comes from environment.
+`GET http://<gateway>:8080/config` returns JSON including `idp_provider`, `idp_degraded`, `idp_reason`, `idp_backed_labs`, and `idp_backed_tools`. `PUT /config` can update `difficulty`, `idp_provider`, and `model` at runtime — no restart required.
