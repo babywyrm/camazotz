@@ -208,7 +208,6 @@ def update_config(payload: _ConfigUpdate) -> dict[str, object]:
     prevent stale token/session references from the previous provider.
     """
     from fastapi import HTTPException
-    from brain_gateway.app.brain.factory import reset_provider
 
     if payload.difficulty is not None:
         set_difficulty(payload.difficulty)
@@ -217,12 +216,13 @@ def update_config(payload: _ConfigUpdate) -> dict[str, object]:
         if not payload.model.strip():
             raise HTTPException(status_code=400, detail="model must be a non-empty string")
         prev_model = get_brain_metadata().get("model", "")
-        set_runtime_model(payload.model)
-        reset_provider()
+        _new_model = payload.model
+        from brain_gateway.app.brain.factory import atomic_brain_switch
+        atomic_brain_switch(lambda: (set_runtime_model(_new_model), get_brain_provider())[-1])
         cur_provider = get_brain_provider()
         record_brain_switch(
             previous_provider=cur_provider, new_provider=cur_provider,
-            previous_model=prev_model, new_model=payload.model,
+            previous_model=prev_model, new_model=_new_model,
             trigger="api",
         )
 
@@ -250,8 +250,8 @@ def update_config(payload: _ConfigUpdate) -> dict[str, object]:
     if payload.reset_brain:
         prev_brain = get_brain_provider()
         prev_model = get_brain_metadata().get("model", "")
-        new_brain = reset_brain_config()
-        reset_provider()
+        from brain_gateway.app.brain.factory import atomic_brain_switch
+        new_brain = atomic_brain_switch(reset_brain_config)
         new_model = get_brain_metadata().get("model", "")
         if new_brain != prev_brain:
             get_registry().reset_all()
@@ -279,12 +279,15 @@ def update_config(payload: _ConfigUpdate) -> dict[str, object]:
                 raise HTTPException(status_code=422, detail=str(check["error"]))
         prev_brain = get_brain_provider()
         prev_model = get_brain_metadata().get("model", "")
-        new_brain = set_brain_config(
-            provider=payload.brain.provider,
-            ollama_host=payload.brain.ollama_host,
-            ollama_model=payload.brain.ollama_model,
+        _brain_payload = payload.brain
+        from brain_gateway.app.brain.factory import atomic_brain_switch
+        new_brain = atomic_brain_switch(
+            lambda: set_brain_config(
+                provider=_brain_payload.provider,
+                ollama_host=_brain_payload.ollama_host,
+                ollama_model=_brain_payload.ollama_model,
+            )
         )
-        reset_provider()
         new_model = get_brain_metadata().get("model", "")
         if new_brain != prev_brain:
             get_registry().reset_all()
@@ -292,7 +295,7 @@ def update_config(payload: _ConfigUpdate) -> dict[str, object]:
         record_brain_switch(
             previous_provider=prev_brain, new_provider=new_brain,
             previous_model=prev_model, new_model=new_model,
-            ollama_host=payload.brain.ollama_host,
+            ollama_host=_brain_payload.ollama_host,
             trigger="api",
         )
 

@@ -354,6 +354,32 @@ def test_factory_reverts_after_reset(monkeypatch) -> None:
         _cleanup()
 
 
+# --- Atomic brain switch tests ---
+
+
+def test_atomic_brain_switch_config_and_reset_under_lock() -> None:
+    """atomic_brain_switch applies config_fn and clears instance atomically."""
+    from brain_gateway.app.brain.factory import atomic_brain_switch, get_provider, _lock
+    import brain_gateway.app.brain.factory as factory_mod
+
+    config_mod.set_brain_config(provider="cloud")
+    factory_mod._instance = None
+
+    calls: list[str] = []
+
+    def _config_fn():
+        calls.append("config_applied")
+        return config_mod.set_brain_config(provider="cloud")
+
+    result = atomic_brain_switch(_config_fn)
+    try:
+        assert result == "cloud"
+        assert "config_applied" in calls
+        assert factory_mod._instance is None
+    finally:
+        _cleanup()
+
+
 # --- Ollama URL allowlist tests ---
 
 
