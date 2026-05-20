@@ -178,6 +178,61 @@ def record_event(
         _last_event = event
 
 
+def record_brain_switch(
+    *,
+    previous_provider: str,
+    new_provider: str,
+    previous_model: str = "",
+    new_model: str = "",
+    ollama_host: str = "",
+    trigger: str = "api",
+) -> None:
+    """Record a brain provider or model switch in the observer timeline."""
+    global _last_event, _total_recorded
+    provider_changed = previous_provider != new_provider
+    model_changed = previous_model != new_model
+    if not provider_changed and not model_changed:
+        return
+
+    parts = []
+    if provider_changed:
+        parts.append(f"{previous_provider} → {new_provider}")
+    if model_changed:
+        parts.append(f"{previous_model or '(default)'} → {new_model or '(default)'}")
+
+    event = {
+        "request_id": str(uuid.uuid4()),
+        "timestamp": datetime.now(UTC).isoformat(),
+        "tool_name": "__brain_switch__",
+        "module": "brain_gateway",
+        "guardrail": "config",
+        "arguments": {
+            "previous_provider": previous_provider,
+            "new_provider": new_provider,
+            "previous_model": previous_model,
+            "new_model": new_model,
+            "ollama_host": ollama_host,
+            "trigger": trigger,
+        },
+        "outcome": "granted",
+        "ai_analysis": "",
+        "verdict": "ai_irrelevant",
+        "signal_tier": "medium" if provider_changed else "low",
+        "reason_code": "brain_switch",
+        "duration_ms": 0,
+        "response_summary": {"change": " | ".join(parts)},
+        "canary_exposed": False,
+        "idp_backed": False,
+        "idp_degraded": False,
+        "idp_provider": None,
+        "idp_reason": None,
+    }
+    with _lock:
+        _buffer.append(event)
+        _total_recorded += 1
+        _last_event = event
+
+
 def get_last_event() -> dict:
     with _lock:
         return dict(_last_event) if _last_event else {}

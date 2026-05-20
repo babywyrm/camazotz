@@ -551,3 +551,68 @@ def test_put_config_brain_cloud_skips_health_check(monkeypatch) -> None:
         assert resp.status_code == 200
     finally:
         _cleanup()
+
+
+# --- Brain switch observer event tests ---
+
+
+def test_brain_switch_emits_observer_event(monkeypatch) -> None:
+    """Switching brain provider emits a __brain_switch__ event."""
+    from brain_gateway.app.observer import get_events, reset_events
+    monkeypatch.delenv("BRAIN_PROVIDER", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    reset_events()
+    with _mock_ollama_reachable():
+        client = TestClient(app)
+        client.put("/config", json={
+            "brain": {"provider": "local", "ollama_host": "http://brainbox:11434"},
+        })
+    try:
+        events = get_events()
+        brain_events = [e for e in events if e["tool_name"] == "__brain_switch__"]
+        assert len(brain_events) >= 1
+        ev = brain_events[0]
+        assert ev["reason_code"] == "brain_switch"
+        assert ev["arguments"]["new_provider"] == "local"
+        assert ev["arguments"]["trigger"] == "api"
+    finally:
+        reset_events()
+        _cleanup()
+
+
+def test_model_switch_emits_observer_event(monkeypatch) -> None:
+    """Switching model emits a __brain_switch__ event with model details."""
+    from brain_gateway.app.observer import get_events, reset_events
+    monkeypatch.delenv("BRAIN_PROVIDER", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    reset_events()
+    client = TestClient(app)
+    client.put("/config", json={"model": "test-model-xyz"})
+    try:
+        events = get_events()
+        brain_events = [e for e in events if e["tool_name"] == "__brain_switch__"]
+        assert len(brain_events) >= 1
+        ev = brain_events[0]
+        assert ev["arguments"]["new_model"] == "test-model-xyz"
+    finally:
+        reset_events()
+        from brain_gateway.app.config import set_runtime_model
+        set_runtime_model("")
+        _cleanup()
+
+
+def test_no_op_switch_skips_event(monkeypatch) -> None:
+    """Switching to same provider/model does not emit an event."""
+    from brain_gateway.app.observer import get_events, reset_events
+    monkeypatch.delenv("BRAIN_PROVIDER", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    reset_events()
+    client = TestClient(app)
+    client.put("/config", json={"brain": {"provider": "cloud"}})
+    try:
+        events = get_events()
+        brain_events = [e for e in events if e["tool_name"] == "__brain_switch__"]
+        assert len(brain_events) == 0, "no-op switch should not emit"
+    finally:
+        reset_events()
+        _cleanup()

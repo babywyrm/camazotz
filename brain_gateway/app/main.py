@@ -45,7 +45,7 @@ from brain_gateway.app.mcp_handlers import handle_rpc
 from brain_gateway.app.rate_limit import TokenBucketLimiter
 from brain_gateway.app.models import JsonRpcRequest
 from brain_gateway.app.modules.registry import get_registry
-from brain_gateway.app.observer import get_buffer_info, get_events, get_events_since, get_last_event
+from brain_gateway.app.observer import get_buffer_info, get_events, get_events_since, get_last_event, record_brain_switch
 from brain_gateway.app.scenarios import ScenarioLoader, generate_flags, verify_flag
 from brain_gateway.app.session import SessionManager
 
@@ -216,8 +216,15 @@ def update_config(payload: _ConfigUpdate) -> dict[str, object]:
     if payload.model is not None:
         if not payload.model.strip():
             raise HTTPException(status_code=400, detail="model must be a non-empty string")
+        prev_model = get_brain_metadata().get("model", "")
         set_runtime_model(payload.model)
         reset_provider()
+        cur_provider = get_brain_provider()
+        record_brain_switch(
+            previous_provider=cur_provider, new_provider=cur_provider,
+            previous_model=prev_model, new_model=payload.model,
+            trigger="api",
+        )
 
     if payload.reset_idp:
         prev_provider = get_idp_provider()
@@ -242,11 +249,18 @@ def update_config(payload: _ConfigUpdate) -> dict[str, object]:
 
     if payload.reset_brain:
         prev_brain = get_brain_provider()
+        prev_model = get_brain_metadata().get("model", "")
         new_brain = reset_brain_config()
         reset_provider()
+        new_model = get_brain_metadata().get("model", "")
         if new_brain != prev_brain:
             get_registry().reset_all()
             _rate_limiter.reset()
+        record_brain_switch(
+            previous_provider=prev_brain, new_provider=new_brain,
+            previous_model=prev_model, new_model=new_model,
+            trigger="api_reset",
+        )
     elif payload.brain is not None:
         if payload.brain.provider not in VALID_BRAIN_PROVIDERS:
             raise HTTPException(
@@ -264,15 +278,23 @@ def update_config(payload: _ConfigUpdate) -> dict[str, object]:
             if not check["ok"]:
                 raise HTTPException(status_code=422, detail=str(check["error"]))
         prev_brain = get_brain_provider()
+        prev_model = get_brain_metadata().get("model", "")
         new_brain = set_brain_config(
             provider=payload.brain.provider,
             ollama_host=payload.brain.ollama_host,
             ollama_model=payload.brain.ollama_model,
         )
         reset_provider()
+        new_model = get_brain_metadata().get("model", "")
         if new_brain != prev_brain:
             get_registry().reset_all()
             _rate_limiter.reset()
+        record_brain_switch(
+            previous_provider=prev_brain, new_provider=new_brain,
+            previous_model=prev_model, new_model=new_model,
+            ollama_host=payload.brain.ollama_host,
+            trigger="api",
+        )
 
     brain_meta = get_brain_metadata()
     ollama_host = get_ollama_host()
