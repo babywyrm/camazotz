@@ -38,6 +38,7 @@ from brain_gateway.app.config import (
     set_runtime_model,
     show_tokens,
     validate_ollama_host,
+    validate_ollama_url,
 )
 from brain_gateway.app.identity.service import idp_status
 from brain_gateway.app.mcp_handlers import handle_rpc
@@ -255,6 +256,9 @@ def update_config(payload: _ConfigUpdate) -> dict[str, object]:
             )
         if payload.brain.provider == "local":
             host = payload.brain.ollama_host or get_ollama_host()
+            url_err = validate_ollama_url(host)
+            if url_err:
+                raise HTTPException(status_code=400, detail=url_err)
             model = payload.brain.ollama_model or ""
             check = validate_ollama_host(host, model)
             if not check["ok"]:

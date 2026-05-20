@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import ipaddress
 import os
+import re
 import threading
 from typing import Final, Literal
+from urllib.parse import urlparse
 
 Difficulty = Literal["easy", "medium", "hard"]
 
@@ -206,6 +209,59 @@ def get_available_models(provider: str, ollama_host: str) -> list[dict[str, str]
         _CLOUD_DEFAULTS = ["gpt-4o", "gpt-4o-mini", "o1", "o3-mini"]
     ids = list(dict.fromkeys([active] + _CLOUD_DEFAULTS))  # active first, deduped
     return [{"id": m, "label": m, "source": "builtin"} for m in ids]
+
+
+_OLLAMA_HOST_ALLOWLIST_RE: Final[list[re.Pattern[str]]] = [
+    re.compile(r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$"),
+    re.compile(r"^https?://192\.168\.\d{1,3}\.\d{1,3}(:\d+)?$"),
+    re.compile(r"^https?://10\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$"),
+    re.compile(r"^https?://172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}(:\d+)?$"),
+    re.compile(r"^https?://[a-zA-Z0-9_-]+(:\d+)?$"),  # bare hostnames (no dots = local DNS)
+]
+
+_BLOCKED_PORTS: Final[frozenset[int]] = frozenset({22, 25, 53, 443, 3306, 5432, 6379, 27017})
+
+
+def validate_ollama_url(url: str) -> str | None:
+    """Validate an Ollama host URL against the allowlist. Returns error string or None."""
+    url = url.strip().rstrip("/")
+    if not url:
+        return None
+
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        return f"Invalid scheme '{parsed.scheme}'; only http/https allowed"
+
+    hostname = parsed.hostname or ""
+    port = parsed.port
+
+    if port and port in _BLOCKED_PORTS:
+        return f"Port {port} is blocked (looks like a non-Ollama service)"
+
+    if hostname in ("metadata.google.internal", "169.254.169.254"):
+        return "Cloud metadata endpoints are blocked"
+
+    try:
+        addr = ipaddress.ip_address(hostname)
+        if addr.is_link_local and hostname != "169.254.169.254":
+            return f"Link-local address {hostname} is not allowed"
+        if addr.is_loopback or addr.is_private:
+            return None
+        return f"Public IP {hostname} is not in the Ollama host allowlist"
+    except ValueError:
+        pass
+
+    for pattern in _OLLAMA_HOST_ALLOWLIST_RE:
+        if pattern.match(url):
+            return None
+
+    if "." in hostname:
+        return (
+            f"Host '{hostname}' is not in the Ollama allowlist. "
+            "Only private IPs, localhost, and bare hostnames are allowed."
+        )
+
+    return None
 
 
 def validate_ollama_host(host: str, model: str = "") -> dict[str, object]:

@@ -354,6 +354,75 @@ def test_factory_reverts_after_reset(monkeypatch) -> None:
         _cleanup()
 
 
+# --- Ollama URL allowlist tests ---
+
+
+def test_validate_ollama_url_allows_localhost() -> None:
+    from brain_gateway.app.config import validate_ollama_url
+    assert validate_ollama_url("http://localhost:11434") is None
+    assert validate_ollama_url("http://127.0.0.1:11434") is None
+
+
+def test_validate_ollama_url_allows_private_ips() -> None:
+    from brain_gateway.app.config import validate_ollama_url
+    assert validate_ollama_url("http://192.168.1.126:11434") is None
+    assert validate_ollama_url("http://10.0.0.5:11434") is None
+    assert validate_ollama_url("http://172.16.0.1:11434") is None
+
+
+def test_validate_ollama_url_allows_bare_hostnames() -> None:
+    from brain_gateway.app.config import validate_ollama_url
+    assert validate_ollama_url("http://brainbox:11434") is None
+    assert validate_ollama_url("http://gpu-node:11434") is None
+
+
+def test_validate_ollama_url_blocks_public_ips() -> None:
+    from brain_gateway.app.config import validate_ollama_url
+    err = validate_ollama_url("http://8.8.8.8:11434")
+    assert err is not None
+    assert "allowlist" in err
+
+
+def test_validate_ollama_url_blocks_fqdn() -> None:
+    from brain_gateway.app.config import validate_ollama_url
+    err = validate_ollama_url("http://evil.example.com:11434")
+    assert err is not None
+    assert "allowlist" in err
+
+
+def test_validate_ollama_url_blocks_metadata() -> None:
+    from brain_gateway.app.config import validate_ollama_url
+    err = validate_ollama_url("http://169.254.169.254/latest/meta-data")
+    assert err is not None
+    assert "metadata" in err.lower()
+
+
+def test_validate_ollama_url_blocks_dangerous_ports() -> None:
+    from brain_gateway.app.config import validate_ollama_url
+    err = validate_ollama_url("http://localhost:5432")
+    assert err is not None
+    assert "blocked" in err.lower()
+
+
+def test_validate_ollama_url_blocks_bad_scheme() -> None:
+    from brain_gateway.app.config import validate_ollama_url
+    err = validate_ollama_url("ftp://localhost:11434")
+    assert err is not None
+    assert "scheme" in err.lower()
+
+
+def test_put_config_ssrf_blocked(monkeypatch) -> None:
+    """Public IP Ollama host is rejected at URL validation (400)."""
+    monkeypatch.delenv("BRAIN_PROVIDER", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    client = TestClient(app)
+    resp = client.put("/config", json={
+        "brain": {"provider": "local", "ollama_host": "http://8.8.8.8:11434"},
+    })
+    assert resp.status_code == 400
+    assert "allowlist" in resp.json()["detail"]
+
+
 # --- Ollama health check tests ---
 
 
