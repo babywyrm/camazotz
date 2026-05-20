@@ -3,7 +3,7 @@
 All notable changes to Camazotz are documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## Brain Switch Hardening (2026-05-20)
+## Brain Switch Hardening (2026-05-19)
 
 ### Added
 
@@ -16,7 +16,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Auto-benchmark quick check** — `POST /bench/quick-check` runs one probe per category as a fast sanity check. Fires automatically in the frontend after every brain switch, displaying pass/fail/latency in the banner.
 - **Atomic brain switch** — `atomic_brain_switch()` holds the factory lock while applying config and clearing the provider instance, closing the race window where `get_provider()` could instantiate against stale config.
 - **Unified `BrainConfig` dataclass** — replaces the split between `_runtime_brain_config` (dict) and `_runtime_model` (str) with a single `BrainConfig` dataclass. `model_override` is preserved across provider switches. `get_brain_config()` returns a thread-safe snapshot.
-- 26 new tests covering health check validation, URL allowlist, observer events, quick check runner/endpoint, atomic switching, and `BrainConfig` dataclass. Total: **1390 tests**.
+- 26 new tests covering health check validation, URL allowlist, observer events, quick check runner/endpoint, atomic switching, and `BrainConfig` dataclass. Total: **1394 tests**.
 
 ### Fixed
 

@@ -3,7 +3,7 @@
 
 <p align="center">
 <img src="https://img.shields.io/badge/python-3.12%2B-3776ab?style=flat-square&logo=python&logoColor=white" alt="Python 3.12+">
-<img src="https://img.shields.io/badge/tests-1298_passing-10b981?style=flat-square" alt="1298 tests">
+<img src="https://img.shields.io/badge/tests-1394_passing-10b981?style=flat-square" alt="1394 tests">
 <img src="https://img.shields.io/badge/coverage-100%25-10b981?style=flat-square" alt="100% coverage">
 <img src="https://img.shields.io/badge/modules-52_labs-dc2626?style=flat-square" alt="52 labs">
 <img src="https://img.shields.io/badge/identity_lanes-5%C3%975-60a5fa?style=flat-square" alt="5 lanes × 5 transports">
@@ -400,7 +400,8 @@ Navigate to **http://localhost:3000/operator** (hidden — no nav link) for:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `BRAIN_PROVIDER` | `cloud` | `cloud` (Anthropic API), `bedrock` (Claude on Amazon Bedrock), or `local` (Ollama) |
+| `BRAIN_PROVIDER` | `cloud` | `cloud` (Anthropic API), `bedrock` (Claude on Amazon Bedrock), `openai`, or `local` (Ollama) |
+| `OPENAI_API_KEY` | — | Required when `BRAIN_PROVIDER=openai` |
 | `AWS_REGION` | — | Region for Bedrock when `BRAIN_PROVIDER=bedrock` |
 | `AWS_PROFILE` | — | Optional named AWS profile (host-only; containers do not read `~/.aws` by default) |
 | `AWS_ACCESS_KEY_ID` | — | AWS access key — often required in Docker unless using an IAM role on the host |
@@ -508,7 +509,7 @@ camazotz/
 ├── scripts/
 │   ├── qa_harness.py        # CLI entry point for E2E QA
 │   └── qa_runner/            # Reusable QA engine (shared by CLI + operator panel)
-├── tests/                   # 1277 tests, 100% coverage
+├── tests/                   # 1394 tests, 100% coverage
 └── Makefile                 # Cross-platform dev/deploy targets
 ```
 
@@ -518,7 +519,7 @@ camazotz/
 make up             # start with Claude
 make up-local       # start with Ollama
 make down           # stop all services
-make test           # run 1277 tests (100% coverage)
+make test           # run 1394 tests (100% coverage)
 make qa             # E2E QA harness against live gateway
 make qa-json        # QA harness with machine-readable JSON output
 make smoke-local    # smoke test local Docker Compose target
@@ -594,12 +595,18 @@ make help           # show all targets
   checks, 3 exploit chain automations, regression baselines
 - **Golden path v3** — Machine Identity section (Phase 0b) for agent auth
   via Teleport, OWASP MCP Top 10 mapping updates
-- **Threat Map** — `/threat-map` page with 7 category groups, 45 labs
+- **Runtime brain provider switching** — switch between `cloud`, `local`,
+  `openai`, and `bedrock` at runtime via the UI or API without restart
+- **Brain switch hardening** — health checks, SSRF prevention,
+  auto-benchmark quick check on every provider switch
+- **OpenAI provider support** — `BRAIN_PROVIDER=openai` with `gpt-4o`,
+  `gpt-4o-mini`, `o1`, `o3-mini`
+- **Threat Map** — `/threat-map` page with 7 category groups, 52 labs
   cards (originally 28), localStorage-based progress tracking, and
   contextual walkthrough links from challenges and scenarios
 - **Observer signal tiers** — `signal_tier`, `reason_code`, tighter
   confused-deputy detection, signal filter in Enhanced tab
-- **QA checks for all 45 labs** — every lab covered in the QA harness
+- **QA checks for all 52 labs** — every lab covered in the QA harness
 - **Operator Console** — guided walkthroughs for the original 25 labs at medium
   guardrails with telemetry strip
 - **ZITADEL live flow wiring** — real HTTP token exchange, introspection,
