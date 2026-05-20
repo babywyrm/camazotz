@@ -471,6 +471,14 @@ def bench_compare(n: int = 2) -> dict[str, object]:
     return {"n": len(summaries), "runs": summaries}
 
 
+@app.post("/bench/quick-check")
+def bench_quick_check() -> dict[str, object]:
+    """Run one probe per category as a fast sanity check (e.g. after brain switch)."""
+    from brain_gateway.app.bench.runner import run_quick_check
+    result = run_quick_check()
+    return result.to_dict()
+
+
 @app.delete("/bench/results")
 def bench_clear() -> dict[str, object]:
     """Clear the in-memory benchmark run store."""

@@ -15,7 +15,7 @@ from brain_gateway.app.bench.probes import (
     _complied_with_injection,
     _strip_fences,
 )
-from brain_gateway.app.bench.runner import run_benchmark, run_benchmark_stream
+from brain_gateway.app.bench.runner import run_benchmark, run_benchmark_stream, run_quick_check
 from brain_gateway.app.bench.store import clear, compare_last, get_latest, get_runs, save_run
 from brain_gateway.app.bench.types import BenchmarkRun, ProbeResult
 from brain_gateway.app.brain.provider import BrainResult
@@ -755,3 +755,57 @@ class TestBenchStreamEndpoint:
                             resp = client.get("/bench/run/stream?model=qwen:1.5b")
 
         assert resp.status_code == 200
+
+
+# ── Quick check tests ─────────────────────────────────────────────────────────
+
+
+class TestQuickCheck:
+    """Tests for run_quick_check and the /bench/quick-check endpoint."""
+
+    def test_quick_check_runs_one_per_category(self, monkeypatch) -> None:
+        monkeypatch.setenv("BRAIN_PROVIDER", "local")
+        prov = _make_provider()
+        result = run_quick_check(provider=prov)
+        categories = {p.category for p in PROBE_SUITE}
+        assert result.total == len(categories)
+        seen = {r.category for r in result.probes}
+        assert seen == categories
+
+    def test_quick_check_no_errors_with_mock(self, monkeypatch) -> None:
+        """Mock provider has no errors (connection works), though some probes may fail."""
+        monkeypatch.setenv("BRAIN_PROVIDER", "local")
+        prov = _make_provider()
+        result = run_quick_check(provider=prov)
+        assert result.errors == 0
+
+    def test_quick_check_unhealthy_on_error(self, monkeypatch) -> None:
+        monkeypatch.setenv("BRAIN_PROVIDER", "local")
+        prov = MagicMock()
+        prov.name = "mock"
+        prov.generate.side_effect = RuntimeError("connection refused")
+        result = run_quick_check(provider=prov)
+        assert result.errors > 0
+        assert result.healthy is False
+
+    def test_quick_check_to_dict(self, monkeypatch) -> None:
+        monkeypatch.setenv("BRAIN_PROVIDER", "local")
+        prov = _make_provider()
+        result = run_quick_check(provider=prov)
+        d = result.to_dict()
+        assert "passed" in d
+        assert "healthy" in d
+        assert isinstance(d["probes"], list)
+
+    def test_quick_check_endpoint(self, monkeypatch) -> None:
+        from unittest.mock import patch
+
+        monkeypatch.setenv("BRAIN_PROVIDER", "local")
+        prov = _make_provider()
+        with patch("brain_gateway.app.brain.factory.get_provider", return_value=prov):
+            client = TestClient(app)
+            resp = client.post("/bench/quick-check")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "healthy" in data
+        assert data["total"] > 0

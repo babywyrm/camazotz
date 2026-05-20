@@ -536,6 +536,18 @@ function _handleBrainResponse(r){
   return r.json();
 }
 
+function _runQuickCheck(){
+  fetch('/bench/quick-check',{method:'POST'})
+    .then(function(r){return r.ok?r.json():null;})
+    .then(function(d){
+      if(!d)return;
+      var tag=d.healthy?'✓':'⚠';
+      var msg=tag+' Quick check: '+d.passed+'/'+d.total+' passed ('+d.avg_latency_ms+'ms avg)';
+      _showBrainBanner(msg,!d.healthy);
+    })
+    .catch(function(){});
+}
+
 function _applyBrainConfig(provider,host,model){
   var pop=document.getElementById('brainPopover');
   var notice=document.getElementById('brainSwitching');
@@ -550,6 +562,7 @@ function _applyBrainConfig(provider,host,model){
       if(notice)notice.classList.remove('visible');
       if(d.brain){_updateBrainStrip(d);_saveBrainHistory(provider,host,model);}
       _showBrainBanner((_providerLabels[provider]||provider)+' · '+model);
+      _runQuickCheck();
     })
     .catch(function(e){_brainSwitchError(e.message||'Brain switch failed');});
 }
@@ -574,6 +587,7 @@ function _switchBrainProvider(provider){
         _saveBrainHistory(provider,d.brain.ollama_host||'',d.brain.model||'');
       }
       _showBrainBanner('Provider switched to '+(_providerLabels[provider]||provider));
+      _runQuickCheck();
     })
     .catch(function(e){_brainSwitchError(e.message||'Provider switch failed');});
 }
@@ -591,6 +605,7 @@ function _applyOllamaHost(host){
         _saveBrainHistory('local',host,d.brain.model||'');
       }
       _showBrainBanner('Ollama host → '+host);
+      _runQuickCheck();
     })
     .catch(function(e){_brainSwitchError(e.message||'Ollama host change failed');});
 }
@@ -608,6 +623,7 @@ function _switchBrainModel(modelId){
       if(notice)notice.classList.remove('visible');
       if(d.brain)_updateBrainStrip(d);
       _showBrainBanner('Model switched to '+modelId);
+      _runQuickCheck();
     })
     .catch(function(e){_brainSwitchError(e.message||'Model switch failed');});
 }

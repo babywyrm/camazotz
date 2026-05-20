@@ -5,10 +5,65 @@ from __future__ import annotations
 import asyncio
 import time
 from collections.abc import AsyncGenerator
+from dataclasses import dataclass
 
 from brain_gateway.app.bench.probes import PROBE_SUITE, Probe
 from brain_gateway.app.bench.types import BenchmarkRun, ProbeResult
 from brain_gateway.app.brain.provider import BrainProvider
+
+
+@dataclass
+class QuickCheckResult:
+    """Result of a quick post-switch health check (1 probe per category)."""
+    passed: int
+    failed: int
+    errors: int
+    total: int
+    avg_latency_ms: int
+    probes: list[ProbeResult]
+
+    @property
+    def healthy(self) -> bool:
+        return self.errors == 0 and self.failed <= 1
+
+    def to_dict(self) -> dict:
+        return {
+            "passed": self.passed,
+            "failed": self.failed,
+            "errors": self.errors,
+            "total": self.total,
+            "avg_latency_ms": self.avg_latency_ms,
+            "healthy": self.healthy,
+            "probes": [p.to_dict() for p in self.probes],
+        }
+
+
+def run_quick_check(provider: BrainProvider | None = None) -> QuickCheckResult:
+    """Run one probe per category as a fast sanity check after brain switch."""
+    if provider is None:
+        from brain_gateway.app.brain.factory import get_provider
+        provider = get_provider()
+
+    seen_categories: set[str] = set()
+    selected: list[Probe] = []
+    for probe in PROBE_SUITE:
+        if probe.category not in seen_categories:
+            seen_categories.add(probe.category)
+            selected.append(probe)
+
+    results: list[ProbeResult] = []
+    for probe in selected:
+        results.append(_run_probe(probe, provider))
+
+    passed = sum(1 for r in results if r.outcome == "pass")
+    failed = sum(1 for r in results if r.outcome == "fail")
+    errors = sum(1 for r in results if r.outcome == "error")
+    avg_lat = int(sum(r.latency_ms for r in results) / max(len(results), 1))
+
+    return QuickCheckResult(
+        passed=passed, failed=failed, errors=errors,
+        total=len(results), avg_latency_ms=avg_lat, probes=results,
+    )
 
 
 def _run_probe(probe: Probe, provider: BrainProvider) -> ProbeResult:
