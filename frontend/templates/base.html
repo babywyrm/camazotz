@@ -199,6 +199,7 @@ code,pre{font-family:var(--font-mono)}
   padding:.5rem 1.1rem;font-size:.76rem;color:var(--green);gap:.6rem;align-items:center;
   box-shadow:0 4px 20px rgba(0,0,0,.4);white-space:nowrap}
 .brain-switch-banner.visible{display:flex}
+.brain-switch-banner.brain-banner-error{border-color:var(--red,#e55);color:var(--red,#e55)}
 .brain-switch-banner button{background:none;border:none;color:var(--muted);cursor:pointer;font-size:.9rem;
   line-height:1;padding:0 .2rem;transition:color .15s}
 .brain-switch-banner button:hover{color:var(--text)}
@@ -524,6 +525,17 @@ function _esc(s){
   return d.innerHTML;
 }
 
+function _brainSwitchError(msg){
+  var notice=document.getElementById('brainSwitching');
+  if(notice)notice.classList.remove('visible');
+  _showBrainBanner('⚠ '+msg, true);
+}
+
+function _handleBrainResponse(r){
+  if(!r.ok) return r.json().then(function(d){throw new Error(d.detail||'Switch failed ('+r.status+')');});
+  return r.json();
+}
+
 function _applyBrainConfig(provider,host,model){
   var pop=document.getElementById('brainPopover');
   var notice=document.getElementById('brainSwitching');
@@ -533,13 +545,13 @@ function _applyBrainConfig(provider,host,model){
   if(provider==='local')payload.brain.ollama_host=host;
   fetch('/api/config',{method:'PUT',headers:{'Content-Type':'application/json'},
     body:JSON.stringify(payload)})
-    .then(function(r){return r.json();})
+    .then(_handleBrainResponse)
     .then(function(d){
       if(notice)notice.classList.remove('visible');
       if(d.brain){_updateBrainStrip(d);_saveBrainHistory(provider,host,model);}
       _showBrainBanner((_providerLabels[provider]||provider)+' · '+model);
     })
-    .catch(function(){if(notice)notice.classList.remove('visible');});
+    .catch(function(e){_brainSwitchError(e.message||'Brain switch failed');});
 }
 
 function _switchBrainProvider(provider){
@@ -554,7 +566,7 @@ function _switchBrainProvider(provider){
   }
   fetch('/api/config',{method:'PUT',headers:{'Content-Type':'application/json'},
     body:JSON.stringify(payload)})
-    .then(function(r){return r.json();})
+    .then(_handleBrainResponse)
     .then(function(d){
       if(notice)notice.classList.remove('visible');
       if(d.brain){
@@ -563,7 +575,7 @@ function _switchBrainProvider(provider){
       }
       _showBrainBanner('Provider switched to '+(_providerLabels[provider]||provider));
     })
-    .catch(function(){if(notice)notice.classList.remove('visible');});
+    .catch(function(e){_brainSwitchError(e.message||'Provider switch failed');});
 }
 
 function _applyOllamaHost(host){
@@ -571,7 +583,7 @@ function _applyOllamaHost(host){
   if(notice)notice.classList.add('visible');
   fetch('/api/config',{method:'PUT',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({brain:{provider:'local',ollama_host:host}})})
-    .then(function(r){return r.json();})
+    .then(_handleBrainResponse)
     .then(function(d){
       if(notice)notice.classList.remove('visible');
       if(d.brain){
@@ -580,7 +592,7 @@ function _applyOllamaHost(host){
       }
       _showBrainBanner('Ollama host → '+host);
     })
-    .catch(function(){if(notice)notice.classList.remove('visible');});
+    .catch(function(e){_brainSwitchError(e.message||'Ollama host change failed');});
 }
 
 function _switchBrainModel(modelId){
@@ -590,23 +602,25 @@ function _switchBrainModel(modelId){
   if(notice)notice.classList.add('visible');
   fetch('/api/config',{method:'PUT',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({model:modelId})})
-    .then(function(r){return r.json();})
+    .then(_handleBrainResponse)
     .then(function(d){
       _saveBrainHistory(_currentBrainProvider,_currentOllamaHost,modelId);
       if(notice)notice.classList.remove('visible');
       if(d.brain)_updateBrainStrip(d);
       _showBrainBanner('Model switched to '+modelId);
     })
-    .catch(function(){if(notice)notice.classList.remove('visible');});
+    .catch(function(e){_brainSwitchError(e.message||'Model switch failed');});
 }
 
-function _showBrainBanner(text){
+function _showBrainBanner(text, isError){
   var banner=document.getElementById('brainSwitchBanner');
   var msg=document.getElementById('brainSwitchMsg');
   if(banner&&msg){
-    msg.textContent=text+' — takes effect on your next MCP session.';
+    banner.classList.remove('brain-banner-error');
+    if(isError) banner.classList.add('brain-banner-error');
+    msg.textContent=isError ? text : text+' — takes effect on your next MCP session.';
     banner.classList.add('visible');
-    setTimeout(function(){banner.classList.remove('visible');},6000);
+    setTimeout(function(){banner.classList.remove('visible');banner.classList.remove('brain-banner-error');}, isError?8000:6000);
   }
 }
 document.addEventListener('click',function(e){

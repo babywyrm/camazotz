@@ -2,10 +2,25 @@
 
 from __future__ import annotations
 
+import json as _json
+from contextlib import contextmanager
+from unittest.mock import patch, MagicMock
+
 import brain_gateway.app.config as config_mod
 from brain_gateway.app.brain.factory import reset_provider
 from brain_gateway.app.main import app
 from starlette.testclient import TestClient
+
+
+@contextmanager
+def _mock_ollama_reachable(models=None):
+    """Context manager that mocks validate_ollama_host to always succeed."""
+    if models is None:
+        models = [{"name": "qwen2.5:7b"}]
+    mock_resp = MagicMock()
+    mock_resp.read.return_value = _json.dumps({"models": models}).encode()
+    with patch("urllib.request.urlopen", return_value=mock_resp):
+        yield
 
 
 def _cleanup():
@@ -126,10 +141,11 @@ def test_get_ollama_host_default_when_no_env(monkeypatch) -> None:
 def test_put_config_brain_switches_provider(monkeypatch) -> None:
     monkeypatch.delenv("BRAIN_PROVIDER", raising=False)
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    client = TestClient(app)
-    resp = client.put("/config", json={
-        "brain": {"provider": "local", "ollama_host": "http://brainbox:11434"},
-    })
+    with _mock_ollama_reachable():
+        client = TestClient(app)
+        resp = client.put("/config", json={
+            "brain": {"provider": "local", "ollama_host": "http://brainbox:11434"},
+        })
     try:
         assert resp.status_code == 200
         data = resp.json()
@@ -166,10 +182,11 @@ def test_put_config_brain_switch_resets_labs(monkeypatch) -> None:
 
     registry.reset_all = _track_reset  # type: ignore[assignment]
 
-    client = TestClient(app)
-    resp = client.put("/config", json={
-        "brain": {"provider": "local"},
-    })
+    with _mock_ollama_reachable():
+        client = TestClient(app)
+        resp = client.put("/config", json={
+            "brain": {"provider": "local"},
+        })
     try:
         assert resp.status_code == 200
         assert len(reset_called) == 1, "Lab reset must be called on provider switch"
@@ -253,11 +270,12 @@ def test_put_config_brain_with_difficulty_combined(monkeypatch) -> None:
     """PUT /config can update both difficulty and brain simultaneously."""
     monkeypatch.delenv("BRAIN_PROVIDER", raising=False)
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    client = TestClient(app)
-    resp = client.put("/config", json={
-        "difficulty": "hard",
-        "brain": {"provider": "local", "ollama_host": "http://gpu:11434"},
-    })
+    with _mock_ollama_reachable():
+        client = TestClient(app)
+        resp = client.put("/config", json={
+            "difficulty": "hard",
+            "brain": {"provider": "local", "ollama_host": "http://gpu:11434"},
+        })
     try:
         data = resp.json()
         assert data["difficulty"] == "hard"
@@ -332,5 +350,135 @@ def test_factory_reverts_after_reset(monkeypatch) -> None:
         from brain_gateway.app.brain.cloud_claude import CloudClaudeProvider
         p = get_provider()
         assert isinstance(p, CloudClaudeProvider)
+    finally:
+        _cleanup()
+
+
+# --- Ollama health check tests ---
+
+
+def test_validate_ollama_host_unreachable() -> None:
+    from brain_gateway.app.config import validate_ollama_host
+    result = validate_ollama_host("http://192.0.2.1:11434")
+    assert not result["ok"]
+    assert "Cannot reach" in str(result["error"])
+
+
+def test_validate_ollama_host_model_not_found() -> None:
+    from brain_gateway.app.config import validate_ollama_host
+
+    mock_resp = MagicMock()
+    mock_resp.read.return_value = _json.dumps({
+        "models": [{"name": "qwen2.5:7b"}, {"name": "qwen2.5:14b"}]
+    }).encode()
+
+    with patch("urllib.request.urlopen", return_value=mock_resp):
+        result = validate_ollama_host("http://fake:11434", "nonexistent:3b")
+    assert not result["ok"]
+    assert "not found" in str(result["error"])
+    assert "qwen2.5:7b" in str(result["error"])
+
+
+def test_validate_ollama_host_ok_no_model_check() -> None:
+    from brain_gateway.app.config import validate_ollama_host
+
+    mock_resp = MagicMock()
+    mock_resp.read.return_value = _json.dumps({
+        "models": [{"name": "qwen2.5:7b"}]
+    }).encode()
+
+    with patch("urllib.request.urlopen", return_value=mock_resp):
+        result = validate_ollama_host("http://fake:11434")
+    assert result["ok"]
+    assert result["models"] == ["qwen2.5:7b"]
+
+
+def test_validate_ollama_host_ok_model_found() -> None:
+    from brain_gateway.app.config import validate_ollama_host
+
+    mock_resp = MagicMock()
+    mock_resp.read.return_value = _json.dumps({
+        "models": [{"name": "qwen2.5:7b"}, {"name": "qwen3:14b"}]
+    }).encode()
+
+    with patch("urllib.request.urlopen", return_value=mock_resp):
+        result = validate_ollama_host("http://fake:11434", "qwen3:14b")
+    assert result["ok"]
+
+
+# --- PUT /config health check integration ---
+
+
+def test_put_config_brain_local_unreachable_rejected(monkeypatch) -> None:
+    """Switching to an unreachable Ollama host returns 422."""
+    monkeypatch.delenv("BRAIN_PROVIDER", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    client = TestClient(app)
+    resp = client.put("/config", json={
+        "brain": {"provider": "local", "ollama_host": "http://192.0.2.1:11434"},
+    })
+    assert resp.status_code == 422
+    assert "Cannot reach" in resp.json()["detail"]
+
+
+def test_put_config_brain_local_model_not_found_rejected(monkeypatch) -> None:
+    """Switching to a model not available on the Ollama host returns 422."""
+    monkeypatch.delenv("BRAIN_PROVIDER", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+
+    mock_resp = MagicMock()
+    mock_resp.read.return_value = _json.dumps({
+        "models": [{"name": "qwen2.5:7b"}]
+    }).encode()
+
+    with patch("urllib.request.urlopen", return_value=mock_resp):
+        client = TestClient(app)
+        resp = client.put("/config", json={
+            "brain": {
+                "provider": "local",
+                "ollama_host": "http://brainbox:11434",
+                "ollama_model": "nonexistent:99b",
+            },
+        })
+    assert resp.status_code == 422
+    assert "not found" in resp.json()["detail"]
+
+
+def test_put_config_brain_local_healthy_accepted(monkeypatch) -> None:
+    """Switching to a reachable Ollama host with valid model succeeds."""
+    monkeypatch.delenv("BRAIN_PROVIDER", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+
+    mock_resp = MagicMock()
+    mock_resp.read.return_value = _json.dumps({
+        "models": [{"name": "qwen2.5:7b"}, {"name": "qwen3:14b"}]
+    }).encode()
+
+    with patch("urllib.request.urlopen", return_value=mock_resp):
+        client = TestClient(app)
+        resp = client.put("/config", json={
+            "brain": {
+                "provider": "local",
+                "ollama_host": "http://brainbox:11434",
+                "ollama_model": "qwen3:14b",
+            },
+        })
+    try:
+        assert resp.status_code == 200
+        assert resp.json()["brain"]["provider"] == "local"
+    finally:
+        _cleanup()
+
+
+def test_put_config_brain_cloud_skips_health_check(monkeypatch) -> None:
+    """Cloud/bedrock/openai providers don't trigger Ollama health checks."""
+    monkeypatch.delenv("BRAIN_PROVIDER", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    client = TestClient(app)
+    resp = client.put("/config", json={
+        "brain": {"provider": "cloud"},
+    })
+    try:
+        assert resp.status_code == 200
     finally:
         _cleanup()

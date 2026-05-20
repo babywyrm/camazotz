@@ -37,6 +37,7 @@ from brain_gateway.app.config import (
     set_idp_config,
     set_runtime_model,
     show_tokens,
+    validate_ollama_host,
 )
 from brain_gateway.app.identity.service import idp_status
 from brain_gateway.app.mcp_handlers import handle_rpc
@@ -252,6 +253,12 @@ def update_config(payload: _ConfigUpdate) -> dict[str, object]:
                 detail=f"invalid brain provider: {payload.brain.provider!r}; "
                        f"valid: {', '.join(VALID_BRAIN_PROVIDERS)}",
             )
+        if payload.brain.provider == "local":
+            host = payload.brain.ollama_host or get_ollama_host()
+            model = payload.brain.ollama_model or ""
+            check = validate_ollama_host(host, model)
+            if not check["ok"]:
+                raise HTTPException(status_code=422, detail=str(check["error"]))
         prev_brain = get_brain_provider()
         new_brain = set_brain_config(
             provider=payload.brain.provider,

@@ -3,6 +3,22 @@
 All notable changes to Camazotz are documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## Brain Switch Hardening (2026-05-19)
+
+### Added
+
+- **Ollama health check on switch** — `PUT /config` with `provider: local` now validates the Ollama host is reachable and (when specified) the model is available before accepting the switch. Returns HTTP 422 with a descriptive error message on failure.
+- **`validate_ollama_host()`** — new config function that probes `/api/tags` with a 5-second timeout and returns `{ok, error, models}`.
+- **Frontend error handling** — all brain switch fetch calls (`_switchBrainProvider`, `_applyOllamaHost`, `_switchBrainModel`, `_applyBrainConfig`) now check `response.ok` and surface server-side error details in a red error banner instead of silently swallowing failures.
+- **Error banner styling** — `.brain-banner-error` CSS class for red-bordered error notifications with extended display time.
+- 8 new tests covering health check validation (unreachable host, model not found, healthy host, model found) and integration tests for 422 rejection and 200 acceptance through the API.
+
+### Fixed
+
+- **Benchmark model suggestions** — `benchmark.html` now reads `cfg.brain.available_models` with fallback to `cfg.available_models`, fixing the empty model datalist when using the brain gateway config structure.
+
+---
+
 ## Runtime Brain Provider Switching (2026-05-15)
 
 ### Added

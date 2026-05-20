@@ -208,6 +208,42 @@ def get_available_models(provider: str, ollama_host: str) -> list[dict[str, str]
     return [{"id": m, "label": m, "source": "builtin"} for m in ids]
 
 
+def validate_ollama_host(host: str, model: str = "") -> dict[str, object]:
+    """Check Ollama host reachability and optional model availability.
+
+    Returns {"ok": True/False, "error": str|None, "models": list[str]}.
+    Called during PUT /config to fail fast before accepting a brain switch.
+    """
+    import json as _json
+    import urllib.request as _req
+    import urllib.error as _err
+
+    host = host.rstrip("/")
+    result: dict[str, object] = {"ok": False, "error": None, "models": []}
+
+    try:
+        resp = _req.urlopen(f"{host}/api/tags", timeout=5)
+        data = _json.loads(resp.read())
+        available = [m["name"] for m in data.get("models", [])]
+        result["models"] = available
+    except (_err.URLError, OSError, ValueError) as exc:
+        result["error"] = f"Cannot reach Ollama at {host}: {exc}"
+        return result
+    except Exception as exc:
+        result["error"] = f"Unexpected error probing {host}: {exc}"
+        return result
+
+    if model and model not in available:
+        result["error"] = (
+            f"Model '{model}' not found on {host}. "
+            f"Available: {', '.join(available[:8]) or '(none)'}"
+        )
+        return result
+
+    result["ok"] = True
+    return result
+
+
 def estimate_cost(input_tokens: int, output_tokens: int) -> float:
     """Rough USD cost estimate for Sonnet-class models."""
     return (

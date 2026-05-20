@@ -395,7 +395,7 @@ async function fetchModelSuggestions() {
   try {
     const r = await fetch('/api/config');
     const cfg = await r.json();
-    addModelSuggestions(cfg.available_models || []);
+    addModelSuggestions((cfg.brain && cfg.brain.available_models) || cfg.available_models || []);
   } catch (_) {}
 }
 
