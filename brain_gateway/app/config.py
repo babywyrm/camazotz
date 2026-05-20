@@ -6,6 +6,7 @@ import ipaddress
 import os
 import re
 import threading
+from dataclasses import dataclass, field
 from typing import Final, Literal
 from urllib.parse import urlparse
 
@@ -20,10 +21,32 @@ VALID_BRAIN_PROVIDERS: Final[tuple[BrainProviderType, ...]] = (
     "cloud", "local", "bedrock", "openai",
 )
 
+
+@dataclass
+class BrainConfig:
+    """Single source of truth for the runtime brain state.
+
+    Replaces the previous split between ``_runtime_brain_config`` (dict)
+    and ``_runtime_model`` (str | None).  All fields default to empty/None
+    meaning "fall through to env var / built-in default."
+    """
+    provider: str = ""
+    ollama_host: str = ""
+    ollama_model: str = ""
+    model_override: str = ""
+
+    @property
+    def is_set(self) -> bool:
+        return bool(self.provider)
+
+    def resolved_provider(self) -> BrainProviderType:
+        val = (self.provider or os.getenv("BRAIN_PROVIDER", "cloud")).lower().strip()
+        return val if val in VALID_BRAIN_PROVIDERS else "cloud"  # type: ignore[return-value]
+
+
 _lock = threading.Lock()
 _runtime_difficulty: str | None = None
-_runtime_model: str | None = None
-_runtime_brain_config: dict[str, str] | None = None
+_brain = BrainConfig()
 
 
 def get_difficulty() -> str:
@@ -55,15 +78,14 @@ def reset_difficulty() -> None:
 def get_runtime_model() -> str | None:
     """Return the runtime model override, or None if none is set."""
     with _lock:
-        return _runtime_model or None
+        return _brain.model_override or None
 
 
 def set_runtime_model(model: str) -> str:
     """Set a runtime model override. Pass empty string to clear."""
-    global _runtime_model
     with _lock:
-        _runtime_model = model.strip() or None
-        return _runtime_model or ""
+        _brain.model_override = model.strip()
+        return _brain.model_override
 
 
 def show_tokens() -> bool:
@@ -71,22 +93,18 @@ def show_tokens() -> bool:
     return os.getenv("CAMAZOTZ_SHOW_TOKENS", "").lower() in ("true", "1", "yes")
 
 
-def _brain_field(field: str, env_var: str, default: str = "") -> str:
+def _brain_field(field_name: str, env_var: str, default: str = "") -> str:
     """Read a brain config field: runtime override > env var."""
     with _lock:
-        if _runtime_brain_config is not None:
-            return _runtime_brain_config.get(field, "").strip() or default
+        if _brain.is_set:
+            return getattr(_brain, field_name, "").strip() or default
     return os.getenv(env_var, default).strip() or default
 
 
 def get_brain_provider() -> BrainProviderType:
     """Active brain provider (runtime override > env var > cloud)."""
     with _lock:
-        if _runtime_brain_config is not None:
-            val = _runtime_brain_config.get("provider", "cloud").lower().strip()
-            return val if val in VALID_BRAIN_PROVIDERS else "cloud"  # type: ignore[return-value]
-    val = os.getenv("BRAIN_PROVIDER", "cloud").lower().strip()
-    return val if val in VALID_BRAIN_PROVIDERS else "cloud"  # type: ignore[return-value]
+        return _brain.resolved_provider()
 
 
 def set_brain_config(
@@ -96,22 +114,34 @@ def set_brain_config(
     ollama_model: str = "",
 ) -> BrainProviderType:
     """Set runtime brain provider override."""
-    global _runtime_brain_config
+    global _brain
     with _lock:
-        _runtime_brain_config = {
-            "provider": provider.lower().strip(),
-            "ollama_host": ollama_host.strip(),
-            "ollama_model": ollama_model.strip(),
-        }
+        _brain = BrainConfig(
+            provider=provider.lower().strip(),
+            ollama_host=ollama_host.strip(),
+            ollama_model=ollama_model.strip(),
+            model_override=_brain.model_override,
+        )
     return get_brain_provider()
 
 
 def reset_brain_config() -> BrainProviderType:
     """Clear runtime brain override so env/default takes effect again."""
-    global _runtime_brain_config
+    global _brain
     with _lock:
-        _runtime_brain_config = None
+        _brain = BrainConfig()
     return get_brain_provider()
+
+
+def get_brain_config() -> BrainConfig:
+    """Return a snapshot of the current brain config (thread-safe copy)."""
+    with _lock:
+        return BrainConfig(
+            provider=_brain.provider,
+            ollama_host=_brain.ollama_host,
+            ollama_model=_brain.ollama_model,
+            model_override=_brain.model_override,
+        )
 
 
 def get_brain_metadata() -> dict[str, str]:

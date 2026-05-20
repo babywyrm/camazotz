@@ -3,7 +3,7 @@
 All notable changes to Camazotz are documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## Brain Switch Hardening (2026-05-19)
+## Brain Switch Hardening (2026-05-20)
 
 ### Added
 
@@ -11,7 +11,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **`validate_ollama_host()`** — new config function that probes `/api/tags` with a 5-second timeout and returns `{ok, error, models}`.
 - **Frontend error handling** — all brain switch fetch calls (`_switchBrainProvider`, `_applyOllamaHost`, `_switchBrainModel`, `_applyBrainConfig`) now check `response.ok` and surface server-side error details in a red error banner instead of silently swallowing failures.
 - **Error banner styling** — `.brain-banner-error` CSS class for red-bordered error notifications with extended display time.
-- 8 new tests covering health check validation (unreachable host, model not found, healthy host, model found) and integration tests for 422 rejection and 200 acceptance through the API.
+- **SSRF prevention** — `validate_ollama_url()` enforces an allowlist of private IPs, localhost, and bare hostnames. Blocks public IPs, cloud metadata endpoints (`169.254.169.254`), and dangerous ports. Returns HTTP 400 before the health check fires.
+- **Observer events on brain switch** — `record_brain_switch()` writes `__brain_switch__` events to the observer ring buffer with previous/new provider+model, `ollama_host`, and trigger. No-op switches (same provider+model) are suppressed.
+- **Auto-benchmark quick check** — `POST /bench/quick-check` runs one probe per category as a fast sanity check. Fires automatically in the frontend after every brain switch, displaying pass/fail/latency in the banner.
+- **Atomic brain switch** — `atomic_brain_switch()` holds the factory lock while applying config and clearing the provider instance, closing the race window where `get_provider()` could instantiate against stale config.
+- **Unified `BrainConfig` dataclass** — replaces the split between `_runtime_brain_config` (dict) and `_runtime_model` (str) with a single `BrainConfig` dataclass. `model_override` is preserved across provider switches. `get_brain_config()` returns a thread-safe snapshot.
+- 26 new tests covering health check validation, URL allowlist, observer events, quick check runner/endpoint, atomic switching, and `BrainConfig` dataclass. Total: **1390 tests**.
 
 ### Fixed
 

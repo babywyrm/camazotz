@@ -354,6 +354,50 @@ def test_factory_reverts_after_reset(monkeypatch) -> None:
         _cleanup()
 
 
+# --- BrainConfig dataclass tests ---
+
+
+def test_brain_config_defaults() -> None:
+    from brain_gateway.app.config import BrainConfig
+    cfg = BrainConfig()
+    assert not cfg.is_set
+    assert cfg.resolved_provider() == "cloud"
+
+
+def test_brain_config_preserves_model_override_on_provider_switch() -> None:
+    """set_brain_config preserves the existing model_override."""
+    config_mod.set_runtime_model("qwen2.5:7b")
+    try:
+        config_mod.set_brain_config(provider="local")
+        assert config_mod.get_runtime_model() == "qwen2.5:7b"
+    finally:
+        config_mod.set_runtime_model("")
+        _cleanup()
+
+
+def test_get_brain_config_returns_snapshot() -> None:
+    from brain_gateway.app.config import get_brain_config
+    config_mod.set_brain_config(provider="local", ollama_host="http://test:11434")
+    try:
+        snap = get_brain_config()
+        assert snap.provider == "local"
+        assert snap.ollama_host == "http://test:11434"
+        config_mod.set_brain_config(provider="cloud")
+        assert snap.provider == "local"  # snapshot unchanged
+    finally:
+        _cleanup()
+
+
+def test_reset_brain_config_clears_all_fields() -> None:
+    config_mod.set_brain_config(provider="local", ollama_host="http://x:11434", ollama_model="q:7b")
+    config_mod.reset_brain_config()
+    from brain_gateway.app.config import get_brain_config
+    snap = get_brain_config()
+    assert not snap.is_set
+    assert snap.ollama_host == ""
+    assert snap.ollama_model == ""
+
+
 # --- Atomic brain switch tests ---
 
 
