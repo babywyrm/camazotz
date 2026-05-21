@@ -11,6 +11,7 @@ All tokens and principals are synthetic.
 from __future__ import annotations
 
 import json
+import os
 import threading
 import time
 import uuid
@@ -57,25 +58,36 @@ class RevocationLab(LabModule):
             return {}
         return {"_idp_provider": get_idp_provider(), "_idp_backed": True}
 
-    def _idp_use_tags(self, *, access_token: str | None = None) -> dict:
+    def _try_mint_real_token(self, service: str) -> tuple[str, bool]:
+        """Attempt to mint a real token via client_credentials; return (token, success)."""
+        if not is_live_idp():
+            return "", False
+        try:
+            provider = get_identity_provider()
+            result = provider.client_credentials_token(
+                audience=f"api://{service}",
+                scope=os.getenv("CAMAZOTZ_IDP_CC_SCOPE", "api"),
+            )
+            return result["access_token"], True
+        except Exception:
+            return "", False
+
+    def _idp_use_tags(self, *, access_token: str | None = None, idp_minted: bool = False) -> dict:
         if not is_live_idp():
             return {}
         if not access_token:
             return {"_idp_token_status": "token_missing", "_idp_backed": True}
+        out: dict = {"_idp_backed": True, "_idp_token_real": idp_minted}
         provider = get_identity_provider()
         try:
             introspection = provider.introspect_token(token=access_token)
         except Exception:
-            return {
-                "_idp_token_status": "introspection_error",
-                "_idp_backed": True,
-                "_idp_degraded": True,
-                "_idp_reason": "introspection_call_failed",
-            }
-        return {
-            "_idp_token_status": "active" if introspection.get("active") else "inactive",
-            "_idp_backed": True,
-        }
+            out["_idp_token_status"] = "introspection_error"
+            out["_idp_degraded"] = True
+            out["_idp_reason"] = "introspection_call_failed"
+            return out
+        out["_idp_token_status"] = "active" if introspection.get("active") else "inactive"
+        return out
 
     # -- MCP resources --------------------------------------------------------
 
@@ -190,6 +202,10 @@ class RevocationLab(LabModule):
         access_token = f"cztz-access-{uuid.uuid4().hex[:8]}"
         refresh_token = f"cztz-refresh-{uuid.uuid4().hex[:8]}"
 
+        real_token, minted = self._try_mint_real_token(service)
+        if minted:
+            access_token = real_token
+
         entry = {
             "token_id": token_id,
             "principal": principal,
@@ -199,6 +215,7 @@ class RevocationLab(LabModule):
             "issued_at": time.time(),
             "revoked": False,
             "refresh_revoked": False,
+            "_idp_minted": minted,
         }
 
         with self._lock:
@@ -214,6 +231,9 @@ class RevocationLab(LabModule):
             "_difficulty": self.difficulty,
         }
         out.update(self._idp_issue_tags())
+        if minted:
+            out["_idp_minted"] = True
+            out["_idp_grant"] = "client_credentials"
         return out
 
     def _revoke_principal(self, arguments: dict) -> dict:
@@ -235,6 +255,7 @@ class RevocationLab(LabModule):
                     tok["refresh_revoked"] = True
                 self._revoked.add(tid)
 
+        any_real = False
         out = {
             "revoked_count": len(revoked_ids),
             "revoked_ids": revoked_ids,
@@ -246,7 +267,10 @@ class RevocationLab(LabModule):
             revoke_degraded = False
             for tid in revoked_ids:
                 with self._lock:
-                    access_token = self._tokens.get(tid, {}).get("access_token", "")
+                    tok_rec = self._tokens.get(tid, {})
+                    access_token = tok_rec.get("access_token", "")
+                    if tok_rec.get("_idp_minted"):
+                        any_real = True
                 if access_token:
                     try:
                         provider.revoke_token(token=access_token)
@@ -255,6 +279,7 @@ class RevocationLab(LabModule):
             out["_idp_provider"] = get_idp_provider()
             out["_idp_backed"] = True
             out["_idp_revocation_hook"] = "provider.revoke_token"
+            out["_idp_token_real"] = any_real
             if revoke_degraded:
                 out["_idp_degraded"] = True
                 out["_idp_reason"] = "revocation_call_failed"
@@ -277,6 +302,8 @@ class RevocationLab(LabModule):
             out.update(self._idp_use_tags())
             return out
 
+        minted = tok.get("_idp_minted", False)
+
         if difficulty == "easy":
             if tok["revoked"]:
                 out = {
@@ -289,7 +316,7 @@ class RevocationLab(LabModule):
                     ),
                     "_difficulty": difficulty,
                 }
-                out.update(self._idp_use_tags(access_token=tok["access_token"]))
+                out.update(self._idp_use_tags(access_token=tok["access_token"], idp_minted=minted))
                 return out
             out = {
                 "valid": True,
@@ -297,7 +324,7 @@ class RevocationLab(LabModule):
                 "principal": tok["principal"],
                 "_difficulty": difficulty,
             }
-            out.update(self._idp_use_tags(access_token=tok["access_token"]))
+            out.update(self._idp_use_tags(access_token=tok["access_token"], idp_minted=minted))
             return out
 
         if difficulty == "medium":
@@ -308,7 +335,7 @@ class RevocationLab(LabModule):
                     "token_id": token_id,
                     "_difficulty": difficulty,
                 }
-                out.update(self._idp_use_tags(access_token=tok["access_token"]))
+                out.update(self._idp_use_tags(access_token=tok["access_token"], idp_minted=minted))
                 return out
             if tok["refresh_revoked"]:
                 out = {
@@ -321,7 +348,7 @@ class RevocationLab(LabModule):
                     ),
                     "_difficulty": difficulty,
                 }
-                out.update(self._idp_use_tags(access_token=tok["access_token"]))
+                out.update(self._idp_use_tags(access_token=tok["access_token"], idp_minted=minted))
                 return out
             out = {
                 "valid": True,
@@ -329,7 +356,7 @@ class RevocationLab(LabModule):
                 "principal": tok["principal"],
                 "_difficulty": difficulty,
             }
-            out.update(self._idp_use_tags(access_token=tok["access_token"]))
+            out.update(self._idp_use_tags(access_token=tok["access_token"], idp_minted=minted))
             return out
 
         if tok["revoked"] or tok["refresh_revoked"]:
@@ -339,7 +366,7 @@ class RevocationLab(LabModule):
                 "token_id": token_id,
                 "_difficulty": difficulty,
             }
-            out.update(self._idp_use_tags(access_token=tok["access_token"]))
+            out.update(self._idp_use_tags(access_token=tok["access_token"], idp_minted=minted))
             return out
         out = {
             "valid": True,
@@ -347,5 +374,5 @@ class RevocationLab(LabModule):
             "principal": tok["principal"],
             "_difficulty": difficulty,
         }
-        out.update(self._idp_use_tags(access_token=tok["access_token"]))
+        out.update(self._idp_use_tags(access_token=tok["access_token"], idp_minted=minted))
         return out

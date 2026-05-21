@@ -345,6 +345,123 @@ def test_revocation_reset_clears_all() -> None:
     assert rev_uris == []
 
 
+# -- real token minting -------------------------------------------------------
+
+
+def test_revocation_real_token_minted_when_idp_live(monkeypatch) -> None:
+    """When IdP is live, issue_token mints a real access_token via client_credentials."""
+    _enable_zitadel_mode(monkeypatch)
+
+    class _Provider:
+        def client_credentials_token(self, *, audience: str, scope: str) -> dict:
+            return {"access_token": "real-okta-jwt-xyz"}
+
+        def revoke_token(self, *, token: str) -> dict:
+            return {"revoked": True}
+
+        def introspect_token(self, *, token: str) -> dict:
+            return {"active": True}
+
+    monkeypatch.setattr(
+        "camazotz_modules.revocation_lab.app.main.get_identity_provider",
+        lambda: _Provider(),
+    )
+    client = TestClient(app)
+    issued = _issue(client)
+    assert issued["_idp_minted"] is True
+    assert issued["_idp_grant"] == "client_credentials"
+    assert issued["access_token"] == "real-okta-jwt-xyz"
+
+
+def test_revocation_synthetic_token_when_minting_fails(monkeypatch) -> None:
+    """When client_credentials fails, falls back to synthetic token."""
+    _enable_zitadel_mode(monkeypatch)
+
+    class _Provider:
+        def client_credentials_token(self, **kw) -> dict:
+            raise RuntimeError("IdP unreachable")
+
+        def revoke_token(self, *, token: str) -> dict:
+            return {"revoked": True}
+
+        def introspect_token(self, *, token: str) -> dict:
+            return {"active": False}
+
+    monkeypatch.setattr(
+        "camazotz_modules.revocation_lab.app.main.get_identity_provider",
+        lambda: _Provider(),
+    )
+    client = TestClient(app)
+    issued = _issue(client)
+    assert issued["access_token"].startswith("cztz-access-")
+    assert "_idp_minted" not in issued or issued.get("_idp_minted") is not True
+
+
+def test_revocation_use_token_shows_real_tag(monkeypatch) -> None:
+    """use_token response surfaces _idp_token_real when token was IdP-minted."""
+    _enable_zitadel_mode(monkeypatch)
+
+    class _Provider:
+        def client_credentials_token(self, **kw) -> dict:
+            return {"access_token": "real-token-for-introspect"}
+
+        def revoke_token(self, *, token: str) -> dict:
+            return {"revoked": True}
+
+        def introspect_token(self, *, token: str) -> dict:
+            return {"active": True}
+
+    monkeypatch.setattr(
+        "camazotz_modules.revocation_lab.app.main.get_identity_provider",
+        lambda: _Provider(),
+    )
+    client = TestClient(app)
+    issued = _issue(client)
+    use = tool_call(
+        client, "revocation.use_token", {"token_id": issued["token_id"]}
+    )
+    assert use["valid"] is True
+    assert use["_idp_token_real"] is True
+    assert use["_idp_token_status"] == "active"
+
+
+def test_revocation_revoke_real_token_shows_real_flag(monkeypatch) -> None:
+    """revoke_principal shows _idp_token_real when revoking IdP-minted tokens."""
+    _enable_zitadel_mode(monkeypatch)
+
+    class _Provider:
+        def client_credentials_token(self, **kw) -> dict:
+            return {"access_token": "real-token-to-revoke"}
+
+        def revoke_token(self, *, token: str) -> dict:
+            return {"revoked": True}
+
+        def introspect_token(self, *, token: str) -> dict:
+            return {"active": False}
+
+    monkeypatch.setattr(
+        "camazotz_modules.revocation_lab.app.main.get_identity_provider",
+        lambda: _Provider(),
+    )
+    client = TestClient(app)
+    _issue(client)
+    revoke = tool_call(
+        client,
+        "revocation.revoke_principal",
+        {"principal": "alice@example.com"},
+    )
+    assert revoke["_idp_token_real"] is True
+
+
+def test_revocation_mock_mode_no_minted_tag(monkeypatch) -> None:
+    """Mock mode should not include _idp_minted in response."""
+    monkeypatch.setenv("CAMAZOTZ_IDP_PROVIDER", "mock")
+    client = TestClient(app)
+    issued = _issue(client)
+    assert "_idp_minted" not in issued
+    assert issued["access_token"].startswith("cztz-access-")
+
+
 def test_idp_use_tags_token_missing_branch(monkeypatch) -> None:
     """Zitadel mode with no access_token surfaces the 'token_missing' status tag."""
     from brain_gateway.app.modules.registry import get_registry

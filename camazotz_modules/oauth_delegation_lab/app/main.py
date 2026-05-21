@@ -111,21 +111,33 @@ class OAuthDelegationLab(LabModule):
 
     def _try_provider_exchange(
         self, principal: str, service: str, scope: str, fallback_access: str,
-    ) -> tuple[str, bool]:
-        """Attempt provider-backed exchange; return (access_token, degraded)."""
+    ) -> tuple[str, bool, str]:
+        """Attempt provider-backed exchange; return (access_token, degraded, grant_type).
+
+        Falls back through: token_exchange → client_credentials → synthetic.
+        """
         if not is_live_idp():
-            return fallback_access, False
+            return fallback_access, False, "mock"
+        provider = get_identity_provider()
         try:
-            provider = get_identity_provider()
             exchanged = provider.exchange_token(
                 subject_token=principal,
                 actor_token=None,
                 audience=f"api://{service}",
                 scope=scope,
             )
-            return exchanged["access_token"], False
+            return exchanged["access_token"], False, "token_exchange"
         except Exception:
-            return fallback_access, True
+            pass
+        cc_scope = os.getenv("CAMAZOTZ_IDP_CC_SCOPE", "api")
+        try:
+            creds = provider.client_credentials_token(
+                audience=f"api://{service}",
+                scope=cc_scope,
+            )
+            return creds["access_token"], False, "client_credentials"
+        except Exception:
+            return fallback_access, True, "degraded"
 
     def _mint_exchanged_access(self, service: str) -> str:
         if is_live_idp():
@@ -141,6 +153,7 @@ class OAuthDelegationLab(LabModule):
         new_access: str,
         *,
         degraded: bool = False,
+        grant_type: str = "mock",
     ) -> dict:
         with self._lock:
             self._store[principal][service]["access_token"] = new_access
@@ -151,6 +164,8 @@ class OAuthDelegationLab(LabModule):
             "_difficulty": difficulty,
         }
         out.update(self._idp_exchange_extras())
+        if grant_type != "mock":
+            out["_idp_grant"] = grant_type
         if degraded:
             out["_idp_degraded"] = True
             out["_idp_reason"] = "provider_call_failed"
@@ -345,12 +360,12 @@ class OAuthDelegationLab(LabModule):
 
         if difficulty == "easy":
             new_access = self._mint_exchanged_access(service)
-            new_access, degraded = self._try_provider_exchange(
+            new_access, degraded, grant = self._try_provider_exchange(
                 principal, service, tok["scope"], new_access,
             )
             return self._exchange_ok(
                 principal, service, tok, difficulty, new_access,
-                degraded=degraded,
+                degraded=degraded, grant_type=grant,
             )
 
         if difficulty == "medium":
@@ -367,12 +382,12 @@ class OAuthDelegationLab(LabModule):
                         "_difficulty": difficulty,
                     }
             new_access = self._mint_exchanged_access(service)
-            new_access, degraded = self._try_provider_exchange(
+            new_access, degraded, grant = self._try_provider_exchange(
                 principal, service, tok["scope"], new_access,
             )
             return self._exchange_ok(
                 principal, service, tok, difficulty, new_access,
-                degraded=degraded,
+                degraded=degraded, grant_type=grant,
             )
 
         if refresh_token != tok["refresh_token"]:
@@ -382,12 +397,12 @@ class OAuthDelegationLab(LabModule):
                 "_difficulty": difficulty,
             }
         new_access = self._mint_exchanged_access(service)
-        new_access, degraded = self._try_provider_exchange(
+        new_access, degraded, grant = self._try_provider_exchange(
             principal, service, tok["scope"], new_access,
         )
         return self._exchange_ok(
             principal, service, tok, difficulty, new_access,
-            degraded=degraded,
+            degraded=degraded, grant_type=grant,
         )
 
     def _call_downstream(self, arguments: dict) -> dict:

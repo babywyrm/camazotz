@@ -61,6 +61,12 @@
   font-weight:700;text-transform:uppercase;background:rgba(16,185,129,.12);color:var(--green)}
 .id-badge-degraded{display:inline-block;padding:.12rem .4rem;border-radius:5px;font-size:.62rem;
   font-weight:700;text-transform:uppercase;background:rgba(234,179,8,.12);color:var(--yellow)}
+.id-badge-real{display:inline-block;padding:.12rem .4rem;border-radius:5px;font-size:.62rem;
+  font-weight:700;text-transform:uppercase;background:rgba(34,197,94,.18);color:#4ade80;border:1px solid rgba(34,197,94,.3)}
+.id-badge-synthetic{display:inline-block;padding:.12rem .4rem;border-radius:5px;font-size:.62rem;
+  font-weight:700;text-transform:uppercase;background:rgba(251,191,36,.1);color:#fbbf24;border:1px solid rgba(251,191,36,.2)}
+.id-badge-grant{display:inline-block;padding:.12rem .4rem;border-radius:5px;font-size:.58rem;
+  font-weight:600;text-transform:uppercase;letter-spacing:.03em;background:var(--surface2);color:var(--text2);border:1px solid var(--border)}
 .id-empty{padding:1.5rem;text-align:center;color:var(--muted);font-size:.82rem}
 
 .id-ref{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem;margin-bottom:1.25rem}
@@ -340,15 +346,15 @@ sequenceDiagram
         <tbody>
           <tr>
             <td>oauth_delegation_lab</td>
-            <td><code>exchange_token</code> only</td>
-            <td>Exchange access_token, normalized claims</td>
+            <td><code>exchange_token</code> → <code>client_credentials</code></td>
+            <td>Real access_token via fallback chain, <code>_idp_grant</code> tag</td>
             <td>TOKEN_STORE, downstream validation</td>
           </tr>
           <tr>
             <td>revocation_lab</td>
-            <td><code>revoke_token</code>, <code>introspect_token</code></td>
-            <td>Revocation POST, introspection check</td>
-            <td>Token issuance, valid/revoked tracking</td>
+            <td><code>client_credentials</code>, <code>revoke_token</code>, <code>introspect_token</code></td>
+            <td>Real token minting, revocation POST, introspection check, <code>_idp_minted</code>/<code>_idp_token_real</code> tags</td>
+            <td>Token IDs, valid/revoked tracking</td>
           </tr>
           <tr>
             <td>rbac_lab</td>
@@ -400,16 +406,28 @@ function renderIdpFeed(){
     el.innerHTML='<div class="id-empty">No IDP events yet. Use the Playground to invoke an IDP-backed tool.</div>';
     return;
   }
-  var html='<table class="id-feed-table"><thead><tr><th>Time</th><th>Tool</th><th>Status</th><th>Outcome</th><th>Reason</th></tr></thead><tbody>';
+  var html='<table class="id-feed-table"><thead><tr><th>Time</th><th>Tool</th><th>Status</th><th>Token</th><th>Outcome</th><th>Reason</th></tr></thead><tbody>';
   for(var i=0;i<filtered.length;i++){
     var ev=filtered[i];
+    var r=ev.result||{};
     var badge=ev.idp_degraded
       ?'<span class="id-badge-degraded">DEGRADED</span>'
       :'<span class="id-badge-backed">IDP</span>';
+    var tokenBadge='';
+    if(r._idp_minted||r._idp_token_real){
+      tokenBadge='<span class="id-badge-real">REAL</span>';
+    }else if(ev.idp_backed&&!ev.idp_degraded&&ev.tool_name!=='__idp_switch__'){
+      tokenBadge='<span class="id-badge-synthetic">SYNTHETIC</span>';
+    }
+    var grantBadge='';
+    if(r._idp_grant){
+      grantBadge=' <span class="id-badge-grant">'+esc(r._idp_grant)+'</span>';
+    }
     html+='<tr class="id-feed-row">'+
       '<td style="color:var(--muted)">'+esc(formatTs(ev.timestamp))+'</td>'+
       '<td style="color:var(--accent2)">'+esc(ev.tool_name)+'</td>'+
-      '<td>'+badge+'</td>'+
+      '<td>'+badge+grantBadge+'</td>'+
+      '<td>'+tokenBadge+'</td>'+
       '<td>'+esc(ev.outcome||'—')+'</td>'+
       '<td style="color:var(--muted)">'+esc(ev.idp_reason||'—')+'</td>'+
       '</tr>';

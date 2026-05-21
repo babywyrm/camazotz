@@ -448,6 +448,91 @@ def test_oauth_lab_realism_mode_uses_identity_provider_exchange(monkeypatch) -> 
     assert result["exchanged"] is True
     assert result["access_token"] == "zitadel-provider-access"
     assert result["_idp_provider"] == "zitadel"
+    assert result["_idp_grant"] == "token_exchange"
+
+
+# -- fallback chain -----------------------------------------------------------
+
+
+def test_oauth_fallback_to_client_credentials(monkeypatch) -> None:
+    """When exchange_token fails, falls back to client_credentials."""
+    monkeypatch.setenv("CAMAZOTZ_IDP_PROVIDER", "zitadel")
+    monkeypatch.setenv("CAMAZOTZ_IDP_TOKEN_ENDPOINT", "http://zitadel.example/token")
+
+    class _Provider:
+        def exchange_token(self, **kw) -> dict:
+            raise RuntimeError("exchange not supported")
+
+        def client_credentials_token(self, *, audience: str, scope: str) -> dict:
+            return {"access_token": "cc-real-token-abc"}
+
+    monkeypatch.setattr(
+        "camazotz_modules.oauth_delegation_lab.app.main.get_identity_provider",
+        lambda: _Provider(),
+    )
+    client = TestClient(app)
+    result = tool_call(
+        client,
+        "oauth.exchange_token",
+        {
+            "principal": "alice@example.com",
+            "service": "github",
+            "refresh_token": "anything",
+        },
+    )
+    assert result["exchanged"] is True
+    assert result["access_token"] == "cc-real-token-abc"
+    assert result["_idp_grant"] == "client_credentials"
+    assert result.get("_idp_degraded") is not True
+
+
+def test_oauth_fallback_degrades_when_both_fail(monkeypatch) -> None:
+    """When both exchange and client_credentials fail, degrades to synthetic."""
+    monkeypatch.setenv("CAMAZOTZ_IDP_PROVIDER", "zitadel")
+    monkeypatch.setenv("CAMAZOTZ_IDP_TOKEN_ENDPOINT", "http://zitadel.example/token")
+
+    class _Provider:
+        def exchange_token(self, **kw) -> dict:
+            raise RuntimeError("not supported")
+
+        def client_credentials_token(self, **kw) -> dict:
+            raise RuntimeError("also not supported")
+
+    monkeypatch.setattr(
+        "camazotz_modules.oauth_delegation_lab.app.main.get_identity_provider",
+        lambda: _Provider(),
+    )
+    client = TestClient(app)
+    result = tool_call(
+        client,
+        "oauth.exchange_token",
+        {
+            "principal": "alice@example.com",
+            "service": "github",
+            "refresh_token": "anything",
+        },
+    )
+    assert result["exchanged"] is True
+    assert result["_idp_degraded"] is True
+    assert result["_idp_grant"] == "degraded"
+    assert result["access_token"].startswith("zitadel-at-")
+
+
+def test_oauth_mock_mode_grant_type_absent(monkeypatch) -> None:
+    """Mock mode should not include _idp_grant in response."""
+    monkeypatch.setenv("CAMAZOTZ_IDP_PROVIDER", "mock")
+    client = TestClient(app)
+    result = tool_call(
+        client,
+        "oauth.exchange_token",
+        {
+            "principal": "alice@example.com",
+            "service": "github",
+            "refresh_token": "anything",
+        },
+    )
+    assert result["exchanged"] is True
+    assert "_idp_grant" not in result
 
 
 def test_oauth_reset_restores_tokens() -> None:
