@@ -63,6 +63,13 @@ def _build_live_provider() -> IdentityProvider | None:
         probe_url = provider.issuer_url or provider.token_endpoint
         if provider.token_endpoint and _idp_is_reachable(probe_url):
             return provider
+    elif provider_name == "auth0":
+        from brain_gateway.app.identity.auth0_provider import Auth0IdentityProvider
+
+        provider = Auth0IdentityProvider.from_env()
+        probe_url = provider.issuer_url or provider.token_endpoint
+        if provider.token_endpoint and _idp_is_reachable(probe_url):
+            return provider
     return None
 
 

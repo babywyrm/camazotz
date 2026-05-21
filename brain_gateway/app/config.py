@@ -346,9 +346,9 @@ def get_ollama_model() -> str:
     return _brain_field("ollama_model", "CAMAZOTZ_OLLAMA_MODEL", "llama3.2:3b")
 
 
-IdpProvider = Literal["mock", "zitadel", "okta"]
+IdpProvider = Literal["mock", "zitadel", "okta", "auth0"]
 
-_LIVE_IDP_PROVIDERS: Final[frozenset[str]] = frozenset({"zitadel", "okta"})
+_LIVE_IDP_PROVIDERS: Final[frozenset[str]] = frozenset({"zitadel", "okta", "auth0"})
 
 _runtime_idp_config: dict[str, str] | None = None
 

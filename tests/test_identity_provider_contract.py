@@ -81,8 +81,8 @@ def test_is_live_idp_false_for_mock(monkeypatch) -> None:
 
 def test_get_idp_provider_return_type_is_idp_literal() -> None:
     ret = get_type_hints(get_idp_provider)["return"]
-    assert ret == Literal["mock", "zitadel", "okta"]
-    assert getattr(ret, "__args__", ()) == ("mock", "zitadel", "okta")
+    assert ret == Literal["mock", "zitadel", "okta", "auth0"]
+    assert getattr(ret, "__args__", ()) == ("mock", "zitadel", "okta", "auth0")
 
 
 def test_get_identity_provider_return_type_is_protocol() -> None:

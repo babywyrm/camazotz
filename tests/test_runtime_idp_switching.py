@@ -333,3 +333,74 @@ def test_get_identity_provider_falls_back_after_reset(monkeypatch) -> None:
 
     p = get_identity_provider()
     assert isinstance(p, MockIdentityProvider)
+
+
+# --- OIDC auto-discovery via PUT /config ---
+
+
+def test_put_config_idp_auto_discovers_endpoints(monkeypatch) -> None:
+    """PUT /config with issuer_url but no explicit endpoints triggers OIDC discovery."""
+    import json as _json
+    from unittest.mock import patch
+    from io import BytesIO
+
+    discovery_doc = _json.dumps({
+        "issuer": "https://example.okta.com/oauth2/default",
+        "token_endpoint": "https://example.okta.com/oauth2/default/v1/token",
+        "introspection_endpoint": "https://example.okta.com/oauth2/default/v1/introspect",
+        "revocation_endpoint": "https://example.okta.com/oauth2/default/v1/revoke",
+    }).encode()
+
+    class _FakeResponse:
+        def read(self) -> bytes:
+            return discovery_doc
+        def __enter__(self):
+            return self
+        def __exit__(self, *a: object) -> None:
+            pass
+
+    monkeypatch.setattr(identity_service, "_idp_is_reachable", lambda _url: False)
+
+    with patch("urllib.request.urlopen", return_value=_FakeResponse()):
+        client = TestClient(app)
+        resp = client.put("/config", json={
+            "idp": {
+                "provider": "okta",
+                "issuer_url": "https://example.okta.com/oauth2/default",
+            },
+        })
+    try:
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["idp_provider"] == "okta"
+        assert config_mod.get_idp_token_endpoint() == "https://example.okta.com/oauth2/default/v1/token"
+        assert config_mod.get_idp_introspection_endpoint() == "https://example.okta.com/oauth2/default/v1/introspect"
+        assert config_mod.get_idp_revocation_endpoint() == "https://example.okta.com/oauth2/default/v1/revoke"
+    finally:
+        _cleanup()
+
+
+def test_put_config_idp_auto_discovery_failure_preserves_original(monkeypatch) -> None:
+    """If OIDC discovery fails, the original payload is used as-is."""
+    from unittest.mock import patch
+
+    def _fail_urlopen(*a: object, **kw: object) -> None:
+        raise OSError("connection refused")
+
+    monkeypatch.setattr(identity_service, "_idp_is_reachable", lambda _url: False)
+
+    with patch("urllib.request.urlopen", side_effect=_fail_urlopen):
+        client = TestClient(app)
+        resp = client.put("/config", json={
+            "idp": {
+                "provider": "auth0",
+                "issuer_url": "https://unreachable.auth0.com",
+            },
+        })
+    try:
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["idp_provider"] == "mock"
+        assert config_mod.get_idp_token_endpoint() == ""
+    finally:
+        _cleanup()

@@ -200,6 +200,28 @@ class _ConfigUpdate(BaseModel):
     reset_brain: bool = False
 
 
+def _oidc_discover(idp: _IdpConfigUpdate) -> _IdpConfigUpdate:
+    """Auto-populate endpoints from the issuer's .well-known/openid-configuration."""
+    from urllib.request import Request, urlopen
+
+    discovery_url = idp.issuer_url.rstrip("/") + "/.well-known/openid-configuration"
+    try:
+        req = Request(discovery_url, headers={"Accept": "application/json"})
+        with urlopen(req, timeout=5) as resp:
+            meta = json.loads(resp.read())
+        return _IdpConfigUpdate(
+            provider=idp.provider,
+            issuer_url=meta.get("issuer", idp.issuer_url),
+            token_endpoint=meta.get("token_endpoint", ""),
+            introspection_endpoint=meta.get("introspection_endpoint", ""),
+            revocation_endpoint=meta.get("revocation_endpoint", ""),
+            client_id=idp.client_id,
+            client_secret=idp.client_secret,
+        )
+    except Exception:
+        return idp
+
+
 @app.put("/config")
 def update_config(payload: _ConfigUpdate) -> dict[str, object]:
     """Update runtime difficulty, active brain model, and/or IdP config.
@@ -233,15 +255,23 @@ def update_config(payload: _ConfigUpdate) -> dict[str, object]:
             get_registry().reset_all()
             _rate_limiter.reset()
     elif payload.idp is not None:
+        idp_data = payload.idp
+        if (
+            idp_data.issuer_url
+            and not idp_data.token_endpoint
+            and not idp_data.introspection_endpoint
+            and not idp_data.revocation_endpoint
+        ):
+            idp_data = _oidc_discover(idp_data)
         prev_provider = get_idp_provider()
         new_provider = set_idp_config(
-            provider=payload.idp.provider,
-            issuer_url=payload.idp.issuer_url,
-            token_endpoint=payload.idp.token_endpoint,
-            introspection_endpoint=payload.idp.introspection_endpoint,
-            revocation_endpoint=payload.idp.revocation_endpoint,
-            client_id=payload.idp.client_id,
-            client_secret=payload.idp.client_secret,
+            provider=idp_data.provider,
+            issuer_url=idp_data.issuer_url,
+            token_endpoint=idp_data.token_endpoint,
+            introspection_endpoint=idp_data.introspection_endpoint,
+            revocation_endpoint=idp_data.revocation_endpoint,
+            client_id=idp_data.client_id,
+            client_secret=idp_data.client_secret,
         )
         if new_provider != prev_provider:
             get_registry().reset_all()
