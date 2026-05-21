@@ -81,6 +81,16 @@
 .history-entry .he-preview{color:var(--text2);font-size:.7rem;
   display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
 
+.pg-search{width:100%;background:var(--bg2);color:var(--text);border:1px solid var(--border);
+  border-radius:8px;padding:.5rem .75rem;font-size:.8rem;font-family:var(--font-mono);
+  margin-bottom:.25rem;transition:border-color .2s}
+.pg-search:focus{outline:none;border-color:var(--accent)}
+.pg-search::placeholder{color:var(--muted)}
+.pg-category{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;
+  color:var(--muted);padding:.6rem .75rem .2rem;margin-top:.25rem}
+.tool-btn.hidden{display:none}
+.pg-no-results{padding:1rem .75rem;font-size:.78rem;color:var(--muted);text-align:center}
+
 .tool-btn.new-tool{animation:newToolPulse 2s ease-in-out;border-color:var(--accent)}
 @keyframes newToolPulse{0%,100%{box-shadow:none}50%{box-shadow:0 0 12px rgba(220,38,38,.3)}}
 
@@ -104,13 +114,18 @@
   <div class="pg-layout">
     <aside class="pg-sidebar">
       <h3>Available Tools</h3>
-      {% for tool in tools %}
-      <button class="tool-btn" data-tool="{{ tool.name }}" data-desc="{{ tool.description }}"
-              data-schema='{{ tool.inputSchema | tojson }}'>
-        <span class="tool-name">{{ tool.name }}</span>
-        <span class="tool-desc">{{ tool.description }}</span>
-      </button>
-      {% endfor %}
+      <input type="text" class="pg-search" id="toolSearch" placeholder="Filter tools..." oninput="filterTools()">
+      <div id="toolList">
+        {% for tool in tools|sort(attribute='name') %}
+        <button class="tool-btn" data-tool="{{ tool.name }}" data-desc="{{ tool.description }}"
+                data-schema='{{ tool.inputSchema | tojson }}'
+                data-category="{{ tool.name.split('.')[0] }}">
+          <span class="tool-name">{{ tool.name }}</span>
+          <span class="tool-desc">{{ tool.description }}</span>
+        </button>
+        {% endfor %}
+      </div>
+      <div class="pg-no-results" id="noResults" style="display:none">No matching tools</div>
     </aside>
 
     <div class="pg-main">
@@ -175,6 +190,32 @@ document.querySelectorAll('.tool-btn').forEach(btn => {
   btn.addEventListener('click', () => selectTool(btn));
 });
 renderHistory();
+
+function filterTools() {
+  const q = document.getElementById('toolSearch').value.toLowerCase().trim();
+  const btns = document.querySelectorAll('.tool-btn');
+  let visible = 0;
+  btns.forEach(btn => {
+    const match = !q
+      || btn.dataset.tool.toLowerCase().includes(q)
+      || btn.dataset.desc.toLowerCase().includes(q)
+      || btn.dataset.category.toLowerCase().includes(q);
+    btn.classList.toggle('hidden', !match);
+    if (match) visible++;
+  });
+  document.getElementById('noResults').style.display = visible ? 'none' : 'block';
+}
+
+document.getElementById('toolSearch').addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    e.target.value = '';
+    filterTools();
+  }
+  if (e.key === 'Enter') {
+    const first = document.querySelector('.tool-btn:not(.hidden)');
+    if (first) { first.click(); e.target.blur(); }
+  }
+});
 
 function selectTool(btn) {
   document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
