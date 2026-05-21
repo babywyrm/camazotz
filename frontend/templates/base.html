@@ -146,7 +146,7 @@ code,pre{font-family:var(--font-mono)}
 .idp-global-pill.degraded{background:rgba(251,191,36,.12);color:#facc15;border:1px solid rgba(251,191,36,.2)}
 .idp-global-tools{color:var(--text2)}
 .idp-popover{display:none;position:absolute;top:calc(100% + 4px);left:0;z-index:200;
-  min-width:140px;background:var(--surface2);border:1px solid var(--border2);
+  min-width:220px;background:var(--surface2);border:1px solid var(--border2);
   border-radius:8px;padding:.3rem 0;box-shadow:0 4px 16px rgba(0,0,0,.4)}
 .idp-popover.open{display:block}
 .idp-popover-item{padding:.35rem .8rem;font-size:.74rem;color:var(--text2);cursor:pointer;
@@ -157,6 +157,21 @@ code,pre{font-family:var(--font-mono)}
 .idp-popover-item.active::before{content:'✓';font-size:.65rem}
 .idp-switching{display:none;font-size:.66rem;color:var(--yellow);margin-left:.3rem}
 .idp-switching.visible{display:inline}
+.idp-creds-form{padding:.6rem .8rem;border-top:1px solid var(--border);display:none}
+.idp-creds-form.visible{display:block}
+.idp-creds-form label{display:block;font-size:.65rem;color:var(--text2);margin-bottom:.15rem;margin-top:.4rem;
+  text-transform:uppercase;letter-spacing:.03em;font-weight:600}
+.idp-creds-form label:first-child{margin-top:0}
+.idp-creds-form input{width:100%;box-sizing:border-box;padding:.3rem .4rem;font-size:.72rem;font-family:inherit;
+  background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;outline:none}
+.idp-creds-form input:focus{border-color:var(--accent)}
+.idp-creds-form input::placeholder{color:var(--muted)}
+.idp-creds-btn{margin-top:.5rem;width:100%;padding:.35rem;font-size:.72rem;font-weight:600;
+  background:var(--green);color:#000;border:none;border-radius:4px;cursor:pointer;transition:opacity .15s}
+.idp-creds-btn:hover{opacity:.85}
+.idp-creds-btn:disabled{opacity:.4;cursor:not-allowed}
+.idp-creds-err{font-size:.65rem;color:var(--red,#ef4444);margin-top:.3rem;display:none}
+.idp-creds-err.visible{display:block}
 .brain-global-pill{padding:.15rem .45rem;border-radius:999px;font-weight:700;letter-spacing:.03em;
   background:rgba(96,165,250,.12);color:#93c5fd;border:1px solid rgba(96,165,250,.24)}
 .brain-global-pill.stub,.brain-global-pill.unconfigured{background:rgba(251,191,36,.12);color:#facc15;border-color:rgba(251,191,36,.2)}
@@ -335,6 +350,8 @@ function _updateIdpStrip(d){
   _buildIdpPopover(prov);
 }
 
+var _externalIdps={okta:true,auth0:true};
+
 function _buildIdpPopover(current){
   var pop=document.getElementById('idpPopover');
   if(!pop)return;
@@ -343,14 +360,90 @@ function _buildIdpPopover(current){
     var item=document.createElement('div');
     item.className='idp-popover-item'+(p===current?' active':'');
     item.textContent=p;
-    item.addEventListener('click',function(e){e.stopPropagation();_switchIdpQuick(p);});
+    item.addEventListener('click',function(e){
+      e.stopPropagation();
+      if(_externalIdps[p]&&p!==current){_showIdpCredsForm(p);}
+      else{_switchIdpQuick(p);}
+    });
     pop.appendChild(item);
   });
+  var form=document.createElement('div');
+  form.className='idp-creds-form';
+  form.id='idpCredsForm';
+  form.innerHTML='<label>Issuer URL</label>'
+    +'<input id="idpIssuer" placeholder="https://your-org.okta.com/oauth2/default">'
+    +'<label>Client ID</label>'
+    +'<input id="idpClientId" placeholder="0oa...">'
+    +'<label>Client Secret</label>'
+    +'<input id="idpClientSecret" type="password" placeholder="secret">'
+    +'<div class="idp-creds-err" id="idpCredsErr"></div>'
+    +'<button class="idp-creds-btn" id="idpCredsSubmit">Connect</button>';
+  form.addEventListener('click',function(e){e.stopPropagation();});
+  pop.appendChild(form);
+}
+
+var _pendingIdpProvider='';
+function _showIdpCredsForm(provider){
+  _pendingIdpProvider=provider;
+  var form=document.getElementById('idpCredsForm');
+  var btn=document.getElementById('idpCredsSubmit');
+  var err=document.getElementById('idpCredsErr');
+  if(!form)return;
+  form.classList.add('visible');
+  btn.textContent='Connect to '+provider;
+  btn.disabled=false;
+  if(err)err.classList.remove('visible');
+  btn.onclick=function(e){e.stopPropagation();_submitIdpCreds();};
+}
+
+function _submitIdpCreds(){
+  var issuer=document.getElementById('idpIssuer').value.trim();
+  var cid=document.getElementById('idpClientId').value.trim();
+  var csec=document.getElementById('idpClientSecret').value.trim();
+  var btn=document.getElementById('idpCredsSubmit');
+  var err=document.getElementById('idpCredsErr');
+
+  if(!issuer||!cid||!csec){
+    if(err){err.textContent='All three fields are required.';err.classList.add('visible');}
+    return;
+  }
+  if(err)err.classList.remove('visible');
+  btn.disabled=true;
+  btn.textContent='Connecting…';
+
+  var payload={idp:{provider:_pendingIdpProvider,issuer_url:issuer,client_id:cid,client_secret:csec}};
+  fetch('/api/config',{method:'PUT',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(payload)})
+    .then(function(r){return r.json().then(function(d){return {ok:r.ok,data:d};});})
+    .then(function(res){
+      btn.disabled=false;
+      if(!res.ok){
+        var msg=res.data.detail||res.data.error||'Connection failed';
+        if(err){err.textContent=msg;err.classList.add('visible');}
+        btn.textContent='Connect to '+_pendingIdpProvider;
+        return;
+      }
+      _updateIdpStrip(res.data);
+      var form=document.getElementById('idpCredsForm');
+      if(form)form.classList.remove('visible');
+      var pop=document.getElementById('idpPopover');
+      if(pop)pop.classList.remove('open');
+      document.getElementById('idpIssuer').value='';
+      document.getElementById('idpClientId').value='';
+      document.getElementById('idpClientSecret').value='';
+      btn.textContent='Connect';
+    })
+    .catch(function(){
+      btn.disabled=false;btn.textContent='Connect to '+_pendingIdpProvider;
+      if(err){err.textContent='Network error';err.classList.add('visible');}
+    });
 }
 
 function _switchIdpQuick(provider){
   var pop=document.getElementById('idpPopover');
   var notice=document.getElementById('idpSwitching');
+  var form=document.getElementById('idpCredsForm');
+  if(form)form.classList.remove('visible');
   if(pop)pop.classList.remove('open');
   if(notice)notice.classList.add('visible');
   fetch('/api/config',{method:'PUT',headers:{'Content-Type':'application/json'},
