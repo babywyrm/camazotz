@@ -197,6 +197,10 @@ def test_zitadel_provider_methods_return_typed_shapes_when_configured(monkeypatc
     )
 
     class _Resp:
+        status_code = 200
+        is_success = True
+        headers: dict = {}
+
         def __init__(self, payload: dict[str, object]) -> None:
             self._payload = payload
 
@@ -206,7 +210,7 @@ def test_zitadel_provider_methods_return_typed_shapes_when_configured(monkeypatc
         def json(self) -> dict[str, object]:
             return self._payload
 
-    def _fake_post(url: str, *, data: dict[str, str], timeout: float):
+    def _fake_post(url: str, *, data: dict[str, str], headers=None, timeout: float = 5.0):
         if "introspect" in url:
             if data["token"] == "zitadel-live":
                 return _Resp({"active": True, "sub": "subj"})
@@ -286,13 +290,17 @@ def test_zitadel_provider_client_credentials_uses_token_endpoint(monkeypatch) ->
     called: dict[str, object] = {}
 
     class _Resp:
+        status_code = 200
+        is_success = True
+        headers: dict = {}
+
         def raise_for_status(self) -> None:
             return None
 
         def json(self) -> dict[str, str]:
             return {"access_token": "real-access"}
 
-    def _fake_post(url: str, *, data: dict[str, str], timeout: float):
+    def _fake_post(url: str, *, data: dict[str, str], headers=None, timeout: float = 5.0):
         called["url"] = url
         called["data"] = data
         called["timeout"] = timeout
@@ -325,13 +333,17 @@ def test_zitadel_provider_introspection_uses_endpoint(monkeypatch) -> None:
     called: dict[str, object] = {}
 
     class _Resp:
+        status_code = 200
+        is_success = True
+        headers: dict = {}
+
         def raise_for_status(self) -> None:
             return None
 
         def json(self) -> dict[str, object]:
             return {"active": True, "sub": "alice@example.com"}
 
-    def _fake_post(url: str, *, data: dict[str, str], timeout: float):
+    def _fake_post(url: str, *, data: dict[str, str], headers=None, timeout: float = 5.0):
         called["url"] = url
         called["data"] = data
         called["timeout"] = timeout
@@ -403,6 +415,10 @@ def test_client_credentials_raises_when_access_token_missing(monkeypatch) -> Non
     )
 
     class _EmptyResp:
+        status_code = 200
+        is_success = True
+        headers: dict = {}
+
         def raise_for_status(self) -> None:
             return None
 
@@ -448,6 +464,10 @@ def test_okta_provider_methods_return_typed_shapes(monkeypatch) -> None:
     )
 
     class _Resp:
+        status_code = 200
+        is_success = True
+        headers: dict = {}
+
         def __init__(self, payload: dict[str, object]) -> None:
             self._payload = payload
 
@@ -457,7 +477,7 @@ def test_okta_provider_methods_return_typed_shapes(monkeypatch) -> None:
         def json(self) -> dict[str, object]:
             return self._payload
 
-    def _fake_post(url: str, *, data: dict[str, str], timeout: float):
+    def _fake_post(url: str, *, data: dict[str, str], headers=None, timeout: float = 5.0):
         if "introspect" in url:
             return _Resp({"active": True, "sub": "okta-user@example.com"})
         return _Resp({"access_token": "okta-access-token"})
@@ -533,6 +553,10 @@ def test_exchange_token_raises_when_access_token_missing(monkeypatch) -> None:
     )
 
     class _EmptyResp:
+        status_code = 200
+        is_success = True
+        headers: dict = {}
+
         def raise_for_status(self) -> None:
             return None
 
