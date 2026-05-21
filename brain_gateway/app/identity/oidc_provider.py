@@ -18,7 +18,6 @@ from urllib.request import Request, urlopen
 
 import httpx
 
-from brain_gateway.app.identity.dpop import DPoPContext
 from brain_gateway.app.identity.types import (
     ClientCredentialsTokenResponse,
     ExchangeTokenResponse,
@@ -50,7 +49,7 @@ class OidcIdentityProvider:
         self.revocation_endpoint = revocation_endpoint
         self.client_id = client_id
         self.client_secret = client_secret
-        self._dpop: DPoPContext | None = None
+        self._dpop = None
         self._dpop_required: bool | None = None
         self._dpop_nonce: str | None = None
 
@@ -75,9 +74,10 @@ class OidcIdentityProvider:
         if not self.token_endpoint:
             raise ValueError("Missing token endpoint")
 
-    def _ensure_dpop(self) -> DPoPContext:
+    def _ensure_dpop(self):
         """Lazily create or return the DPoP context."""
         if self._dpop is None:
+            from brain_gateway.app.identity.dpop import DPoPContext
             self._dpop = DPoPContext()
             _log.info("%s: created ephemeral DPoP key pair", self.provider_name)
         return self._dpop
