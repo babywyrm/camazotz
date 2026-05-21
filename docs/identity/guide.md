@@ -19,14 +19,16 @@ Every MCP security challenge in Camazotz exists because these identity propertie
 
 ### What "IDP-backed" means in Camazotz
 
-Camazotz runs in two identity modes:
+Camazotz runs in multiple identity modes:
 
 | Mode | Behavior |
 |------|----------|
 | `mock` | All token operations use deterministic synthetic values. Safe for CI, fast iteration, and challenges where identity is not the focus. |
-| `zitadel` | Three challenge labs ("the IDP trio") use live HTTP calls to a self-hosted ZITADEL instance for token exchange, introspection, and revocation. Other labs remain unchanged. |
+| `zitadel` | IDP-backed labs use live HTTP calls to a self-hosted ZITADEL instance for token exchange, introspection, and revocation. |
+| `okta` | IDP-backed labs use live HTTP calls to an Okta tenant. Supports DPoP (RFC 9449) auto-negotiation. |
+| `auth0` | IDP-backed labs use live HTTP calls to an Auth0 tenant. |
 
-When you see `_idp_backed: true` in a tool response, that operation went through (or attempted) the real provider path.
+Providers are switchable at runtime via the UI or `PUT /config` API. When you see `_idp_backed: true` in a tool response, that operation went through (or attempted) the real provider path. Additional tags indicate the grant type (`_idp_grant`) and whether real tokens were minted (`_idp_minted`, `_idp_token_real`).
 
 ### The IDP-backed trio
 
@@ -169,7 +171,28 @@ sequenceDiagram
     GW-->>C: JSON-RPC result
 ```
 
-Note that `client_credentials_token` is defined on the provider interface but is not currently invoked by any lab tool path. The three live operations are token exchange, introspection, and revocation.
+The `client_credentials` grant is now actively used by both the `oauth_delegation_lab` (as a fallback when token exchange fails) and the `revocation_lab` (to mint real tokens). When DPoP is required by the IdP (e.g. Okta), the provider auto-negotiates DPoP proofs transparently.
+
+### DPoP (RFC 9449)
+
+When connecting to an IdP that requires DPoP (Demonstrating Proof of Possession), Camazotz handles it transparently:
+
+1. The OIDC provider generates an ephemeral EC P-256 key pair on first use
+2. Token requests include a signed DPoP proof JWT with `htm`, `htu`, and `jti` claims
+3. If the IdP responds with a `use_dpop_nonce` error, the provider retries with the server-provided nonce
+4. Subsequent requests (introspection, revocation) include DPoP proofs with `ath` (access token hash) and cached nonce
+
+DPoP is auto-detected: if the IdP rejects a request with a DPoP-related error, the provider enables DPoP mode and retries. The DPoP context is loaded lazily to avoid crashes on platforms where the `cryptography` library is unavailable.
+
+### Identity Dashboard
+
+The Identity Dashboard (`/identity` in the portal) is the operational hub for IdP management:
+
+- **Live Status** — auto-refreshing cards showing provider, credentials status, and real token count
+- **Token Lifecycle Test** — one-click end-to-end test (mint → introspect → revoke → verify) with JWT decoding
+- **Runtime Switching** — change IdP provider, credentials, and endpoints without restarting
+- **Activity Feed** — live stream of IDP-backed tool events with expandable detail rows
+- **Architecture Reference** — Mermaid diagrams of data flow, degradation paths, and token lifecycle
 
 ### Tool response markers
 
@@ -178,24 +201,34 @@ Every IDP-backed tool response includes:
 | Field | Type | Meaning |
 |-------|------|---------|
 | `_idp_backed` | bool | This operation is wired to the IDP path |
-| `_idp_provider` | string | Active provider name (`zitadel`) |
+| `_idp_provider` | string | Active provider name (`zitadel`, `okta`, `auth0`) |
 | `_idp_degraded` | bool | Provider call failed; fell back to mock |
 | `_idp_reason` | string | Why degradation occurred |
+| `_idp_grant` | string | Grant type used (`token_exchange`, `client_credentials`, `degraded`, `mock`) |
+| `_idp_minted` | bool | A real token was minted from the IdP |
+| `_idp_token_real` | bool | The token in this response is a real IdP token |
 
-### Per-lab ZITADEL integration
+### Per-lab IdP integration
 
-Each IDP-backed lab uses ZITADEL differently. This section walks through exactly what is real (live HTTP to ZITADEL), what is synthetic (lab-generated), and what happens when the provider is degraded.
+Each IDP-backed lab uses the identity provider differently. This section walks through exactly what is real (live HTTP to the IdP), what is synthetic (lab-generated), and what happens when the provider is degraded.
 
 #### oauth_delegation_lab (MCP-T21: Confused Deputy)
 
 **Tools:** `oauth.exchange_token`, `oauth.list_connections`, `oauth.call_downstream`
 
-**ZITADEL integration:** Only `oauth.exchange_token` makes a ZITADEL HTTP call. It performs an RFC 8693 token exchange: the lab sends the principal's email as the `subject_token` to the ZITADEL token endpoint with `grant_type=urn:ietf:params:oauth:grant-type:token-exchange`. The other two tools operate entirely on the lab's in-memory token store.
+**IdP integration:** `oauth.exchange_token` attempts a fallback chain against the configured IdP:
+
+1. **Token exchange** (RFC 8693) — sends the principal's email as `subject_token` with `grant_type=urn:ietf:params:oauth:grant-type:token-exchange`
+2. **Client credentials** — if token exchange fails, falls back to `client_credentials` grant with scope from `CAMAZOTZ_IDP_CC_SCOPE` (default `api`)
+3. **Synthetic** — if both fail, generates a synthetic token and marks the response `_idp_degraded`
+
+The grant type used is reported as `_idp_grant` in the tool response. The other two tools operate entirely on the lab's in-memory token store.
 
 | Artifact | What provides it |
 |----------|-----------------|
 | Initial principal/service tokens in `TOKEN_STORE` | Synthetic (lab-generated) |
-| Exchange `access_token` | ZITADEL (real token from token endpoint) |
+| Exchange `access_token` | IdP (real token) or synthetic fallback |
+| `_idp_grant` | `token_exchange`, `client_credentials`, `degraded`, or `mock` |
 | `_normalized_identity` claims envelope | Environment config (`CAMAZOTZ_LAB_IDENTITY_CLAIMS_JSON`) shaped by `normalize_claims()` |
 | Downstream validation (`call_downstream`) | Synthetic (in-memory token check) |
 
@@ -205,18 +238,21 @@ Each IDP-backed lab uses ZITADEL differently. This section walks through exactly
 
 **Tools:** `revocation.issue_token`, `revocation.use_token`, `revocation.revoke_principal`
 
-**ZITADEL integration:** Two of three tools make ZITADEL HTTP calls. `revoke_principal` calls the revocation endpoint for each token being revoked. `use_token` calls the introspection endpoint to check whether a token is active. `issue_token` does **not** call ZITADEL — it mints synthetic `cztz-access-*` strings locally and only adds `_idp_provider`/`_idp_backed` metadata tags.
+**IdP integration:** All three tools interact with the IdP when one is active:
+
+- **`issue_token`** — now mints real access tokens via `client_credentials_token()` when a live IdP is connected. The response includes `_idp_minted: true` and the actual JWT from the IdP. Falls back to synthetic `cztz-access-*` strings if minting fails.
+- **`use_token`** — calls the introspection endpoint to check whether a token is active.
+- **`revoke_principal`** — calls the revocation endpoint for each token being revoked. Includes `_idp_token_real` in the response when revoking real tokens.
 
 | Artifact | What provides it |
 |----------|-----------------|
-| Issued tokens (`cztz-access-*` strings) | Synthetic (lab-generated, no ZITADEL call) |
+| Issued tokens | IdP (real JWT via `client_credentials`) or synthetic (`cztz-access-*`) |
 | Token valid/revoked state tracking | Synthetic (lab's in-memory `TOKENS` dict) |
-| Revocation confirmation | ZITADEL (real HTTP POST to `/oauth/v2/revoke`) |
-| Token active/inactive check | ZITADEL (real HTTP POST to `/oauth/v2/introspect`) |
+| Revocation confirmation | IdP (real HTTP POST to revocation endpoint) |
+| Token active/inactive check | IdP (real HTTP POST to introspection endpoint) |
+| `_idp_minted` / `_idp_token_real` | Tags indicating whether real IdP tokens were used |
 
-**Important subtlety:** The mock provider's `introspect_token` returns `active: true` only for tokens starting with `mock-`. Lab tokens start with `cztz-access-`, so mock introspection always returns `active: false` — the same result you get from real ZITADEL (which has no record of lab-minted tokens). The difference is that with real ZITADEL, introspection failure reflects genuine token lifecycle behavior rather than a prefix check.
-
-**Degraded behavior:** If `revoke_token` raises, the response gets `_idp_degraded: true, _idp_reason: "revocation_call_failed"`. If `introspect_token` raises, the response gets `_idp_token_status: "introspection_error"` and `_idp_degraded: true`. In both cases the lab's own valid/revoked tracking still works — degradation only affects the ZITADEL-side confirmation.
+**Degraded behavior:** If `client_credentials_token` fails during minting, the lab silently falls back to synthetic tokens. If `revoke_token` raises, the response gets `_idp_degraded: true, _idp_reason: "revocation_call_failed"`. If `introspect_token` raises, the response gets `_idp_token_status: "introspection_error"` and `_idp_degraded: true`. In both cases the lab's own valid/revoked tracking still works — degradation only affects the IdP-side confirmation.
 
 #### rbac_lab (MCP-T20: RBAC Bypass)
 

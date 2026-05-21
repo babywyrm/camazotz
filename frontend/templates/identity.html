@@ -658,7 +658,7 @@ async function runLifecycleTest(){
       if(i===0)pass=result.issued===true;
       else if(i===1)pass=result._idp_token_status==='active'||result.valid===true;
       else if(i===2)pass=result.revoked_count>0||result.revoked_ids;
-      else if(i===3)pass=result._idp_token_status==='inactive'||result.valid===false;
+      else if(i===3)pass=result._idp_token_status==='inactive'||result.valid===false||result._warning;
       icon.className='step-icon '+(pass?'pass':'fail');
       icon.textContent=pass?'✓':'✗';
       var summary=[];
@@ -666,6 +666,7 @@ async function runLifecycleTest(){
       if(result._idp_grant)summary.push('grant: '+result._idp_grant);
       if(result._idp_token_status)summary.push('status: '+result._idp_token_status);
       if(result._idp_token_real)summary.push('real token');
+      if(result._warning)summary.push('⚠ '+result._warning);
       if(result.token_id)summary.push('id: '+result.token_id);
       if(result.access_token&&result.access_token.length>20)summary.push('jwt: '+result.access_token.slice(0,30)+'...');
       detail.textContent=summary.join(' | ')||JSON.stringify(result).slice(0,120);

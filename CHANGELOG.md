@@ -3,6 +3,63 @@
 All notable changes to Camazotz are documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## Identity Dashboard Overhaul (2026-05-21)
+
+### Added
+
+- **Live status panel** — three auto-refreshing stat cards (Provider, Credentials, Real Tokens Minted) that poll `/api/config` every 10 seconds. Provider shows color-coded health (green/yellow/grey), credentials show configured/missing/N/A, and token counter tracks IdP-minted tokens from the observer feed.
+- **Token lifecycle test** — one-click "Run Token Lifecycle Test" button executes a full 4-step cycle (mint → introspect → revoke → verify revocation) against the active IdP. Each step shows pass/fail icons with detailed summary including grant type, token ID, and real vs synthetic status.
+- **JWT decoder** — inline base64url JWT decoder renders header (purple) and payload (green) with expiry countdown when real tokens are minted during the lifecycle test.
+- **Expandable feed rows** — every event in the Live IDP Activity feed is now clickable to expand and inspect the full result payload JSON. JWT tokens are flagged with a badge.
+- **DPoP auto-detection badge** — Live Status panel shows a DPoP badge when a real IdP is active, indicating transparent DPoP proof generation is available.
+
+### Changed
+
+- **Replaced static Jinja-rendered status** with JavaScript-driven live polling via `refreshLiveStatus()`, eliminating the need to reload the page to see provider changes.
+- **Auto-refresh now updates both** the activity feed and the live status panel simultaneously.
+- **IdP switcher and reset** now trigger immediate live status refreshes.
+
+---
+
+## Transparent DPoP Support (2026-05-21)
+
+### Added
+
+- **`brain_gateway/app/identity/dpop.py`** — DPoP proof generator (RFC 9449) using ephemeral EC P-256 key pairs. Generates signed DPoP proof JWTs with `htm`, `htu`, `jti`, `iat`, optional `ath` (access token hash), and optional `nonce` claims.
+- **Auto-negotiation in `OidcIdentityProvider`** — 3-step DPoP handshake (no-proof → proof-without-nonce → proof-with-nonce) for `client_credentials_token()`. DPoP requirement is auto-detected and cached. `introspect_token()` and `revoke_token()` include DPoP proofs with `ath` and `nonce` when required.
+- **Lazy DPoP loading** — `DPoPContext` is imported lazily via `_ensure_dpop()` to prevent `SIGILL` crashes from the `cryptography` library on ARM Docker containers when DPoP is not in use.
+- **`PyJWT[crypto]`** added to `pyproject.toml` dependencies.
+- **20 DPoP tests** in `tests/test_dpop_proof.py` covering JWT structure, claims, signature verification, key reuse, `ath`, `nonce`, and OIDC provider integration.
+
+---
+
+## Operationalize IdP Labs (2026-05-21)
+
+### Added
+
+- **OAuth delegation fallback chain** — `oauth_delegation_lab` now tries `token_exchange` → `client_credentials` → synthetic, returning the grant type as `_idp_grant` tag in results.
+- **Real token minting in revocation lab** — `revocation_lab` mints real access tokens via `client_credentials_token()` when a live IdP is active. Results include `_idp_minted` and `_idp_token_real` tags.
+- **Configurable client_credentials scope** — both labs use `CAMAZOTZ_IDP_CC_SCOPE` env var (default `api`) instead of hardcoded `openid`, fixing Okta compatibility.
+- **Identity Dashboard badges** — REAL/SYNTHETIC token badges and grant type badges in the activity feed.
+- **Playground search filter** — search/filter input in the Playground sidebar for tool discoverability. Supports name, description, and category matching with Escape to clear and Enter to select.
+- 8 new tests across `test_oauth_delegation_lab.py` and `test_revocation_lab.py`.
+
+---
+
+## IdP UX Maturation (2026-05-20)
+
+### Added
+
+- **OIDC auto-discovery** — `PUT /config` with `issuer_url` automatically fetches `.well-known/openid-configuration` to populate token, introspection, and revocation endpoints.
+- **Auth0 support** — added `auth0` as a valid IdP provider option alongside `mock`, `zitadel`, and `okta`.
+- **Observer events for IdP switches** — `record_idp_switch()` writes `__idp_switch__` events to the observer ring buffer.
+- **`idp_credentials_configured`** field in `GET /config` and `PUT /config` responses.
+- **`idp_endpoints`** block in config responses with issuer, token, introspection, and revocation URLs.
+- **Identity Dashboard** (`/identity`) — dedicated portal page with live provider status, runtime IdP switching, activity feed, and architecture reference diagrams.
+- 7 new tests in `test_runtime_idp_switching.py`.
+
+---
+
 ## Brain Switch Hardening (2026-05-19)
 
 ### Added
