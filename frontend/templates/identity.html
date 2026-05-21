@@ -16,7 +16,8 @@
 .id-section-title .dot.off{background:var(--muted)}
 
 .id-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem}
-@media(max-width:768px){.id-grid{grid-template-columns:1fr}}
+.id-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1.25rem}
+@media(max-width:768px){.id-grid,.id-grid-3{grid-template-columns:1fr}}
 
 .id-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem}
 .id-card-label{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:.5rem}
@@ -24,6 +25,10 @@
 .id-card-value.green{color:var(--green)}
 .id-card-value.yellow{color:var(--yellow)}
 .id-card-value.muted{color:var(--muted)}
+.id-card-stat{font-size:1.8rem;font-weight:800;letter-spacing:-.02em;line-height:1}
+.id-card-stat.green{color:var(--green)}
+.id-card-stat.yellow{color:var(--yellow)}
+.id-card-stat.muted{color:var(--muted)}
 
 .id-endpoints{width:100%}
 .id-endpoints td{padding:.4rem .6rem;font-size:.78rem;font-family:var(--font-mono);border-bottom:1px solid var(--border);vertical-align:top}
@@ -34,6 +39,7 @@
 .id-pill.on{background:rgba(34,197,94,.15);color:#86efac;border:1px solid rgba(34,197,94,.25)}
 .id-pill.off{background:var(--surface2);color:var(--text2);border:1px solid var(--border)}
 .id-pill.degraded{background:rgba(251,191,36,.12);color:#facc15;border:1px solid rgba(251,191,36,.2)}
+.id-pill.dpop{background:rgba(99,102,241,.15);color:#a5b4fc;border:1px solid rgba(99,102,241,.25)}
 
 .id-tags{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.3rem}
 .id-tag{font-size:.7rem;padding:.15rem .45rem;border-radius:5px;background:var(--surface2);color:var(--text2);border:1px solid var(--border)}
@@ -56,7 +62,11 @@
   color:var(--muted);text-align:left;padding:.4rem .6rem;border-bottom:1px solid var(--border)}
 .id-feed-table td{padding:.4rem .6rem;font-size:.78rem;font-family:var(--font-mono);
   border-bottom:1px solid var(--border);vertical-align:top}
+.id-feed-row{cursor:pointer;transition:background .15s}
 .id-feed-row:hover{background:var(--surface2)}
+.id-feed-detail{display:none;background:var(--bg2);border-bottom:1px solid var(--border)}
+.id-feed-detail td{padding:.75rem 1rem;font-size:.72rem}
+.id-feed-detail.open{display:table-row}
 .id-badge-backed{display:inline-block;padding:.12rem .4rem;border-radius:5px;font-size:.62rem;
   font-weight:700;text-transform:uppercase;background:rgba(16,185,129,.12);color:var(--green)}
 .id-badge-degraded{display:inline-block;padding:.12rem .4rem;border-radius:5px;font-size:.62rem;
@@ -67,7 +77,37 @@
   font-weight:700;text-transform:uppercase;background:rgba(251,191,36,.1);color:#fbbf24;border:1px solid rgba(251,191,36,.2)}
 .id-badge-grant{display:inline-block;padding:.12rem .4rem;border-radius:5px;font-size:.58rem;
   font-weight:600;text-transform:uppercase;letter-spacing:.03em;background:var(--surface2);color:var(--text2);border:1px solid var(--border)}
+.id-badge-dpop{display:inline-block;padding:.12rem .4rem;border-radius:5px;font-size:.62rem;
+  font-weight:700;text-transform:uppercase;background:rgba(99,102,241,.12);color:#a5b4fc;border:1px solid rgba(99,102,241,.2)}
 .id-empty{padding:1.5rem;text-align:center;color:var(--muted);font-size:.82rem}
+
+.id-test-btn{background:var(--accent);color:#fff;border:none;border-radius:6px;padding:.5rem 1.2rem;
+  font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s;width:100%}
+.id-test-btn:hover{background:var(--accent2);transform:translateY(-1px)}
+.id-test-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.id-test-step{display:flex;align-items:center;gap:.6rem;padding:.4rem 0;font-size:.78rem}
+.id-test-step .step-icon{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-size:.6rem;font-weight:700;flex-shrink:0}
+.id-test-step .step-icon.pending{background:var(--surface2);color:var(--muted);border:1px solid var(--border)}
+.id-test-step .step-icon.running{background:rgba(99,102,241,.15);color:#a5b4fc;border:1px solid rgba(99,102,241,.3);animation:pulse 1s infinite}
+.id-test-step .step-icon.pass{background:rgba(34,197,94,.15);color:#4ade80;border:1px solid rgba(34,197,94,.3)}
+.id-test-step .step-icon.fail{background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.3)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+.id-test-detail{font-family:var(--font-mono);font-size:.7rem;color:var(--text2);margin-left:1.6rem;
+  word-break:break-all;max-height:60px;overflow:auto}
+
+.jwt-decode{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);
+  padding:1rem;margin-top:.75rem;font-family:var(--font-mono);font-size:.72rem;line-height:1.6;
+  max-height:300px;overflow:auto}
+.jwt-section{margin-bottom:.5rem}
+.jwt-section-label{font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;
+  color:var(--muted);margin-bottom:.2rem}
+.jwt-section pre{white-space:pre-wrap;word-break:break-all;color:var(--text2)}
+.jwt-section.header pre{color:#a5b4fc}
+.jwt-section.payload pre{color:#86efac}
+.jwt-expiry{font-size:.72rem;margin-top:.4rem}
+.jwt-expiry.valid{color:var(--green)}
+.jwt-expiry.expired{color:#f87171}
 
 .id-ref{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem;margin-bottom:1.25rem}
 .id-ref h4{font-size:.9rem;font-weight:700;margin-bottom:.8rem}
@@ -90,61 +130,63 @@
     <p>Live identity provider status, runtime switching, IDP-backed tool activity, and architecture reference.</p>
   </div>
 
-  <!-- ─── Status Panel ─── -->
+  <!-- ─── Live Status Panel ─── -->
   <div class="id-section">
     <div class="id-section-title">
-      <span class="dot {% if idp_provider != 'mock' and not idp_degraded %}ok{% elif idp_degraded %}warn{% else %}off{% endif %}"></span>
-      Provider Status
+      <span class="dot" id="statusDot"></span>
+      Live Status
+      <span style="margin-left:auto;font-size:.68rem;color:var(--muted)" id="statusAge"></span>
     </div>
-    <div class="id-grid">
+    <div class="id-grid-3">
       <div class="id-card">
-        <div class="id-card-label">Provider Mode</div>
-        <div class="id-card-value">
-          <span class="id-pill {% if idp_provider != 'mock' %}{% if idp_degraded %}degraded{% else %}on{% endif %}{% else %}off{% endif %}">
-            {{ idp_provider }}
-          </span>
-          {% if idp_degraded %}
-          <span style="font-size:.78rem;color:var(--yellow);margin-left:.5rem">{{ idp_reason }}</span>
-          {% endif %}
-        </div>
-        {% if idp_provider == 'zitadel' %}
-        <a href="{{ zitadel_console_url }}" target="_blank" rel="noopener" class="id-console-link">
-          ZITADEL Console
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-        </a>
-        {% endif %}
+        <div class="id-card-label">Provider</div>
+        <div id="liveProvider" class="id-card-stat muted">—</div>
+        <div id="liveDpop" style="margin-top:.4rem"></div>
+      </div>
+      <div class="id-card">
+        <div class="id-card-label">Credentials</div>
+        <div id="liveCreds" class="id-card-stat muted">—</div>
+        <div id="liveHealth" style="margin-top:.4rem;font-size:.75rem;color:var(--muted)"></div>
+      </div>
+      <div class="id-card">
+        <div class="id-card-label">Real Tokens Minted</div>
+        <div id="liveTokenCount" class="id-card-stat muted">0</div>
+        <div id="liveTokenNote" style="margin-top:.4rem;font-size:.72rem;color:var(--muted)"></div>
+      </div>
+    </div>
+
+    <div class="id-grid" style="margin-top:1.25rem">
+      <div class="id-card">
+        <div class="id-card-label">Active Endpoints</div>
+        <table class="id-endpoints" id="liveEndpoints">
+          <tr><td>Issuer</td><td id="epIssuer">—</td></tr>
+          <tr><td>Token</td><td id="epToken">—</td></tr>
+          <tr><td>Introspection</td><td id="epIntrospect">—</td></tr>
+          <tr><td>Revocation</td><td id="epRevoke">—</td></tr>
+        </table>
       </div>
       <div class="id-card">
         <div class="id-card-label">IDP-Backed Labs</div>
-        <div class="id-tags">
-          {% for lab in idp_backed_labs %}
-          <span class="id-tag backed">{{ lab }}</span>
-          {% endfor %}
-        </div>
+        <div class="id-tags" id="liveLabs"></div>
         <div class="id-card-label" style="margin-top:.8rem">IDP-Backed Tools</div>
-        <div class="id-tags">
-          {% for tool in idp_backed_tools %}
-          <span class="id-tag backed">{{ tool }}</span>
-          {% endfor %}
-        </div>
+        <div class="id-tags" id="liveTools"></div>
       </div>
     </div>
+  </div>
 
-    {% if idp_endpoints %}
-    <div class="id-card" style="margin-top:1.25rem">
-      <div class="id-card-label">Active Endpoints</div>
-      <table class="id-endpoints">
-        <tr><td>Issuer</td><td>{{ idp_endpoints.get('issuer', '—') }}</td></tr>
-        <tr><td>Token</td><td>{{ idp_endpoints.get('token', '—') }}</td></tr>
-        <tr><td>Introspection</td><td>{{ idp_endpoints.get('introspection', '—') }}</td></tr>
-        <tr><td>Revocation</td><td>{{ idp_endpoints.get('revocation', '—') }}</td></tr>
-      </table>
+  <!-- ─── Quick Test ─── -->
+  <div class="id-section">
+    <div class="id-section-title">
+      <span class="dot ok"></span>
+      Token Lifecycle Test
     </div>
-    {% endif %}
-
-    <div class="id-card" style="margin-top:1.25rem">
-      <div class="id-card-label">Health Probe</div>
-      <div id="healthResult" style="font-size:.82rem;color:var(--muted)">Checking...</div>
+    <div class="id-card">
+      <p style="font-size:.78rem;color:var(--text2);margin-bottom:1rem">
+        One-click end-to-end test: mint a real token via client_credentials, introspect it, revoke it, verify revocation. Only works when a live IdP is connected.
+      </p>
+      <button class="id-test-btn" id="testBtn" onclick="runLifecycleTest()">Run Token Lifecycle Test</button>
+      <div id="testSteps" style="margin-top:1rem"></div>
+      <div id="jwtDecode"></div>
     </div>
   </div>
 
@@ -380,6 +422,8 @@ mermaid.initialize({startOnLoad:true, theme:'dark', themeVariables:{
 
 var _idpEvents=[];
 var _idpTimer=null;
+var _liveConfig={};
+var _realTokenCount=0;
 
 function formatTs(ts){
   if(!ts)return '';
@@ -394,6 +438,104 @@ function esc(s){
   return d.innerHTML;
 }
 
+function decodeJwt(token){
+  try{
+    var parts=token.split('.');
+    if(parts.length!==3)return null;
+    var header=JSON.parse(atob(parts[0].replace(/-/g,'+').replace(/_/g,'/')));
+    var payload=JSON.parse(atob(parts[1].replace(/-/g,'+').replace(/_/g,'/')));
+    return {header:header,payload:payload,signature:parts[2].slice(0,20)+'...'};
+  }catch(e){return null;}
+}
+
+function renderJwtDecode(token,targetId){
+  var el=document.getElementById(targetId);
+  if(!el)return;
+  var decoded=decodeJwt(token);
+  if(!decoded){el.innerHTML='';return;}
+  var expiry='';
+  if(decoded.payload.exp){
+    var expDate=new Date(decoded.payload.exp*1000);
+    var now=new Date();
+    var diff=expDate-now;
+    if(diff>0){
+      var mins=Math.floor(diff/60000);
+      expiry='<div class="jwt-expiry valid">Expires in '+mins+'m ('+expDate.toLocaleTimeString()+')</div>';
+    }else{
+      expiry='<div class="jwt-expiry expired">Expired '+expDate.toLocaleTimeString()+'</div>';
+    }
+  }
+  el.innerHTML='<div class="jwt-decode">'+
+    '<div class="jwt-section header"><div class="jwt-section-label">Header</div><pre>'+esc(JSON.stringify(decoded.header,null,2))+'</pre></div>'+
+    '<div class="jwt-section payload"><div class="jwt-section-label">Payload</div><pre>'+esc(JSON.stringify(decoded.payload,null,2))+'</pre></div>'+
+    expiry+'</div>';
+}
+
+async function refreshLiveStatus(){
+  try{
+    var t0=performance.now();
+    var resp=await fetch('/api/config');
+    var ms=Math.round(performance.now()-t0);
+    _liveConfig=await resp.json();
+    var d=_liveConfig;
+    var prov=d.idp_provider||'mock';
+    var dot=document.getElementById('statusDot');
+    var provEl=document.getElementById('liveProvider');
+    var credsEl=document.getElementById('liveCreds');
+    var healthEl=document.getElementById('liveHealth');
+    var dpopEl=document.getElementById('liveDpop');
+    var ageEl=document.getElementById('statusAge');
+
+    provEl.textContent=prov;
+    if(prov!=='mock'&&!d.idp_degraded){
+      dot.className='dot ok';
+      provEl.className='id-card-stat green';
+      healthEl.innerHTML='<span style="color:var(--green)">Healthy</span> ('+ms+'ms)';
+    }else if(d.idp_degraded){
+      dot.className='dot warn';
+      provEl.className='id-card-stat yellow';
+      healthEl.innerHTML='<span style="color:var(--yellow)">Degraded</span> — '+esc(d.idp_reason||'');
+    }else{
+      dot.className='dot off';
+      provEl.className='id-card-stat muted';
+      healthEl.innerHTML='No IdP connection';
+    }
+
+    if(d.idp_credentials_configured){
+      credsEl.textContent='Configured';
+      credsEl.className='id-card-stat green';
+    }else if(prov!=='mock'){
+      credsEl.textContent='Missing';
+      credsEl.className='id-card-stat yellow';
+    }else{
+      credsEl.textContent='N/A';
+      credsEl.className='id-card-stat muted';
+    }
+
+    dpopEl.innerHTML=(prov!=='mock')?'<span class="id-pill dpop">DPoP auto</span>':'';
+
+    ageEl.textContent='Updated '+new Date().toLocaleTimeString();
+
+    var ep=d.idp_endpoints||{};
+    document.getElementById('epIssuer').textContent=ep.issuer||'—';
+    document.getElementById('epToken').textContent=ep.token||'—';
+    document.getElementById('epIntrospect').textContent=ep.introspection||'—';
+    document.getElementById('epRevoke').textContent=ep.revocation||'—';
+
+    var labsEl=document.getElementById('liveLabs');
+    labsEl.innerHTML=(d.idp_backed_labs||[]).map(function(l){return '<span class="id-tag backed">'+esc(l)+'</span>';}).join('');
+    var toolsEl=document.getElementById('liveTools');
+    toolsEl.innerHTML=(d.idp_backed_tools||[]).map(function(t){return '<span class="id-tag backed">'+esc(t)+'</span>';}).join('');
+
+    var sel=document.getElementById('idpSwitchProvider');
+    if(sel&&!sel._userEdited)sel.value=prov;
+  }catch(e){
+    document.getElementById('statusDot').className='dot off';
+    document.getElementById('liveProvider').textContent='Error';
+    document.getElementById('liveProvider').className='id-card-stat muted';
+  }
+}
+
 function renderIdpFeed(){
   var el=document.getElementById('idpFeedContent');
   var filter=document.getElementById('idpFilter').value;
@@ -402,8 +544,17 @@ function renderIdpFeed(){
     if(filter==='degraded')return ev.idp_degraded;
     return ev.idp_backed||ev.idp_degraded;
   });
+  _realTokenCount=_idpEvents.filter(function(ev){var r=ev.result||{};return r._idp_minted||r._idp_token_real;}).length;
+  var countEl=document.getElementById('liveTokenCount');
+  if(countEl){
+    countEl.textContent=_realTokenCount;
+    countEl.className='id-card-stat '+(_realTokenCount>0?'green':'muted');
+  }
+  var noteEl=document.getElementById('liveTokenNote');
+  if(noteEl)noteEl.textContent=_realTokenCount>0?'From live IdP':'No real tokens yet';
+
   if(!filtered.length){
-    el.innerHTML='<div class="id-empty">No IDP events yet. Use the Playground to invoke an IDP-backed tool.</div>';
+    el.innerHTML='<div class="id-empty">No IDP events yet. Use the Playground or run the lifecycle test above.</div>';
     return;
   }
   var html='<table class="id-feed-table"><thead><tr><th>Time</th><th>Tool</th><th>Status</th><th>Token</th><th>Outcome</th><th>Reason</th></tr></thead><tbody>';
@@ -420,10 +571,10 @@ function renderIdpFeed(){
       tokenBadge='<span class="id-badge-synthetic">SYNTHETIC</span>';
     }
     var grantBadge='';
-    if(r._idp_grant){
-      grantBadge=' <span class="id-badge-grant">'+esc(r._idp_grant)+'</span>';
-    }
-    html+='<tr class="id-feed-row">'+
+    if(r._idp_grant) grantBadge=' <span class="id-badge-grant">'+esc(r._idp_grant)+'</span>';
+
+    var rowId='feed-detail-'+i;
+    html+='<tr class="id-feed-row" onclick="toggleFeedDetail(\''+rowId+'\')">'+
       '<td style="color:var(--muted)">'+esc(formatTs(ev.timestamp))+'</td>'+
       '<td style="color:var(--accent2)">'+esc(ev.tool_name)+'</td>'+
       '<td>'+badge+grantBadge+'</td>'+
@@ -431,9 +582,21 @@ function renderIdpFeed(){
       '<td>'+esc(ev.outcome||'—')+'</td>'+
       '<td style="color:var(--muted)">'+esc(ev.idp_reason||'—')+'</td>'+
       '</tr>';
+    var detailContent=JSON.stringify(r,null,2);
+    var tokenPreview='';
+    if(r.access_token&&r.access_token.length>20){
+      var dec=decodeJwt(r.access_token);
+      if(dec)tokenPreview='<div style="margin-top:.5rem"><span class="id-badge-dpop">JWT</span> <span style="color:var(--muted);font-size:.68rem">click to decode in test panel</span></div>';
+    }
+    html+='<tr class="id-feed-detail" id="'+rowId+'"><td colspan="6"><pre style="white-space:pre-wrap;max-height:200px;overflow:auto;color:var(--text2);font-size:.7rem">'+esc(detailContent)+'</pre>'+tokenPreview+'</td></tr>';
   }
   html+='</tbody></table>';
   el.innerHTML=html;
+}
+
+function toggleFeedDetail(id){
+  var el=document.getElementById(id);
+  if(el)el.classList.toggle('open');
 }
 
 async function fetchIdpEvents(){
@@ -450,31 +613,74 @@ function toggleIdpAuto(){
   _idpTimer=null;
   if(document.getElementById('idpAutoRefresh').checked){
     var interval=parseInt(document.getElementById('idpPollInterval').value)||2000;
-    _idpTimer=setInterval(fetchIdpEvents,interval);
+    _idpTimer=setInterval(function(){fetchIdpEvents();refreshLiveStatus();},interval);
   }
 }
 
-async function checkHealth(){
-  var el=document.getElementById('healthResult');
-  try{
-    var t0=performance.now();
-    var resp=await fetch('/api/config');
-    var ms=Math.round(performance.now()-t0);
-    var d=await resp.json();
-    var prov=d.idp_provider||'mock';
-    if(prov!=='mock'&&!d.idp_degraded){
-      el.innerHTML='<span style="color:var(--green);font-weight:600">Healthy</span> — '+esc(prov)+' reachable ('+ms+'ms)';
-    }else if(d.idp_degraded){
-      el.innerHTML='<span style="color:var(--yellow);font-weight:600">Degraded</span> — '+esc(d.idp_reason||'IdP unreachable')+' ('+ms+'ms)';
-    }else{
-      el.innerHTML='<span style="color:var(--muted);font-weight:600">Mock mode</span> — no IdP connection ('+ms+'ms)';
+async function runLifecycleTest(){
+  var btn=document.getElementById('testBtn');
+  var steps=document.getElementById('testSteps');
+  var jwtEl=document.getElementById('jwtDecode');
+  btn.disabled=true;
+  jwtEl.innerHTML='';
+  var stepDefs=[
+    {label:'Mint token (client_credentials)',tool:'revocation.issue_token',args:{principal:'lifecycle-test@camazotz',service:'test-svc'}},
+    {label:'Introspect (expect active)',tool:'revocation.use_token',args:{}},
+    {label:'Revoke principal',tool:'revocation.revoke_principal',args:{principal:'lifecycle-test@camazotz'}},
+    {label:'Verify revocation (expect inactive)',tool:'revocation.use_token',args:{}},
+  ];
+  steps.innerHTML=stepDefs.map(function(s,i){
+    return '<div class="id-test-step" id="step-'+i+'">'+
+      '<span class="step-icon pending">'+(i+1)+'</span>'+
+      '<span>'+esc(s.label)+'</span></div>'+
+      '<div class="id-test-detail" id="step-detail-'+i+'"></div>';
+  }).join('');
+
+  var tokenId=null;
+  for(var i=0;i<stepDefs.length;i++){
+    var icon=document.querySelector('#step-'+i+' .step-icon');
+    var detail=document.getElementById('step-detail-'+i);
+    icon.className='step-icon running';
+    icon.textContent='⟳';
+    var s=stepDefs[i];
+    var args=Object.assign({},s.args);
+    if(s.tool==='revocation.use_token'&&tokenId)args.token_id=tokenId;
+    try{
+      var resp=await fetch('/api/call',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:s.tool,arguments:args})});
+      var data=await resp.json();
+      var result={};
+      try{
+        var content=(data.result||{}).content||[];
+        for(var c=0;c<content.length;c++){if(content[c].type==='text'){result=JSON.parse(content[c].text);break;}}
+      }catch(pe){result=data.result||data;}
+      if(i===0&&result.token_id)tokenId=result.token_id;
+      var pass=false;
+      if(i===0)pass=result.issued===true;
+      else if(i===1)pass=result._idp_token_status==='active'||result.valid===true;
+      else if(i===2)pass=result.revoked_count>0||result.revoked_ids;
+      else if(i===3)pass=result._idp_token_status==='inactive'||result.valid===false;
+      icon.className='step-icon '+(pass?'pass':'fail');
+      icon.textContent=pass?'✓':'✗';
+      var summary=[];
+      if(result._idp_minted)summary.push('REAL token');
+      if(result._idp_grant)summary.push('grant: '+result._idp_grant);
+      if(result._idp_token_status)summary.push('status: '+result._idp_token_status);
+      if(result._idp_token_real)summary.push('real token');
+      if(result.token_id)summary.push('id: '+result.token_id);
+      if(result.access_token&&result.access_token.length>20)summary.push('jwt: '+result.access_token.slice(0,30)+'...');
+      detail.textContent=summary.join(' | ')||JSON.stringify(result).slice(0,120);
+      if(i===0&&result.access_token&&result.access_token.length>20){
+        renderJwtDecode(result.access_token,'jwtDecode');
+      }
+    }catch(e){
+      icon.className='step-icon fail';
+      icon.textContent='✗';
+      detail.textContent='Error: '+e.message;
     }
-    // sync switcher dropdown with current state
-    var sel=document.getElementById('idpSwitchProvider');
-    if(sel&&!sel._userEdited)sel.value=prov;
-  }catch(e){
-    el.innerHTML='<span style="color:var(--red);font-weight:600">Error</span> — gateway unreachable';
   }
+  btn.disabled=false;
+  fetchIdpEvents();
+  refreshLiveStatus();
 }
 
 async function applyIdpSwitch(){
@@ -498,7 +704,8 @@ async function applyIdpSwitch(){
     var d=await resp.json();
     status.textContent='Switched to '+esc(d.idp_provider||provider)+(d.idp_provider!==provider?' (labs reset)':'');
     status.style.color='var(--green)';
-    checkHealth();
+    refreshLiveStatus();
+    fetchIdpEvents();
     setTimeout(function(){status.textContent='';},5000);
   }catch(e){
     status.textContent='Failed: '+e.message;
@@ -526,7 +733,8 @@ async function resetIdpToEnv(){
     document.getElementById('idpSwitchClientId').value='';
     document.getElementById('idpSwitchClientSecret').value='';
     document.getElementById('idpSwitchProvider')._userEdited=false;
-    checkHealth();
+    refreshLiveStatus();
+    fetchIdpEvents();
     setTimeout(function(){status.textContent='';},5000);
   }catch(e){
     status.textContent='Failed: '+e.message;
@@ -537,8 +745,8 @@ async function resetIdpToEnv(){
 // Mark dropdown as user-edited once touched
 document.getElementById('idpSwitchProvider').addEventListener('change',function(){this._userEdited=true;});
 
-checkHealth();
+refreshLiveStatus();
 fetchIdpEvents();
-setInterval(checkHealth,15000);
+setInterval(refreshLiveStatus,10000);
 </script>
 {% endblock %}
