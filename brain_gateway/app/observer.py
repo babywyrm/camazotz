@@ -24,6 +24,7 @@ _total_recorded: int = 0
 _GRANT_KEYS = frozenset({
     "token", "approved", "registered", "executed", "allowed",
     "found", "triggered", "exchanged", "recorded", "billed",
+    "issued", "valid", "revoked_count",
 })
 
 # Strong denial cues only — avoid bare "suspicious" (false positives on
