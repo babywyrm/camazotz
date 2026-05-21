@@ -380,6 +380,127 @@ def test_put_config_idp_auto_discovers_endpoints(monkeypatch) -> None:
         _cleanup()
 
 
+def test_put_config_idp_returns_enriched_response(monkeypatch) -> None:
+    """PUT /config response includes all IdP fields matching GET /config."""
+    monkeypatch.setattr(identity_service, "_idp_is_reachable", lambda _url: False)
+    client = TestClient(app)
+    resp = client.put("/config", json={
+        "idp": {
+            "provider": "okta",
+            "token_endpoint": "https://okta.example/v1/token",
+            "issuer_url": "https://okta.example",
+            "client_id": "test-cid",
+            "client_secret": "test-secret",
+        },
+    })
+    try:
+        data = resp.json()
+        assert "idp_provider" in data
+        assert "idp_degraded" in data
+        assert "idp_reason" in data
+        assert "idp_backed_labs" in data
+        assert "idp_backed_tools" in data
+        assert "idp_credentials_configured" in data
+        assert data["idp_credentials_configured"] is True
+        assert data["idp_provider"] == "okta"
+        assert isinstance(data["idp_backed_labs"], list)
+        assert isinstance(data["idp_backed_tools"], list)
+    finally:
+        _cleanup()
+
+
+def test_get_config_credentials_configured_flag(monkeypatch) -> None:
+    """GET /config shows credentials_configured=true after setting creds."""
+    monkeypatch.setattr(identity_service, "_idp_is_reachable", lambda _url: False)
+    config_mod.set_idp_config(
+        provider="okta",
+        token_endpoint="https://okta.example/v1/token",
+        client_id="cid",
+        client_secret="sec",
+    )
+    try:
+        client = TestClient(app)
+        resp = client.get("/config")
+        data = resp.json()
+        assert data["idp_credentials_configured"] is True
+    finally:
+        _cleanup()
+
+
+def test_get_config_credentials_configured_false_when_mock() -> None:
+    """GET /config shows credentials_configured=false in mock mode."""
+    _cleanup()
+    client = TestClient(app)
+    resp = client.get("/config")
+    data = resp.json()
+    assert data["idp_credentials_configured"] is False
+
+
+def test_idp_switch_emits_observer_event(monkeypatch) -> None:
+    """Switching IdP via PUT /config records a __idp_switch__ observer event."""
+    from brain_gateway.app.observer import get_events, reset_events
+    reset_events()
+    monkeypatch.setattr(identity_service, "_idp_is_reachable", lambda _url: False)
+    client = TestClient(app)
+    client.put("/config", json={
+        "idp": {
+            "provider": "okta",
+            "token_endpoint": "https://okta.example/v1/token",
+        },
+    })
+    try:
+        events = get_events()
+        idp_events = [e for e in events if e["tool_name"] == "__idp_switch__"]
+        assert len(idp_events) == 1
+        ev = idp_events[0]
+        assert ev["arguments"]["previous_provider"] == "mock"
+        assert ev["arguments"]["new_provider"] == "okta"
+        assert ev["idp_backed"] is True
+        assert ev["reason_code"] == "idp_switch"
+    finally:
+        reset_events()
+        _cleanup()
+
+
+def test_idp_reset_emits_observer_event(monkeypatch) -> None:
+    """reset_idp via PUT /config records a __idp_switch__ observer event."""
+    from brain_gateway.app.observer import get_events, reset_events
+    reset_events()
+    monkeypatch.setattr(identity_service, "_idp_is_reachable", lambda _url: False)
+    config_mod.set_idp_config(
+        provider="okta",
+        token_endpoint="https://okta.example/v1/token",
+    )
+    client = TestClient(app)
+    client.put("/config", json={"reset_idp": True})
+    try:
+        events = get_events()
+        idp_events = [e for e in events if e["tool_name"] == "__idp_switch__"]
+        assert len(idp_events) == 1
+        ev = idp_events[0]
+        assert ev["arguments"]["previous_provider"] == "okta"
+        assert ev["arguments"]["new_provider"] == "mock"
+        assert ev["arguments"]["trigger"] == "api_reset"
+    finally:
+        reset_events()
+        _cleanup()
+
+
+def test_idp_same_provider_no_observer_event(monkeypatch) -> None:
+    """Switching to the same provider does not emit an observer event."""
+    from brain_gateway.app.observer import get_events, reset_events
+    reset_events()
+    client = TestClient(app)
+    client.put("/config", json={"idp": {"provider": "mock"}})
+    try:
+        events = get_events()
+        idp_events = [e for e in events if e["tool_name"] == "__idp_switch__"]
+        assert len(idp_events) == 0
+    finally:
+        reset_events()
+        _cleanup()
+
+
 def test_put_config_idp_auto_discovery_failure_preserves_original(monkeypatch) -> None:
     """If OIDC discovery fails, the original payload is used as-is."""
     from unittest.mock import patch

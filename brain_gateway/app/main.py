@@ -26,6 +26,8 @@ from brain_gateway.app.config import (
     get_brain_metadata,
     get_brain_provider,
     get_difficulty,
+    get_idp_client_id,
+    get_idp_client_secret,
     get_idp_provider,
     get_ollama_host,
     get_ollama_model,
@@ -45,7 +47,7 @@ from brain_gateway.app.mcp_handlers import handle_rpc
 from brain_gateway.app.rate_limit import TokenBucketLimiter
 from brain_gateway.app.models import JsonRpcRequest
 from brain_gateway.app.modules.registry import get_registry
-from brain_gateway.app.observer import get_buffer_info, get_events, get_events_since, get_last_event, record_brain_switch
+from brain_gateway.app.observer import get_buffer_info, get_events, get_events_since, get_last_event, record_brain_switch, record_idp_switch
 from brain_gateway.app.scenarios import ScenarioLoader, generate_flags, verify_flag
 from brain_gateway.app.session import SessionManager
 
@@ -137,9 +139,8 @@ def health() -> dict[str, str]:
     return {"status": "ok", "service": "brain-gateway"}
 
 
-@app.get("/config")
-def get_config() -> dict[str, object]:
-    """Return current runtime configuration."""
+def _build_config_response() -> dict[str, object]:
+    """Shared response builder for GET and PUT /config."""
     status = idp_status()
     brain_meta = get_brain_metadata()
     ollama_host = get_ollama_host()
@@ -151,6 +152,9 @@ def get_config() -> dict[str, object]:
         "idp_reason": status["idp_reason"],
         "idp_backed_labs": list(IDP_BACKED_LABS),
         "idp_backed_tools": list(IDP_BACKED_TOOLS),
+        "idp_credentials_configured": bool(
+            get_idp_client_id() and get_idp_client_secret()
+        ),
         "brain": {
             **brain_meta,
             "ollama_host": ollama_host,
@@ -173,6 +177,12 @@ def get_config() -> dict[str, object]:
                 "revocation": getattr(p, "revocation_endpoint", "") or "",
             }
     return config
+
+
+@app.get("/config")
+def get_config() -> dict[str, object]:
+    """Return current runtime configuration."""
+    return _build_config_response()
 
 
 class _IdpConfigUpdate(BaseModel):
@@ -254,6 +264,11 @@ def update_config(payload: _ConfigUpdate) -> dict[str, object]:
         if new_provider != prev_provider:
             get_registry().reset_all()
             _rate_limiter.reset()
+        record_idp_switch(
+            previous_provider=prev_provider,
+            new_provider=new_provider,
+            trigger="api_reset",
+        )
     elif payload.idp is not None:
         idp_data = payload.idp
         if (
@@ -276,6 +291,12 @@ def update_config(payload: _ConfigUpdate) -> dict[str, object]:
         if new_provider != prev_provider:
             get_registry().reset_all()
             _rate_limiter.reset()
+        record_idp_switch(
+            previous_provider=prev_provider,
+            new_provider=new_provider,
+            issuer_url=idp_data.issuer_url,
+            trigger="api",
+        )
 
     if payload.reset_brain:
         prev_brain = get_brain_provider()
@@ -329,24 +350,7 @@ def update_config(payload: _ConfigUpdate) -> dict[str, object]:
             trigger="api",
         )
 
-    brain_meta = get_brain_metadata()
-    ollama_host = get_ollama_host()
-    status = idp_status()
-    return {
-        "difficulty": get_difficulty(),
-        "show_tokens": show_tokens(),
-        "idp_provider": status["idp_provider"],
-        "idp_degraded": status["idp_degraded"],
-        "brain": {
-            **brain_meta,
-            "ollama_host": ollama_host,
-            "ollama_model": get_ollama_model(),
-            "available_providers": list(VALID_BRAIN_PROVIDERS),
-            "available_models": get_available_models(
-                brain_meta["provider"], ollama_host
-            ),
-        },
-    }
+    return _build_config_response()
 
 
 @app.post("/reset")

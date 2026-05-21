@@ -334,6 +334,9 @@ code,pre{font-family:var(--font-mono)}
 })();
 var _idpProviders=['mock','zitadel','okta','auth0'];
 var _currentIdpProvider='mock';
+var _idpCredsConfigured=false;
+var _idpIssuerUrl='';
+var _externalIdps={okta:true,auth0:true};
 
 function _updateIdpStrip(d){
   var pill=document.getElementById('idpPill');
@@ -342,6 +345,8 @@ function _updateIdpStrip(d){
   var prov=d.idp_provider||'mock';
   var deg=d.idp_degraded;
   _currentIdpProvider=prov;
+  _idpCredsConfigured=!!d.idp_credentials_configured;
+  _idpIssuerUrl=(d.idp_endpoints&&d.idp_endpoints.issuer)||'';
   pill.textContent='IDP: '+prov;
   pill.className='idp-global-pill '+(prov!=='mock'?(deg?'degraded':'on'):'off');
   var backed=d.idp_backed_tools||[];
@@ -350,7 +355,14 @@ function _updateIdpStrip(d){
   _buildIdpPopover(prov);
 }
 
-var _externalIdps={okta:true,auth0:true};
+function _showIdpBanner(msg,isError){
+  var banner=document.getElementById('brainSwitchBanner');
+  var msgEl=document.getElementById('brainSwitchMsg');
+  if(!banner||!msgEl)return;
+  msgEl.textContent=msg;
+  banner.className='brain-switch-banner'+(isError?' brain-banner-error':'')+' visible';
+  setTimeout(function(){banner.classList.remove('visible');},6000);
+}
 
 function _buildIdpPopover(current){
   var pop=document.getElementById('idpPopover');
@@ -360,9 +372,16 @@ function _buildIdpPopover(current){
     var item=document.createElement('div');
     item.className='idp-popover-item'+(p===current?' active':'');
     item.textContent=p;
+    if(p===current&&_externalIdps[p]){
+      item.textContent=p+' (connected)';
+    }
     item.addEventListener('click',function(e){
       e.stopPropagation();
-      if(_externalIdps[p]&&p!==current){_showIdpCredsForm(p);}
+      if(p===current){
+        pop.classList.remove('open');
+        return;
+      }
+      if(_externalIdps[p]&&!_idpCredsConfigured){_showIdpCredsForm(p);}
       else{_switchIdpQuick(p);}
     });
     pop.appendChild(item);
@@ -388,11 +407,13 @@ function _showIdpCredsForm(provider){
   var form=document.getElementById('idpCredsForm');
   var btn=document.getElementById('idpCredsSubmit');
   var err=document.getElementById('idpCredsErr');
+  var issuerInput=document.getElementById('idpIssuer');
   if(!form)return;
   form.classList.add('visible');
   btn.textContent='Connect to '+provider;
   btn.disabled=false;
   if(err)err.classList.remove('visible');
+  if(_idpIssuerUrl&&issuerInput)issuerInput.value=_idpIssuerUrl;
   btn.onclick=function(e){e.stopPropagation();_submitIdpCreds();};
 }
 
@@ -424,6 +445,7 @@ function _submitIdpCreds(){
         return;
       }
       _updateIdpStrip(res.data);
+      _showIdpConnectFeedback(res.data);
       var form=document.getElementById('idpCredsForm');
       if(form)form.classList.remove('visible');
       var pop=document.getElementById('idpPopover');
@@ -439,6 +461,19 @@ function _submitIdpCreds(){
     });
 }
 
+function _showIdpConnectFeedback(d){
+  var prov=d.idp_provider||'unknown';
+  var tools=d.idp_backed_tools||[];
+  var deg=d.idp_degraded;
+  if(deg){
+    _showIdpBanner('IdP '+prov+' is degraded: '+(d.idp_reason||'unreachable'),true);
+  }else if(prov!=='mock'){
+    var msg='Connected to '+prov;
+    if(tools.length)msg+=' — '+tools.length+' tools now using live tokens: '+tools.join(', ');
+    _showIdpBanner(msg,false);
+  }
+}
+
 function _switchIdpQuick(provider){
   var pop=document.getElementById('idpPopover');
   var notice=document.getElementById('idpSwitching');
@@ -452,6 +487,7 @@ function _switchIdpQuick(provider){
     .then(function(d){
       if(notice)notice.classList.remove('visible');
       _updateIdpStrip(d);
+      _showIdpConnectFeedback(d);
     })
     .catch(function(){if(notice)notice.classList.remove('visible');});
 }

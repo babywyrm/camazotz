@@ -161,6 +161,7 @@
             <option value="mock">mock</option>
             <option value="zitadel">zitadel</option>
             <option value="okta">okta</option>
+            <option value="auth0">auth0</option>
           </select>
         </div>
         <div>
@@ -250,7 +251,7 @@ flowchart LR
         RBACLab["rbac_lab"]
     end
     subgraph idp [Identity Provider]
-        IdP["ZITADEL / Okta"]
+        IdP["ZITADEL / Okta / Auth0"]
     end
     Agent -->|"POST /mcp"| Gateway
     Gateway --> OAuthLab
@@ -269,10 +270,10 @@ flowchart LR
 flowchart TD
     Start["Request arrives"] --> CheckConfig{"CAMAZOTZ_IDP_PROVIDER?"}
     CheckConfig -->|"mock or unset"| UseMock["MockIdentityProvider"]
-    CheckConfig -->|"zitadel / okta"| CheckEndpoint{"Token endpoint set?"}
+    CheckConfig -->|"zitadel / okta / auth0"| CheckEndpoint{"Token endpoint set?"}
     CheckEndpoint -->|"empty"| UseMock
     CheckEndpoint -->|"set"| HealthProbe{"IdP reachable?"}
-    HealthProbe -->|"yes"| UseLive["Zitadel/OktaIdentityProvider"]
+    HealthProbe -->|"yes"| UseLive["Zitadel/Okta/Auth0 Provider"]
     HealthProbe -->|"no"| Degraded["MockIdentityProvider + degraded"]
     UseLive --> LabCall["Lab calls provider method"]
     LabCall --> LabSuccess{"HTTP call succeeds?"}
@@ -421,7 +422,7 @@ async function fetchIdpEvents(){
   try{
     var resp=await fetch('/api/observer/events?limit=100');
     var data=await resp.json();
-    _idpEvents=(data.events||[]).filter(function(ev){return ev.idp_backed||ev.idp_degraded;});
+    _idpEvents=(data.events||[]).filter(function(ev){return ev.idp_backed||ev.idp_degraded||ev.tool_name==='__idp_switch__';});
     renderIdpFeed();
   }catch(e){}
 }

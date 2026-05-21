@@ -233,6 +233,49 @@ def record_brain_switch(
         _last_event = event
 
 
+def record_idp_switch(
+    *,
+    previous_provider: str,
+    new_provider: str,
+    issuer_url: str = "",
+    trigger: str = "api",
+) -> None:
+    """Record an identity provider switch in the observer timeline."""
+    global _last_event, _total_recorded
+    if previous_provider == new_provider:
+        return
+
+    event = {
+        "request_id": str(uuid.uuid4()),
+        "timestamp": datetime.now(UTC).isoformat(),
+        "tool_name": "__idp_switch__",
+        "module": "identity",
+        "guardrail": "config",
+        "arguments": {
+            "previous_provider": previous_provider,
+            "new_provider": new_provider,
+            "issuer_url": issuer_url,
+            "trigger": trigger,
+        },
+        "outcome": "granted",
+        "ai_analysis": "",
+        "verdict": "ai_irrelevant",
+        "signal_tier": "medium",
+        "reason_code": "idp_switch",
+        "duration_ms": 0,
+        "response_summary": {"change": f"{previous_provider} → {new_provider}"},
+        "canary_exposed": False,
+        "idp_backed": True,
+        "idp_degraded": False,
+        "idp_provider": new_provider,
+        "idp_reason": None,
+    }
+    with _lock:
+        _buffer.append(event)
+        _total_recorded += 1
+        _last_event = event
+
+
 def get_last_event() -> dict:
     with _lock:
         return dict(_last_event) if _last_event else {}
