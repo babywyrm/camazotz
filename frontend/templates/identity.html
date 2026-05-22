@@ -81,6 +81,17 @@
   font-weight:700;text-transform:uppercase;background:rgba(99,102,241,.12);color:#a5b4fc;border:1px solid rgba(99,102,241,.2)}
 .id-empty{padding:1.5rem;text-align:center;color:var(--muted);font-size:.82rem}
 
+.id-presets{display:flex;gap:.5rem;margin-bottom:.8rem;flex-wrap:wrap}
+.id-preset-btn{background:var(--surface2);color:var(--text2);border:1px solid var(--border);
+  border-radius:6px;padding:.3rem .7rem;font-size:.7rem;font-weight:600;cursor:pointer;
+  font-family:inherit;transition:all .2s;display:flex;align-items:center;gap:.3rem}
+.id-preset-btn:hover{border-color:var(--accent);color:var(--text);background:var(--surface)}
+.id-preset-btn.active{border-color:var(--green);color:var(--green);background:rgba(34,197,94,.08)}
+.id-preset-btn .preset-dot{width:6px;height:6px;border-radius:50%}
+.id-preset-btn .preset-dot.live{background:var(--green)}
+.id-preset-btn .preset-dot.off{background:var(--muted)}
+.id-discover-status{font-size:.68rem;color:var(--muted);margin-top:.3rem;min-height:1em}
+
 .id-test-btn{background:var(--accent);color:#fff;border:none;border-radius:6px;padding:.5rem 1.2rem;
   font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s;width:100%}
 .id-test-btn:hover{background:var(--accent2);transform:translateY(-1px)}
@@ -197,10 +208,28 @@
       Runtime IdP Switching
     </div>
     <div class="id-card">
-      <p style="font-size:.78rem;color:var(--text2);margin-bottom:1rem">
+      <p style="font-size:.78rem;color:var(--text2);margin-bottom:.6rem">
         Switch the active identity provider at runtime. Changing provider resets all lab state
         to prevent stale token references.
       </p>
+      <div class="id-card-label" style="margin-bottom:.3rem">Quick Connect</div>
+      <div class="id-presets" id="presetBar">
+        <button class="id-preset-btn" onclick="applyPreset('mock')">
+          <span class="preset-dot off"></span> Mock
+        </button>
+        <button class="id-preset-btn" onclick="applyPreset('zitadel')">
+          <span class="preset-dot off"></span> Zitadel (in-cluster)
+        </button>
+        <button class="id-preset-btn" onclick="applyPreset('okta')">
+          <span class="preset-dot off"></span> Okta
+        </button>
+        <button class="id-preset-btn" onclick="applyPreset('auth0')">
+          <span class="preset-dot off"></span> Auth0
+        </button>
+        <button class="id-preset-btn" onclick="loadCurrentConfig()" style="margin-left:auto">
+          <span style="font-size:.7rem">↻</span> Load Current
+        </button>
+      </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem">
         <div>
           <label class="id-card-label">Provider</label>
@@ -213,9 +242,10 @@
           </select>
         </div>
         <div>
-          <label class="id-card-label">Issuer URL</label>
+          <label class="id-card-label">Issuer URL <span style="font-size:.6rem;color:var(--muted)">(tab out to auto-discover)</span></label>
           <input id="idpSwitchIssuer" type="text" placeholder="https://..." style="width:100%;background:var(--surface2);
             color:var(--text);border:1px solid var(--border);border-radius:6px;padding:.4rem .5rem;font-size:.82rem;font-family:inherit">
+          <div class="id-discover-status" id="discoverStatus"></div>
         </div>
         <div>
           <label class="id-card-label">Token Endpoint</label>
@@ -586,7 +616,7 @@ function renderIdpFeed(){
     var tokenPreview='';
     if(r.access_token&&r.access_token.length>20){
       var dec=decodeJwt(r.access_token);
-      if(dec)tokenPreview='<div style="margin-top:.5rem"><span class="id-badge-dpop">JWT</span> <span style="color:var(--muted);font-size:.68rem">click to decode in test panel</span></div>';
+      if(dec)tokenPreview='<div style="margin-top:.5rem"><button onclick="event.stopPropagation();decodeFeedToken(\''+rowId+'\',\''+r.access_token.replace(/'/g,"\\'")+'\')" style="background:none;border:1px solid rgba(99,102,241,.3);color:#a5b4fc;border-radius:5px;padding:.2rem .5rem;font-size:.65rem;font-weight:600;cursor:pointer;font-family:inherit">Decode JWT</button></div>';
     }
     html+='<tr class="id-feed-detail" id="'+rowId+'"><td colspan="6"><pre style="white-space:pre-wrap;max-height:200px;overflow:auto;color:var(--text2);font-size:.7rem">'+esc(detailContent)+'</pre>'+tokenPreview+'</td></tr>';
   }
@@ -682,6 +712,9 @@ async function runLifecycleTest(){
   btn.disabled=false;
   fetchIdpEvents();
   refreshLiveStatus();
+  // Auto-enable auto-refresh after test so user sees events immediately
+  var autoEl=document.getElementById('idpAutoRefresh');
+  if(!autoEl.checked){autoEl.checked=true;toggleIdpAuto();}
 }
 
 async function applyIdpSwitch(){
@@ -746,8 +779,118 @@ async function resetIdpToEnv(){
 // Mark dropdown as user-edited once touched
 document.getElementById('idpSwitchProvider').addEventListener('change',function(){this._userEdited=true;});
 
+// --- OIDC auto-discovery on issuer URL blur ---
+document.getElementById('idpSwitchIssuer').addEventListener('blur', async function(){
+  var url=this.value.trim();
+  if(!url||!url.startsWith('http'))return;
+  var status=document.getElementById('discoverStatus');
+  status.textContent='Discovering endpoints…';
+  status.style.color='var(--yellow)';
+  try{
+    var wellKnown=url.replace(/\/$/,'')+'/.well-known/openid-configuration';
+    var resp=await fetch('/api/oidc-discover?url='+encodeURIComponent(wellKnown));
+    if(!resp.ok)throw new Error('HTTP '+resp.status);
+    var d=await resp.json();
+    if(d.token_endpoint){
+      document.getElementById('idpSwitchToken').value=d.token_endpoint;
+      document.getElementById('idpSwitchIntrospect').value=d.introspection_endpoint||'';
+      document.getElementById('idpSwitchRevoke').value=d.revocation_endpoint||'';
+      status.textContent='✓ Auto-filled '+Object.keys(d).filter(function(k){return d[k]&&k!=='issuer';}).length+' endpoints';
+      status.style.color='var(--green)';
+    }else{
+      status.textContent='Discovery returned no token endpoint';
+      status.style.color='var(--muted)';
+    }
+  }catch(e){
+    status.textContent='Discovery failed — fill endpoints manually';
+    status.style.color='var(--muted)';
+  }
+  setTimeout(function(){status.textContent='';},8000);
+});
+
+// --- Quick-connect presets ---
+var _presets={
+  mock:{provider:'mock',issuer:'',token:'',introspect:'',revoke:''},
+  zitadel:{provider:'zitadel',issuer:'http://zitadel:8080',
+    token:'/oauth/v2/token',introspect:'/oauth/v2/introspect',revoke:'/oauth/v2/revoke'},
+  okta:{provider:'okta',issuer:'',token:'',introspect:'',revoke:''},
+  auth0:{provider:'auth0',issuer:'',token:'',introspect:'',revoke:''}
+};
+
+function applyPreset(name){
+  var p=_presets[name];
+  if(!p)return;
+  document.getElementById('idpSwitchProvider').value=p.provider;
+  document.getElementById('idpSwitchProvider')._userEdited=true;
+  document.getElementById('idpSwitchIssuer').value=p.issuer;
+  document.getElementById('idpSwitchToken').value=p.token;
+  document.getElementById('idpSwitchIntrospect').value=p.introspect;
+  document.getElementById('idpSwitchRevoke').value=p.revoke;
+  document.getElementById('idpSwitchClientId').value='';
+  document.getElementById('idpSwitchClientSecret').value='';
+  updatePresetBar(name);
+  if(name==='mock'){
+    applyIdpSwitch();
+  }else if(p.issuer){
+    document.getElementById('idpSwitchIssuer').dispatchEvent(new Event('blur'));
+  }
+}
+
+function loadCurrentConfig(){
+  var d=_liveConfig;
+  if(!d.idp_provider)return;
+  document.getElementById('idpSwitchProvider').value=d.idp_provider;
+  document.getElementById('idpSwitchProvider')._userEdited=true;
+  var ep=d.idp_endpoints||{};
+  document.getElementById('idpSwitchIssuer').value=ep.issuer||'';
+  document.getElementById('idpSwitchToken').value=ep.token||'';
+  document.getElementById('idpSwitchIntrospect').value=ep.introspection||'';
+  document.getElementById('idpSwitchRevoke').value=ep.revocation||'';
+  updatePresetBar(d.idp_provider);
+}
+
+function updatePresetBar(active){
+  var btns=document.querySelectorAll('.id-preset-btn');
+  btns.forEach(function(b){
+    var match=b.textContent.toLowerCase().indexOf(active)>=0;
+    b.classList.toggle('active',match);
+    var dot=b.querySelector('.preset-dot');
+    if(dot)dot.className='preset-dot '+(match?'live':'off');
+  });
+}
+
+// --- Inline JWT decoder in feed detail rows ---
+function decodeFeedToken(rowId,token){
+  var el=document.getElementById(rowId);
+  if(!el)return;
+  var existing=el.querySelector('.jwt-decode');
+  if(existing){existing.remove();return;}
+  var decoded=decodeJwt(token);
+  if(!decoded)return;
+  var expiry='';
+  if(decoded.payload.exp){
+    var expDate=new Date(decoded.payload.exp*1000);
+    var diff=expDate-new Date();
+    expiry=diff>0
+      ?'<div class="jwt-expiry valid">Expires in '+Math.floor(diff/60000)+'m</div>'
+      :'<div class="jwt-expiry expired">Expired '+expDate.toLocaleTimeString()+'</div>';
+  }
+  var div=document.createElement('div');
+  div.className='jwt-decode';
+  div.innerHTML=
+    '<div class="jwt-section header"><div class="jwt-section-label">Header</div><pre>'+esc(JSON.stringify(decoded.header,null,2))+'</pre></div>'+
+    '<div class="jwt-section payload"><div class="jwt-section-label">Payload</div><pre>'+esc(JSON.stringify(decoded.payload,null,2))+'</pre></div>'+
+    expiry;
+  el.querySelector('td').appendChild(div);
+}
+
 refreshLiveStatus();
 fetchIdpEvents();
 setInterval(refreshLiveStatus,10000);
+
+// Sync preset bar on first load
+refreshLiveStatus().then(function(){
+  if(_liveConfig.idp_provider)updatePresetBar(_liveConfig.idp_provider);
+});
 </script>
 {% endblock %}

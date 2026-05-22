@@ -289,6 +289,20 @@ def api_config_put():
         return jsonify({"error": "Gateway unreachable"}), 502
 
 
+@app.route("/api/oidc-discover")
+def api_oidc_discover():
+    """Proxy OIDC discovery to avoid CORS issues in the browser."""
+    url = request.args.get("url", "")
+    if not url or not url.startswith("http"):
+        return jsonify({"error": "Missing or invalid URL"}), 400
+    try:
+        resp = httpx.get(url, timeout=5.0, follow_redirects=True)
+        resp.raise_for_status()
+        return jsonify(resp.json())
+    except (httpx.HTTPError, ValueError) as exc:
+        return jsonify({"error": str(exc)}), 502
+
+
 @app.route("/api/reset", methods=["POST"])
 def api_reset():
     try:
