@@ -43,7 +43,7 @@ After every `helm upgrade` / rollout, confirm the lane view is live:
 ```bash
 K8S_HOST=<your-node-ip> make smoke-k8s-lanes
 # -> PASS lanes probe (/lanes renders)
-# -> PASS lanes probe (/api/lanes schema=v1, 5 lanes, 35 labs mapped)
+# -> PASS lanes probe (/api/lanes schema=v1, 5 lanes, 52 labs mapped)
 ```
 
 Or by hand:
