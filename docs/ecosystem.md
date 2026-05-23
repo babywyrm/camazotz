@@ -262,6 +262,26 @@ expired cert within this window.
 `integrity.detectReplay` to catch reused credential identifiers. Short cert
 TTLs (1 hour) limit the replay window.
 
+### Layer 4: stoneburner — LLM Benchmarking via brain-gateway
+
+[stoneburner](https://github.com/babywyrm/stoneburner) is a benchmarking
+harness that measures LLM cost, throughput, latency, and accuracy across
+providers. Its `brain-gateway` provider routes benchmark workloads through
+camazotz's MCP endpoint (`config.ask_agent` via `POST /mcp`), enabling
+comparative analysis of the same workload across all providers camazotz
+manages (cloud Claude, local Ollama, Bedrock, OpenAI).
+
+```
+atomics run --provider brain-gateway --gateway-url http://localhost:8080
+atomics eval --provider brain-gateway --judge-provider ollama
+atomics compare --narrative
+```
+
+**What it adds to the ecosystem:** quantitative cost/quality data for the
+provider-switching decisions camazotz makes. When the brain-gateway switches
+from cloud Claude to local Ollama, stoneburner measures the accuracy drop
+and cost savings — useful for the business case of self-hosted inference.
+
 ---
 
 ## For Your Security Review
@@ -298,4 +318,5 @@ incident response runbooks (what to do when mcpnuke finds a gap).
 | Add the policy layer | [nullfield README](https://github.com/babywyrm/nullfield) — deploy as sidecar |
 | Add machine identity | [integrations/teleport/](../integrations/teleport/) — step-by-step Teleport setup |
 | Scan and validate | [mcpnuke README](https://github.com/babywyrm/mcpnuke) — `mcpnuke --targets http://localhost:8080/mcp` |
+| Benchmark providers | [stoneburner](https://github.com/babywyrm/stoneburner) — `atomics run --provider brain-gateway` |
 | Production architecture | [Golden Path v3](mcp-at-scale-golden-path.md) — the complete security spec |
