@@ -1549,7 +1549,7 @@ Local Ollama calls report token counts with `cost_usd: 0.0`.
 
 These labs require the Teleport integration. See [integrations/teleport/](../integrations/teleport/).
 
-### Bot Identity Theft (`bot_identity_theft_lab`, MCP-T04)
+### Bot Identity Theft (`bot_identity_theft_lab`, MCP-T18)
 
 **Red team goal:** Steal a tbot short-lived certificate and use it to access MCP tools as the bot.
 
@@ -1572,7 +1572,7 @@ curl -s -X POST http://localhost:8080/mcp -H "Content-Type: application/json" \
 
 **Defense:** Scope tbot secrets via K8s RBAC. Enable nullfield `integrity.bindToSession`.
 
-### Teleport Role Escalation (`teleport_role_escalation_lab`, MCP-T20)
+### Teleport Role Escalation (`teleport_role_escalation_lab`, MCP-T28)
 
 **Red team goal:** Escalate from `agent-readonly` to `agent-ops` by social-engineering the LLM.
 
@@ -1594,7 +1594,7 @@ curl -s -X POST http://localhost:8080/mcp -H "Content-Type: application/json" \
 
 **Defense:** Never expose role modification as a tool. Use nullfield HOLD on permission-changing operations.
 
-### Certificate Replay (`cert_replay_lab`, MCP-T26)
+### Certificate Replay (`cert_replay_lab`, MCP-T19)
 
 **Red team goal:** Replay an expired short-lived certificate within the clock skew grace window.
 

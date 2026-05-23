@@ -898,9 +898,9 @@ Each golden path gate maps to specific [Camazotz](https://github.com/babywyrm/ca
 | Notifications | `notification_lab` | MCP-T17 | Malicious server-initiated payloads |
 | Error disclosure | `error_lab` | MCP-T15 | Secrets in tracebacks and debug info |
 | Webhooks | `shadow_lab` | MCP-T14 | Persistent exfiltration via webhooks |
-| Machine identity | `bot_identity_theft_lab` | MCP-T04 | Stolen tbot cert used to impersonate bot |
-| RBAC escalation | `teleport_role_escalation_lab` | MCP-T20 | Bot self-escalates via misconfigured tool |
-| Cert replay | `cert_replay_lab` | MCP-T26 | Expired short-lived cert replayed in grace window |
+| Machine identity | `bot_identity_theft_lab` | MCP-T18 | Stolen tbot cert used to impersonate bot |
+| RBAC escalation | `teleport_role_escalation_lab` | MCP-T28 | Bot self-escalates via misconfigured tool |
+| Cert replay | `cert_replay_lab` | MCP-T19 | Expired short-lived cert replayed in grace window |
 
 Run `mcpnuke` against your staging gateway to validate that your gate implementations actually block these attack patterns.
 

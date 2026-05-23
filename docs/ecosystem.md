@@ -132,9 +132,9 @@ Teleport labs, mcpnuke chains the lab tools into complete attack sequences:
 
 | Chain | Steps | What It Tests |
 |-------|-------|---------------|
-| Bot identity theft | Read tbot secret → replay cert → check session binding | MCP-T04: credential theft and replay |
-| Role escalation | Get roles → request escalation → privileged operation | MCP-T20: RBAC bypass via social engineering |
-| Cert replay | Get expired cert → replay in grace window → check detection | MCP-T26: short-lived cert revocation gap |
+| Bot identity theft | Read tbot secret → replay cert → check session binding | MCP-T18: credential theft and replay |
+| Role escalation | Get roles → request escalation → privileged operation | MCP-T28: RBAC bypass via social engineering |
+| Cert replay | Get expired cert → replay in grace window → check detection | MCP-T19: short-lived cert revocation gap |
 
 Each chain reports whether the attack succeeded (finding) or the defense held
 (info). On easy difficulty, attacks succeed. On hard difficulty, nullfield's
@@ -214,7 +214,7 @@ way the answer is a delta you can act on, not a feeling.
 
 Three camazotz labs specifically test Teleport machine identity patterns:
 
-### Bot Identity Theft (`bot_identity_theft_lab`, MCP-T04)
+### Bot Identity Theft (`bot_identity_theft_lab`, MCP-T18)
 
 **Attack:** A tbot agent writes short-lived certificates to a Kubernetes Secret.
 If that secret is readable by other pods (misconfigured RBAC), an attacker
@@ -229,7 +229,7 @@ extracts the certificate and replays it to access MCP tools as the bot.
 **Golden path defense:** Scope tbot secrets to specific pods via RBAC.
 Enable nullfield `integrity.bindToSession` to catch identity swaps.
 
-### Role Escalation (`teleport_role_escalation_lab`, MCP-T20)
+### Role Escalation (`teleport_role_escalation_lab`, MCP-T28)
 
 **Attack:** The bot has `agent-readonly` but discovers an MCP tool that modifies
 role assignments. By crafting a convincing justification, it social-engineers
@@ -246,7 +246,7 @@ the LLM into approving an escalation to `agent-ops`.
 HOLD on any tool that changes permissions. Teleport CE roles are static — use
 Enterprise access requests for just-in-time elevation.
 
-### Certificate Replay (`cert_replay_lab`, MCP-T26)
+### Certificate Replay (`cert_replay_lab`, MCP-T19)
 
 **Attack:** A short-lived certificate has expired, but clock skew between the
 proxy and the application creates a grace window. The attacker replays the
