@@ -61,7 +61,7 @@ def test_identity_page_200(frontend_client) -> None:
     resp = client.get("/identity")
     assert resp.status_code == 200
     assert b"Identity" in resp.data
-    assert b"Provider Status" in resp.data
+    assert b"Live Status" in resp.data
     assert b"Live IDP Activity" in resp.data
     assert b"Architecture Reference" in resp.data
 

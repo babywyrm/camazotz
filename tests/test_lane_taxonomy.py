@@ -571,7 +571,7 @@ def test_agentic_sec_taxonomy_in_sync() -> None:
         pytest.skip("agentic-sec taxonomy not found at expected relative path")  # pragma: no cover
 
     tax = _yaml.safe_load(tax_path.read_text())
-    tax_by_lab = {t["camazotz_lab"]: t for t in tax.get("threats", [])}
+    tax_by_lab = {t["camazotz_lab"]: t for t in tax.get("threats", []) if "camazotz_lab" in t}
 
     errors = []
     for lab, d in _all_scenarios():
