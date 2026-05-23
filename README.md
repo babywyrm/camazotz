@@ -3,7 +3,7 @@
 
 <p align="center">
 <img src="https://img.shields.io/badge/python-3.12%2B-3776ab?style=flat-square&logo=python&logoColor=white" alt="Python 3.12+">
-<img src="https://img.shields.io/badge/tests-1394_passing-10b981?style=flat-square" alt="1394 tests">
+<img src="https://img.shields.io/badge/tests-1479_passing-10b981?style=flat-square" alt="1479 tests">
 <img src="https://img.shields.io/badge/coverage-100%25-10b981?style=flat-square" alt="100% coverage">
 <img src="https://img.shields.io/badge/modules-52_labs-dc2626?style=flat-square" alt="52 labs">
 <img src="https://img.shields.io/badge/identity_lanes-5%C3%975-60a5fa?style=flat-square" alt="5 lanes × 5 transports">
@@ -509,7 +509,7 @@ camazotz/
 ├── scripts/
 │   ├── qa_harness.py        # CLI entry point for E2E QA
 │   └── qa_runner/            # Reusable QA engine (shared by CLI + operator panel)
-├── tests/                   # 1394 tests, 100% coverage
+├── tests/                   # 1479 tests, 100% coverage
 └── Makefile                 # Cross-platform dev/deploy targets
 ```
 
@@ -519,7 +519,7 @@ camazotz/
 make up             # start with Claude
 make up-local       # start with Ollama
 make down           # stop all services
-make test           # run 1394 tests (100% coverage)
+make test           # run 1479 tests (100% coverage)
 make qa             # E2E QA harness against live gateway
 make qa-json        # QA harness with machine-readable JSON output
 make smoke-local    # smoke test local Docker Compose target
