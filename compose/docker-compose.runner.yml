@@ -1,0 +1,41 @@
+# mcpnuke-runner overlay for the camazotz Compose stack.
+#
+# Adds the mcpnuke scanner's HTTP job API as a sidecar so the portal's Scan
+# page (/scan) can launch scans and read findings locally — parity with the
+# K8s deployment (deploy/helm/camazotz/values.yaml -> runner.enabled).
+#
+# Assumes the mcpnuke repo is a sibling checkout (true on the laptop and on
+# the NUC under /opt); the build context is resolved relative to this compose/
+# directory, matching the base file's `context: ..`.
+#
+# Usage:
+#   RUNNER_URL=http://mcpnuke-runner:8090 docker compose \
+#     -f compose/docker-compose.yml \
+#     -f compose/docker-compose.runner.yml \
+#     up -d --build
+#
+# The portal reads RUNNER_URL from the environment (the base compose defaults
+# it to empty, which disables the Scan page); set it as shown above so the
+# portal proxies to this service.
+
+services:
+  mcpnuke-runner:
+    build:
+      context: ../../mcpnuke
+      dockerfile: deploy/Dockerfile
+    container_name: camazotz-mcpnuke-runner
+    image: mcpnuke/runner:latest
+    environment:
+      MCPNUKE_RUNNER_PORT: "8090"
+      MCPNUKE_RUNNER_WORKERS: "2"
+    ports:
+      - "8090:8090"
+    networks:
+      - camazotz
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8090/health')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s

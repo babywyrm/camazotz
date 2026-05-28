@@ -1,8 +1,9 @@
-.PHONY: help up up-local up-okta up-policed down logs test test-zitadel-flows build clean status ps env compose-gen helm-template qa qa-json smoke-local smoke-k8s smoke-local-llm smoke-k8s-llm smoke-local-identity smoke-k8s-identity smoke-local-identity-llm smoke-k8s-identity-llm smoke-local-lanes smoke-k8s-lanes smoke-k8s-policed feedback-loop-print feedback-loop-dry feedback-loop-apply campaign campaign-print campaign-list
+.PHONY: help up up-local up-okta up-policed up-scan down logs test test-zitadel-flows build clean status ps env compose-gen helm-template qa qa-json smoke-local smoke-k8s smoke-local-llm smoke-k8s-llm smoke-local-identity smoke-k8s-identity smoke-local-identity-llm smoke-k8s-identity-llm smoke-local-lanes smoke-k8s-lanes smoke-k8s-policed feedback-loop-print feedback-loop-dry feedback-loop-apply campaign campaign-print campaign-list
 
 COMPOSE := docker compose -f compose/docker-compose.yml
 COMPOSE_POLICED := docker compose -f compose/docker-compose.yml -f compose/docker-compose.nullfield.yml
 COMPOSE_OKTA := docker compose -f compose/docker-compose.yml -f compose/docker-compose.okta.yml
+COMPOSE_RUNNER := docker compose -f compose/docker-compose.yml -f compose/docker-compose.runner.yml
 ENV_FILE := compose/.env
 OKTA_ENV_FILE := compose/.env.okta
 
@@ -45,6 +46,14 @@ up-policed: env ## Start stack with the nullfield sidecar overlay (adds :9090 po
 	@echo ""
 	@echo "  Run the agentic feedback loop: make feedback-loop-print"
 	@echo "  Run with Claude AI analysis:   CLAUDE=1 make campaign SCENARIO=customer-support-bot"
+	@echo ""
+
+up-scan: env ## Start stack with the mcpnuke-runner sidecar (adds /scan; requires sibling mcpnuke checkout)
+	RUNNER_URL=http://mcpnuke-runner:8090 $(COMPOSE_RUNNER) --env-file $(ENV_FILE) up -d --build
+	@echo ""
+	@echo "  Portal:  http://localhost:3000        (Scan page: /scan)"
+	@echo "  Gateway: http://localhost:8080"
+	@echo "  Runner:  http://localhost:8090/health (mcpnuke-runner)"
 	@echo ""
 
 down: ## Stop all services and remove containers
