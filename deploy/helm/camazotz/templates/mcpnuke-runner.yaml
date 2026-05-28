@@ -1,0 +1,68 @@
+{{- if .Values.runner.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcpnuke-runner
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "camazotz.selectorLabels" "mcpnuke-runner" | nindent 4 }}
+    {{- include "camazotz.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.runner.replicas }}
+  selector:
+    matchLabels:
+      {{- include "camazotz.selectorLabels" "mcpnuke-runner" | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "camazotz.selectorLabels" "mcpnuke-runner" | nindent 8 }}
+    spec:
+      containers:
+        - name: mcpnuke-runner
+          image: "{{ .Values.runner.image }}:{{ .Values.runner.tag }}"
+          imagePullPolicy: {{ .Values.runner.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.runner.port }}
+          env:
+            - name: MCPNUKE_RUNNER_PORT
+              value: {{ .Values.runner.port | quote }}
+            - name: MCPNUKE_RUNNER_WORKERS
+              value: {{ .Values.runner.workers | quote }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.runner.healthPath }}
+              port: {{ .Values.runner.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.runner.healthPath }}
+              port: {{ .Values.runner.port }}
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          resources:
+            {{- toYaml .Values.runner.resources | nindent 12 }}
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mcpnuke-runner
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "camazotz.selectorLabels" "mcpnuke-runner" | nindent 4 }}
+    {{- include "camazotz.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.runner.serviceType }}
+  selector:
+    {{- include "camazotz.selectorLabels" "mcpnuke-runner" | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.runner.port }}
+      targetPort: {{ .Values.runner.port }}
+      protocol: TCP
+{{- end }}

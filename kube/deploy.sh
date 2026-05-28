@@ -22,11 +22,24 @@ sudo docker build -t camazotz/brain-gateway:latest -f compose/Dockerfile .
 sudo docker build -t camazotz/portal:latest -f frontend/Dockerfile .
 sudo docker build -t camazotz/observer:latest -f compose/observer/Dockerfile compose/observer/
 
+# mcpnuke-runner sidecar (optional) — built from the sibling mcpnuke checkout
+# when present. Enable in the deployment via Helm: --set runner.enabled=true.
+MCPNUKE_DIR="$(cd "${REPO_DIR}/.." && pwd)/mcpnuke"
+if [ -f "${MCPNUKE_DIR}/deploy/Dockerfile" ]; then
+  echo "[1b/5] Building mcpnuke-runner image from ${MCPNUKE_DIR}..."
+  sudo docker build -t mcpnuke/runner:latest -f "${MCPNUKE_DIR}/deploy/Dockerfile" "${MCPNUKE_DIR}"
+else
+  echo "[1b/5] Skipping mcpnuke-runner image (no ${MCPNUKE_DIR}/deploy/Dockerfile)"
+fi
+
 # Import images into K3s containerd
 echo "[2/5] Importing images into K3s..."
 sudo docker save camazotz/brain-gateway:latest | sudo k3s ctr images import -
 sudo docker save camazotz/portal:latest | sudo k3s ctr images import -
 sudo docker save camazotz/observer:latest | sudo k3s ctr images import -
+if sudo docker image inspect mcpnuke/runner:latest >/dev/null 2>&1; then
+  sudo docker save mcpnuke/runner:latest | sudo k3s ctr images import -
+fi
 
 # Apply manifests
 echo "[3/5] Applying K8s manifests..."

@@ -9,6 +9,8 @@ services:
     environment:
     - GATEWAY_URL=http://brain-gateway:8080
     - FLASK_SECRET=${FLASK_SECRET:-cztz-k8s-secret}
+    - RUNNER_URL=${RUNNER_URL:-}
+    - CAMAZOTZ_SELF_URL=http://portal:3000
     ports:
     - 3000:3000
     depends_on:
@@ -39,7 +41,6 @@ services:
     - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
     - CAMAZOTZ_MODEL=${CAMAZOTZ_MODEL:-claude-sonnet-4-20250514}
     - CAMAZOTZ_BEDROCK_STUB=${CAMAZOTZ_BEDROCK_STUB:-}
-    - OPENAI_API_KEY=${OPENAI_API_KEY:-}
     - CAMAZOTZ_DIFFICULTY=${CAMAZOTZ_DIFFICULTY:-medium}
     - CAMAZOTZ_SHOW_TOKENS=${CAMAZOTZ_SHOW_TOKENS:-false}
     - OLLAMA_HOST=${OLLAMA_HOST:-http://ollama:11434}

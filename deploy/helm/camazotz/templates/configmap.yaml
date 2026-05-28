@@ -25,3 +25,9 @@ data:
   CAMAZOTZ_IDP_INTROSPECTION_ENDPOINT: {{ .Values.config.idpIntrospectionEndpoint | quote }}
   CAMAZOTZ_IDP_REVOCATION_ENDPOINT: {{ .Values.config.idpRevocationEndpoint | quote }}
   CAMAZOTZ_IDP_CLIENT_ID: {{ .Values.config.idpClientId | quote }}
+  {{- if .Values.runner.enabled }}
+  RUNNER_URL: {{ printf "http://mcpnuke-runner:%v" .Values.runner.port | quote }}
+  {{- else }}
+  RUNNER_URL: ""
+  {{- end }}
+  CAMAZOTZ_SELF_URL: {{ printf "http://portal:%v" .Values.portal.port | quote }}

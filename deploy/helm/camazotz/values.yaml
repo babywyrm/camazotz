@@ -105,6 +105,32 @@ observer:
     context: ./observer
     dockerfile: Dockerfile
 
+# mcpnuke-runner sidecar — HTTP job API wrapping the mcpnuke scanner so the
+# portal's Scan page can launch scans and read structured findings. Disabled
+# by default; the image lives in the sibling mcpnuke repo (see build.context).
+runner:
+  enabled: false
+  image: mcpnuke/runner
+  tag: latest
+  pullPolicy: Never
+  replicas: 1
+  port: 8090
+  healthPath: /health
+  workers: "2"
+  serviceType: ClusterIP
+  resources:
+    requests:
+      cpu: 50m
+      memory: 96Mi
+    limits:
+      cpu: "1"
+      memory: 384Mi
+  build:
+    # Relative to compose/docker-compose.yml; assumes mcpnuke is a sibling
+    # checkout (true on the laptop and on the NUC under /opt).
+    context: ../../mcpnuke
+    dockerfile: deploy/Dockerfile
+
 ollama:
   enabled: false
   image: ollama/ollama

@@ -1,0 +1,415 @@
+{% extends "base.html" %}
+{% block title %}Scan — Camazotz{% endblock %}
+
+{% block extra_css %}
+<style>
+.scan-header{padding:3rem 0 1.5rem}
+.scan-header h1{font-size:2.2rem;font-weight:800;letter-spacing:-.03em;margin-bottom:.5rem}
+.scan-header p{color:var(--text2);font-size:1rem;max-width:680px}
+.scan-header .tool-tag{font-family:var(--font-mono);font-size:.72rem;color:var(--muted);
+  border:1px solid var(--border);border-radius:6px;padding:.15rem .5rem;margin-left:.5rem;vertical-align:middle}
+
+/* control panel */
+.scan-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:1.25rem;margin-bottom:1.25rem}
+.scan-row{display:flex;gap:.9rem;align-items:flex-end;flex-wrap:wrap}
+.scan-field{display:flex;flex-direction:column;gap:.35rem}
+.scan-field.grow{flex:1;min-width:240px}
+.scan-lbl{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.scan-input,.scan-select{background:var(--bg2);border:1px solid var(--border);border-radius:8px;
+  color:var(--text);padding:.5rem .8rem;font-size:.88rem;font-family:var(--font-mono);transition:border-color .2s}
+.scan-input:focus,.scan-select:focus{outline:none;border-color:var(--accent2)}
+.scan-toggles{display:flex;gap:1.25rem;align-items:center;margin-top:.9rem;flex-wrap:wrap}
+.scan-toggle{display:flex;align-items:center;gap:.45rem;font-size:.82rem;color:var(--text2);cursor:pointer;user-select:none}
+.scan-toggle input{accent-color:var(--accent);width:15px;height:15px;cursor:pointer}
+.scan-toggle .hint{color:var(--muted);font-size:.72rem}
+.btn-run{padding:.55rem 1.6rem;font-size:.9rem;font-weight:700}
+.btn-run:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none}
+
+/* status strip */
+.scan-status{display:none;align-items:center;gap:.75rem;padding:.7rem 1.1rem;background:var(--bg2);
+  border:1px solid var(--border);border-radius:var(--radius);margin-bottom:1.25rem;flex-wrap:wrap}
+.scan-status.visible{display:flex}
+.scan-dot{width:9px;height:9px;border-radius:50%;background:var(--accent);
+  animation:pulse-dot 1.1s ease-in-out infinite}
+.scan-dot.done{background:var(--green);animation:none}
+.scan-dot.error{background:var(--red);animation:none}
+@keyframes pulse-dot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.7)}}
+.scan-status-txt{font-weight:700;font-size:.86rem}
+.scan-status-meta{font-family:var(--font-mono);font-size:.76rem;color:var(--text2)}
+.scan-status .spacer{margin-left:auto}
+
+/* stat cards */
+.scan-stats{display:grid;grid-template-columns:repeat(6,1fr);gap:.75rem;margin-bottom:1.25rem}
+@media(max-width:820px){.scan-stats{grid-template-columns:repeat(3,1fr)}}
+.scan-stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:.8rem 1rem;text-align:center}
+.scan-stat .v{font-size:1.55rem;font-weight:800;font-variant-numeric:tabular-nums}
+.scan-stat .l{font-size:.66rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-top:.2rem}
+.v-crit{color:#f87171}.v-high{color:#fbbf24}.v-med{color:#facc15}.v-low{color:#60a5fa}.v-info{color:#34d399}
+
+/* section */
+.scan-section{margin-bottom:1.75rem}
+.scan-section h2{font-size:1.05rem;font-weight:700;margin-bottom:.75rem;display:flex;align-items:center;gap:.5rem}
+.scan-section h2 .count{font-family:var(--font-mono);font-size:.78rem;color:var(--muted);font-weight:500}
+
+/* lane cards */
+.lane-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:.85rem}
+.lane-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem}
+.lane-card.empty{opacity:.5}
+.lane-card .lc-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem}
+.lane-card .lc-name{font-weight:700;font-size:.9rem}
+.lane-card .lc-slug{font-family:var(--font-mono);font-size:.7rem;color:var(--muted)}
+.lane-card .lc-transport{font-family:var(--font-mono);font-size:.7rem;color:var(--blue)}
+.lane-tally{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.5rem}
+
+/* findings table */
+.scan-table{width:100%;border-collapse:collapse;font-size:.84rem}
+.scan-table th{text-align:left;padding:.5rem .7rem;font-size:.68rem;text-transform:uppercase;
+  letter-spacing:.05em;color:var(--muted);border-bottom:1px solid var(--border)}
+.scan-table td{padding:.55rem .7rem;border-bottom:1px solid var(--border);vertical-align:top}
+.scan-table tr:last-child td{border-bottom:none}
+.scan-table .c-check{font-family:var(--font-mono);font-size:.78rem;color:var(--text2);white-space:nowrap}
+.scan-table .c-tax{font-family:var(--font-mono);font-size:.72rem;color:var(--muted)}
+.scan-table .c-title{color:var(--text)}
+.scan-table .c-detail{color:var(--text2);font-size:.78rem;margin-top:.2rem;display:none}
+.scan-table tr.expand .c-detail{display:block}
+.scan-table tr.has-detail{cursor:pointer}
+.scan-table tr.has-detail:hover td{background:var(--surface2)}
+.scan-filters{display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.7rem}
+.sfilter{background:var(--surface);border:1px solid var(--border);border-radius:6px;
+  padding:.25rem .7rem;font-size:.74rem;color:var(--text2);cursor:pointer;font-family:inherit}
+.sfilter.active{border-color:var(--accent2);color:var(--text);background:var(--surface2)}
+
+/* coverage */
+.cov-row{display:grid;grid-template-columns:160px 1fr 1fr;gap:.75rem;align-items:center;
+  padding:.55rem .7rem;border-bottom:1px solid var(--border);font-size:.82rem}
+.cov-row.head{font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:700}
+.cov-lane{font-weight:600}
+.cov-note{font-size:.74rem;color:var(--muted);grid-column:1 / -1;margin-top:-.2rem;padding:0 .7rem .4rem}
+.cov-bar{height:7px;background:var(--bg2);border-radius:4px;overflow:hidden;margin-top:.25rem}
+.cov-fill{height:100%;background:linear-gradient(90deg,var(--crimson),var(--accent2))}
+.cov-fill.cz{background:linear-gradient(90deg,#1e40af,var(--blue))}
+
+.scan-empty{background:var(--surface);border:1px dashed var(--border2);border-radius:var(--radius);
+  padding:2.5rem 1.5rem;text-align:center;color:var(--text2)}
+.scan-empty code{background:var(--bg2);padding:.15rem .4rem;border-radius:4px;font-size:.8rem;color:var(--accent2)}
+.scan-error{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);border-radius:8px;
+  padding:.8rem 1rem;color:#fca5a5;font-size:.85rem;margin-bottom:1rem;display:none}
+.scan-error.visible{display:block}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="scan-header">
+    <h1>Scan <span class="tool-tag">mcpnuke-runner</span></h1>
+    <p>Launch an <strong>mcpnuke</strong> security scan against any MCP endpoint and read structured
+       findings here — grouped by identity lane and severity, with an optional coverage delta against
+       this portal's lane taxonomy. Scans run in the sidecar service, not the browser.</p>
+  </div>
+
+  {% if not runner_enabled %}
+  <div class="scan-empty">
+    <p style="font-size:1rem;color:var(--text);margin-bottom:.6rem">Scanner sidecar not configured</p>
+    <p>Set <code>RUNNER_URL</code> on the portal (e.g. <code>http://mcpnuke-runner:8090</code>) and deploy the
+       <code>mcpnuke-runner</code> service. See <code>deploy/helm/camazotz/values.yaml → runner.enabled</code>.</p>
+  </div>
+  {% else %}
+
+  <div class="scan-panel">
+    <div class="scan-row">
+      <div class="scan-field grow">
+        <label class="scan-lbl" for="scanTarget">Target MCP endpoint</label>
+        <input class="scan-input" id="scanTarget" type="text"
+               value="{{ default_target }}" placeholder="http://host:port/mcp" autocomplete="off">
+      </div>
+      <div class="scan-field">
+        <label class="scan-lbl" for="scanDepth">Depth</label>
+        <select class="scan-select" id="scanDepth">
+          <option value="fast">fast — sample top tools</option>
+          <option value="standard" selected>standard — full + behavioral</option>
+          <option value="deep">deep — active probe calls</option>
+        </select>
+      </div>
+      <div class="scan-field">
+        <label class="scan-lbl" for="scanTimeout">Timeout (s)</label>
+        <input class="scan-input" id="scanTimeout" type="number" value="25" min="1" max="120" style="width:90px">
+      </div>
+      <button class="btn-primary btn-run" id="scanRunBtn" onclick="startScan()">Run scan</button>
+    </div>
+    <div class="scan-toggles">
+      <label class="scan-toggle">
+        <input type="checkbox" id="scanSafe" checked>
+        <span>Safe mode <span class="hint">(skip destructive invocations)</span></span>
+      </label>
+      <label class="scan-toggle">
+        <input type="checkbox" id="scanCoverage" checked>
+        <span>Coverage delta <span class="hint">(vs this portal's /api/lanes)</span></span>
+      </label>
+    </div>
+  </div>
+
+  <div class="scan-error" id="scanError"></div>
+
+  <div class="scan-status" id="scanStatus">
+    <span class="scan-dot" id="scanDot"></span>
+    <span class="scan-status-txt" id="scanStatusTxt">Queued…</span>
+    <span class="spacer"></span>
+    <span class="scan-status-meta" id="scanStatusMeta"></span>
+  </div>
+
+  <div id="scanResults" style="display:none">
+    <div class="scan-stats" id="scanStats"></div>
+
+    <div class="scan-section">
+      <h2>By identity lane <span class="count" id="laneCount"></span></h2>
+      <div class="lane-grid" id="laneGrid"></div>
+    </div>
+
+    <div class="scan-section" id="coverageSection" style="display:none">
+      <h2>Coverage delta <span class="count" id="coverageMeta"></span></h2>
+      <div class="card" style="padding:.4rem .3rem">
+        <div class="cov-row head">
+          <span>Lane</span><span>camazotz labs</span><span>mcpnuke findings</span>
+        </div>
+        <div id="coverageRows"></div>
+      </div>
+    </div>
+
+    <div class="scan-section">
+      <h2>All findings <span class="count" id="findingCount"></span></h2>
+      <div class="scan-filters" id="scanFilters"></div>
+      <div class="card" style="padding:.3rem .5rem">
+        <table class="scan-table">
+          <thead><tr><th>Severity</th><th>Check</th><th>Title</th><th>Lane</th><th>Taxonomy</th></tr></thead>
+          <tbody id="findingRows"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const SEV_ORDER = ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"];
+const SEV_CLASS = {CRITICAL:"critical", HIGH:"high", MEDIUM:"medium", LOW:"low", INFO:"info"};
+let pollTimer = null;
+let activeSevFilter = "ALL";
+let lastFindings = [];
+
+function sevBadge(sev){
+  const cls = SEV_CLASS[sev] || "info";
+  return `<span class="badge badge-${cls}">${sev}</span>`;
+}
+function esc(s){
+  return String(s == null ? "" : s).replace(/[&<>"]/g, c => (
+    {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
+}
+
+async function startScan(){
+  const target = document.getElementById("scanTarget").value.trim();
+  const errBox = document.getElementById("scanError");
+  errBox.classList.remove("visible");
+  if(!target){ showError("Enter a target MCP endpoint."); return; }
+
+  const payload = {
+    target: target,
+    depth: document.getElementById("scanDepth").value,
+    safe_mode: document.getElementById("scanSafe").checked,
+    timeout: parseFloat(document.getElementById("scanTimeout").value) || 25,
+    coverage: document.getElementById("scanCoverage").checked,
+  };
+
+  setRunning(true);
+  setStatus("queued", "Submitting scan…", "");
+  document.getElementById("scanResults").style.display = "none";
+
+  try{
+    const r = await fetch("/api/scan", {
+      method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload)
+    });
+    const data = await r.json();
+    if(!r.ok){ throw new Error(data.error || ("HTTP " + r.status)); }
+    pollJob(data.id, Date.now());
+  }catch(e){
+    showError(e.message); setRunning(false); setStatus("error", "Failed to start", "");
+  }
+}
+
+function pollJob(jobId, started){
+  clearTimeout(pollTimer);
+  const tick = async () => {
+    try{
+      const r = await fetch("/api/scan/" + jobId);
+      const job = await r.json();
+      if(!r.ok){ throw new Error(job.error || ("HTTP " + r.status)); }
+      const elapsed = ((Date.now() - started)/1000).toFixed(0) + "s";
+      if(job.status === "queued" || job.status === "running"){
+        setStatus(job.status, job.status === "running" ? "Scanning…" : "Queued…",
+                  "job " + jobId + " · " + elapsed);
+        pollTimer = setTimeout(tick, 1500);
+      }else if(job.status === "done"){
+        setStatus("done", "Scan complete", "job " + jobId + " · " + elapsed);
+        setRunning(false);
+        renderResults(job);
+      }else{
+        setStatus("error", "Scan failed", "job " + jobId);
+        showError(job.error || "Scan errored");
+        setRunning(false);
+      }
+    }catch(e){
+      showError(e.message); setStatus("error", "Polling failed", ""); setRunning(false);
+    }
+  };
+  tick();
+}
+
+function setRunning(on){
+  const btn = document.getElementById("scanRunBtn");
+  btn.disabled = on; btn.textContent = on ? "Scanning…" : "Run scan";
+}
+function setStatus(state, txt, meta){
+  const strip = document.getElementById("scanStatus");
+  strip.classList.add("visible");
+  const dot = document.getElementById("scanDot");
+  dot.className = "scan-dot" + (state === "done" ? " done" : state === "error" ? " error" : "");
+  document.getElementById("scanStatusTxt").textContent = txt;
+  document.getElementById("scanStatusMeta").textContent = meta || "";
+}
+function showError(msg){
+  const e = document.getElementById("scanError");
+  e.textContent = msg; e.classList.add("visible");
+}
+
+function renderResults(job){
+  const report = job.report || {};
+  const summary = report.summary || {};
+  const tgt = (report.targets || [])[0] || {};
+  const sev = summary.severity_counts || {};
+
+  // stat cards
+  const cards = [
+    {l:"Risk score", v:tgt.risk_score ?? 0, c:""},
+    {l:"Findings", v:summary.total_findings ?? 0, c:""},
+    {l:"Critical", v:sev.CRITICAL || 0, c:"v-crit"},
+    {l:"High", v:sev.HIGH || 0, c:"v-high"},
+    {l:"Medium", v:sev.MEDIUM || 0, c:"v-med"},
+    {l:"Tools", v:(tgt.tools_scanned ?? 0) + "/" + (tgt.tools_total ?? 0), c:"v-low"},
+  ];
+  document.getElementById("scanStats").innerHTML = cards.map(c =>
+    `<div class="scan-stat"><div class="v ${c.c}">${esc(c.v)}</div><div class="l">${esc(c.l)}</div></div>`
+  ).join("");
+
+  renderLanes(job.by_lane || {});
+  renderCoverage(job.coverage);
+  lastFindings = tgt.findings || [];
+  renderFilters(lastFindings);
+  renderFindings(lastFindings);
+
+  document.getElementById("scanResults").style.display = "block";
+}
+
+function renderLanes(byLane){
+  const lanes = byLane.by_lane || {};
+  document.getElementById("laneCount").textContent = "(" + (byLane.total_findings || 0) + " findings)";
+  const grid = document.getElementById("laneGrid");
+  let html = "";
+  for(const id of ["1","2","3","4","5"]){
+    const b = lanes[id] || {};
+    const count = b.finding_count || 0;
+    const tally = b.severity_tally || {};
+    const transports = (b.transports_hit || []).join("+") || "—";
+    const tallyHtml = SEV_ORDER.filter(s => tally[s]).map(s =>
+      `<span class="badge badge-${SEV_CLASS[s]}">${tally[s]} ${s}</span>`).join("");
+    html += `<div class="lane-card ${count ? "" : "empty"}">
+      <div class="lc-top">
+        <div><span class="lc-name">Lane ${id} · ${esc(b.name || "")}</span></div>
+        <span class="lc-transport">${esc(transports)}</span>
+      </div>
+      <div class="lc-slug">${esc(b.slug || "")} · ${count} finding${count===1?"":"s"}</div>
+      <div class="lane-tally">${tallyHtml || '<span class="lc-slug">no findings fired</span>'}</div>
+    </div>`;
+  }
+  grid.innerHTML = html;
+}
+
+function renderCoverage(cov){
+  const sec = document.getElementById("coverageSection");
+  if(!cov){ sec.style.display = "none"; return; }
+  if(cov.error){
+    sec.style.display = "block";
+    document.getElementById("coverageMeta").textContent = "(" + cov.error + ")";
+    document.getElementById("coverageRows").innerHTML =
+      `<div class="cov-note">${esc(cov.detail || "coverage unavailable")}</div>`;
+    return;
+  }
+  sec.style.display = "block";
+  const s = cov.summary || {};
+  document.getElementById("coverageMeta").textContent =
+    `${cov.camazotz_labs} labs · mcpnuke hit ${s.lanes_covered_by_mcpnuke}/5 lanes` +
+    (s.widest_gap ? ` · widest gap ${s.widest_gap}` : "");
+  const lanes = cov.lanes || {};
+  const maxPrimary = Math.max(1, ...Object.values(lanes).map(l => (l.camazotz||{}).primary_count || 0));
+  const maxFired = Math.max(1, ...Object.values(lanes).map(l => (l.mcpnuke||{}).checks_fired || 0));
+  let html = "";
+  for(const id of ["1","2","3","4","5"]){
+    const l = lanes[id]; if(!l) continue;
+    const cz = l.camazotz || {}, mn = l.mcpnuke || {};
+    const czPct = ((cz.primary_count||0)/maxPrimary*100).toFixed(0);
+    const mnPct = ((mn.checks_fired||0)/maxFired*100).toFixed(0);
+    html += `<div class="cov-row">
+      <span class="cov-lane">Lane ${id} · ${esc(l.name||"")}</span>
+      <span>${cz.primary_count||0} primary<div class="cov-bar"><div class="cov-fill cz" style="width:${czPct}%"></div></div></span>
+      <span>${mn.checks_fired||0} fired<div class="cov-bar"><div class="cov-fill" style="width:${mnPct}%"></div></div></span>
+    </div>
+    <div class="cov-note">${esc(l.alignment_note||"")}</div>`;
+  }
+  document.getElementById("coverageRows").innerHTML = html;
+}
+
+function renderFilters(findings){
+  const counts = {ALL: findings.length};
+  for(const f of findings){ counts[f.severity] = (counts[f.severity]||0) + 1; }
+  const opts = ["ALL", ...SEV_ORDER.filter(s => counts[s])];
+  activeSevFilter = "ALL";
+  document.getElementById("scanFilters").innerHTML = opts.map(o =>
+    `<button class="sfilter ${o==="ALL"?"active":""}" data-sev="${o}" onclick="setFilter('${o}')">${o} (${counts[o]||0})</button>`
+  ).join("");
+}
+function setFilter(sev){
+  activeSevFilter = sev;
+  document.querySelectorAll(".sfilter").forEach(b =>
+    b.classList.toggle("active", b.dataset.sev === sev));
+  renderFindings(lastFindings);
+}
+
+function renderFindings(findings){
+  const rows = findings
+    .filter(f => activeSevFilter === "ALL" || f.severity === activeSevFilter)
+    .sort((a,b) => SEV_ORDER.indexOf(a.severity) - SEV_ORDER.indexOf(b.severity));
+  const tbody = document.getElementById("findingRows");
+  document.getElementById("findingCount").textContent = "(" + findings.length + ")";
+  if(!rows.length){
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:1.5rem">No findings for this filter.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rows.map(f => {
+    const lane = f.lane ? ("Lane " + f.lane + (f.transport ? " · " + f.transport : "")) : "—";
+    const tax = [f.taxonomy_id, f.mitre_id].filter(Boolean).join(" / ") || "—";
+    const detail = (f.detail || f.evidence) ?
+      `<div class="c-detail">${esc(f.detail || "")}${f.evidence ? "<br><span style='color:var(--muted)'>"+esc(f.evidence)+"</span>" : ""}</div>` : "";
+    const cls = detail ? "has-detail" : "";
+    return `<tr class="${cls}" onclick="this.classList.toggle('expand')">
+      <td>${sevBadge(f.severity)}</td>
+      <td class="c-check">${esc(f.check)}</td>
+      <td><span class="c-title">${esc(f.title)}</span>${detail}</td>
+      <td class="c-tax">${esc(lane)}</td>
+      <td class="c-tax">${esc(tax)}</td>
+    </tr>`;
+  }).join("");
+}
+</script>
+{% endblock %}

@@ -488,3 +488,106 @@ def test_api_bench_clear_gateway_error(frontend_client) -> None:
     with patch.object(httpx, "delete", side_effect=httpx.ConnectError("refused")):
         resp = client.delete("/api/bench/results")
     assert resp.status_code == 502
+
+
+# ── Scan (mcpnuke-runner) routes ──────────────────────────────────────────────
+
+def test_scan_page_disabled_without_runner(frontend_client) -> None:
+    client, mod = frontend_client
+    with patch.object(mod, "RUNNER_URL", ""):
+        resp = client.get("/scan")
+    assert resp.status_code == 200
+    html = resp.data.decode()
+    assert "Scanner sidecar not configured" in html
+
+
+def test_scan_page_enabled_with_runner(frontend_client) -> None:
+    client, mod = frontend_client
+    with patch.object(mod, "RUNNER_URL", "http://mcpnuke-runner:8090"):
+        resp = client.get("/scan")
+    assert resp.status_code == 200
+    html = resp.data.decode()
+    assert "Run scan" in html
+    assert "Target MCP endpoint" in html
+
+
+def test_scan_nav_link_present(frontend_client) -> None:
+    client, _ = frontend_client
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = []
+    mock_resp.raise_for_status = MagicMock()
+    with patch.object(httpx, "get", return_value=mock_resp):
+        resp = client.get("/")
+    assert b'href="/scan"' in resp.data
+
+
+def test_api_scan_create_proxies_to_runner(frontend_client) -> None:
+    client, mod = frontend_client
+    mock_resp = MagicMock()
+    mock_resp.status_code = 202
+    mock_resp.raise_for_status = MagicMock()
+    mock_resp.json.return_value = {"id": "deadbeef", "status": "queued"}
+    with patch.object(mod, "RUNNER_URL", "http://mcpnuke-runner:8090"), \
+            patch.object(httpx, "post", return_value=mock_resp) as post:
+        resp = client.post("/api/scan", json={
+            "target": "http://brain-gateway:8080/mcp", "depth": "fast", "coverage": True,
+        })
+    assert resp.status_code == 202
+    assert resp.get_json()["id"] == "deadbeef"
+    # coverage=True must forward a coverage_url pointing back at this portal
+    sent = post.call_args.kwargs["json"]
+    assert sent["coverage_url"] == mod.SELF_URL
+    assert sent["depth"] == "fast"
+
+
+def test_api_scan_create_missing_target(frontend_client) -> None:
+    client, mod = frontend_client
+    with patch.object(mod, "RUNNER_URL", "http://mcpnuke-runner:8090"):
+        resp = client.post("/api/scan", json={"depth": "fast"})
+    assert resp.status_code == 400
+
+
+def test_api_scan_create_invalid_depth(frontend_client) -> None:
+    client, mod = frontend_client
+    with patch.object(mod, "RUNNER_URL", "http://mcpnuke-runner:8090"):
+        resp = client.post("/api/scan", json={"target": "http://x/mcp", "depth": "nuclear"})
+    assert resp.status_code == 400
+
+
+def test_api_scan_create_no_runner(frontend_client) -> None:
+    client, mod = frontend_client
+    with patch.object(mod, "RUNNER_URL", ""):
+        resp = client.post("/api/scan", json={"target": "http://x/mcp"})
+    assert resp.status_code == 502
+
+
+def test_api_scan_create_runner_unreachable(frontend_client) -> None:
+    client, mod = frontend_client
+    with patch.object(mod, "RUNNER_URL", "http://mcpnuke-runner:8090"), \
+            patch.object(httpx, "post", side_effect=httpx.ConnectError("refused")):
+        resp = client.post("/api/scan", json={"target": "http://x/mcp"})
+    assert resp.status_code == 502
+
+
+def test_api_scan_status_proxies(frontend_client) -> None:
+    client, mod = frontend_client
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.raise_for_status = MagicMock()
+    mock_resp.json.return_value = {"id": "abc", "status": "done", "report": {"summary": {}}}
+    with patch.object(mod, "RUNNER_URL", "http://mcpnuke-runner:8090"), \
+            patch.object(httpx, "get", return_value=mock_resp):
+        resp = client.get("/api/scan/abc")
+    assert resp.status_code == 200
+    assert resp.get_json()["status"] == "done"
+
+
+def test_api_scan_status_unknown_job(frontend_client) -> None:
+    client, mod = frontend_client
+    mock_resp = MagicMock()
+    mock_resp.status_code = 404
+    with patch.object(mod, "RUNNER_URL", "http://mcpnuke-runner:8090"), \
+            patch.object(httpx, "get", return_value=mock_resp):
+        resp = client.get("/api/scan/nope")
+    assert resp.status_code == 404

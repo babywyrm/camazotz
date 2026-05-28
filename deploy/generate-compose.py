@@ -23,8 +23,11 @@ def build_compose(v: dict) -> dict:
     pt = v["portal"]
     ob = v["observer"]
     ol = v["ollama"]
+    rn = v.get("runner", {})
     zit = v.get("zitadel", {})
     zit_pg = v.get("zitadelPostgres", {})
+    runner_enabled = rn.get("enabled", False)
+    runner_url = f"http://mcpnuke-runner:{rn.get('port', 8090)}" if runner_enabled else ""
 
     def env_line(key: str, val: str, compose_var: str | None = None) -> str:
         if compose_var:
@@ -77,6 +80,8 @@ def build_compose(v: dict) -> dict:
     portal_env = [
         env_line("GATEWAY_URL", cfg["gatewayUrl"]),
         env_line("FLASK_SECRET", sec["flaskSecret"], "FLASK_SECRET"),
+        env_line("RUNNER_URL", runner_url, "RUNNER_URL"),
+        env_line("CAMAZOTZ_SELF_URL", f"http://portal:{pt['port']}"),
     ]
 
     observer_env = [
@@ -129,6 +134,19 @@ def build_compose(v: dict) -> dict:
         "restart": "unless-stopped",
         "networks": [v["namespace"]],
     }
+
+    if runner_enabled:
+        services["mcpnuke-runner"] = {
+            "build": {"context": rn["build"]["context"], "dockerfile": rn["build"]["dockerfile"]},
+            "environment": [
+                env_line("MCPNUKE_RUNNER_PORT", str(rn.get("port", 8090))),
+                env_line("MCPNUKE_RUNNER_WORKERS", str(rn.get("workers", "2"))),
+            ],
+            "ports": [f"{rn.get('port', 8090)}:{rn.get('port', 8090)}"],
+            "restart": "unless-stopped",
+            "healthcheck": healthcheck(rn.get("port", 8090), rn.get("healthPath", "/health")),
+            "networks": [v["namespace"]],
+        }
 
     if zit.get("enabled", False):
         services["zitadel-postgres"] = {

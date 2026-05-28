@@ -25,6 +25,13 @@ app.config["SECRET_KEY"] = os.getenv("FLASK_SECRET", "cztz-dev-key")
 GATEWAY_URL = os.getenv("GATEWAY_URL", "http://localhost:8080")
 ZITADEL_CONSOLE_URL = os.getenv("ZITADEL_CONSOLE_URL", "http://localhost:8180/ui/console")
 
+# mcpnuke-runner sidecar — the scanner's HTTP job API. Empty disables the
+# Scan page (graceful degradation when the runner isn't deployed).
+RUNNER_URL = os.getenv("RUNNER_URL", "").rstrip("/")
+# URL the runner uses to fetch *this* portal's /api/lanes for coverage deltas.
+# In-cluster/compose this is the portal Service; locally it's localhost.
+SELF_URL = os.getenv("CAMAZOTZ_SELF_URL", "http://localhost:3000").rstrip("/")
+
 
 @app.context_processor
 def _inject_identity_globals():
@@ -311,6 +318,69 @@ def api_reset():
         return jsonify(resp.json())
     except (httpx.HTTPError, ValueError):
         return jsonify({"error": "Gateway unreachable"}), 502
+
+
+# --- mcpnuke scan integration ------------------------------------------------
+# The portal never talks to the scanner library directly; it proxies to the
+# mcpnuke-runner sidecar so heavy scan deps stay out of the Flask image and
+# scans run off-process. RUNNER_URL empty => feature disabled (502 with hint).
+
+DEFAULT_SCAN_TARGET = os.getenv("RUNNER_DEFAULT_TARGET", f"{GATEWAY_URL.rstrip('/')}/mcp")
+_VALID_DEPTHS = {"fast", "standard", "deep"}
+
+
+@app.route("/scan")
+def scan_view():
+    return render_template(
+        "scan.html",
+        runner_enabled=bool(RUNNER_URL),
+        default_target=DEFAULT_SCAN_TARGET,
+    )
+
+
+@app.route("/api/scan", methods=["POST"])
+def api_scan_create():
+    if not RUNNER_URL:
+        return jsonify({"error": "mcpnuke-runner not configured (set RUNNER_URL)"}), 502
+    body = request.get_json(silent=True) or {}
+    target = (body.get("target") or "").strip()
+    if not target:
+        return jsonify({"error": "Missing scan target"}), 400
+    depth = body.get("depth", "standard")
+    if depth not in _VALID_DEPTHS:
+        return jsonify({"error": f"Invalid depth {depth!r}"}), 400
+
+    payload = {
+        "target": target,
+        "depth": depth,
+        "safe_mode": bool(body.get("safe_mode", True)),
+        "timeout": float(body.get("timeout", 25.0)),
+    }
+    # When the operator asks for a coverage delta, point the runner back at
+    # this portal's lane taxonomy (reachable via the in-cluster Service URL).
+    if body.get("coverage"):
+        payload["coverage_url"] = SELF_URL
+
+    try:
+        resp = httpx.post(f"{RUNNER_URL}/scans", json=payload, timeout=10.0)
+        resp.raise_for_status()
+        return jsonify(resp.json()), 202
+    except (httpx.HTTPError, ValueError) as exc:
+        return jsonify({"error": f"Runner unreachable: {exc}"}), 502
+
+
+@app.route("/api/scan/<job_id>", methods=["GET"])
+def api_scan_status(job_id: str):
+    if not RUNNER_URL:
+        return jsonify({"error": "mcpnuke-runner not configured (set RUNNER_URL)"}), 502
+    try:
+        resp = httpx.get(f"{RUNNER_URL}/scans/{job_id}", timeout=10.0)
+        if resp.status_code == 404:
+            return jsonify({"error": "Unknown scan job"}), 404
+        resp.raise_for_status()
+        return jsonify(resp.json())
+    except (httpx.HTTPError, ValueError) as exc:
+        return jsonify({"error": f"Runner unreachable: {exc}"}), 502
 
 
 def _fetch_scenarios() -> list[dict]:
