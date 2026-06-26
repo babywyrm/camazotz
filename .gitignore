@@ -56,3 +56,7 @@ dist/
 # Superpowers (local-only brainstorm, plans, specs)
 .superpowers/
 docs/superpowers/
+
+# Stray npm artifacts (no package.json — this is not a node project)
+node_modules/
+package-lock.json
