@@ -57,6 +57,11 @@ gateway:
   replicas: 1
   port: 8080
   healthPath: /health
+  # The bypass Service is the documented unguarded entry point (NodePort
+  # 30080 in the reference layout); the policed path lives on
+  # brain-gateway-policed :30090. See docs/identity/k8s-runbook.md.
+  serviceType: NodePort
+  nodePort: 30080
   flagsDir: /opt/camazotz/flags
   modulesDir: /workspace/camazotz_modules
   resources:

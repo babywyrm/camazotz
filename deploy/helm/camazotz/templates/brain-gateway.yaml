@@ -131,15 +131,18 @@ metadata:
     {{- include "camazotz.selectorLabels" "brain-gateway" | nindent 4 }}
     {{- include "camazotz.labels" . | nindent 4 }}
 spec:
+  type: {{ .Values.gateway.serviceType }}
   selector:
     {{- include "camazotz.selectorLabels" "brain-gateway" | nindent 4 }}
   ports:
     - name: mcp
       port: {{ .Values.gateway.port }}
-      {{- if .Values.nullfield.enabled }}
-      targetPort: {{ .Values.nullfield.listenPort }}
-      {{- else }}
+      # Always direct to the gateway. This Service is the documented bypass
+      # entry point; the policed path is a separate Service (brain-gateway-policed,
+      # kube/brain-gateway-policed.yaml) that targets the nullfield sidecar.
       targetPort: {{ .Values.gateway.port }}
+      {{- if and (eq .Values.gateway.serviceType "NodePort") (.Values.gateway.nodePort) }}
+      nodePort: {{ .Values.gateway.nodePort }}
       {{- end }}
       protocol: TCP
     {{- if .Values.nullfield.enabled }}
