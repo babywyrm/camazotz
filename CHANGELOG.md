@@ -3,6 +3,14 @@
 All notable changes to Camazotz are documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## nullfield Strict Policy Loading (2026-10-25)
+
+### Fixed
+
+- **Sidecar policy uses `onTrip: DENY`.** nullfield now refuses to load a policy that sets a field it does not enforce, and `onTrip: KILL_POD` never killed anything. Left as it was, the next `helm upgrade` would have published a policy the sidecar rejects, and the next pod restart would have fallen back to deny-all. Every nullfield policy in this repo was checked against the new loader.
+
+---
+
 ## Identity Dashboard Overhaul (2026-05-21)
 
 ### Added
