@@ -62,6 +62,8 @@ spec invariant that the lane view never regresses the existing map.
 **Quick bootstrap** (recommended):
 
 ```bash
+make zitadel-keygen       # once; put the printed ZITADEL_SYSTEMAPIUSERS line in .env
+make up                   # restart ZITADEL with the key
 make zitadel-bootstrap    # creates service user, writes credentials to .env
 make up                   # restart to apply
 ```

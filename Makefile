@@ -269,8 +269,13 @@ campaign: env ## Full scenario campaign: scan -> load pre-authored policy -> app
 	  --mode apply \
 	  --wait-seconds $(WAIT_SECONDS)
 
-zitadel-bootstrap: ## Bootstrap ZITADEL service user for non-degraded IDP operation
-	uv run python scripts/zitadel_bootstrap.py --write-env
+ZITADEL_SYSTEM_DIR ?= $(HOME)/.camazotz/zitadel-system
+
+zitadel-keygen: ## Write the ZITADEL system API key (once); prints ZITADEL_SYSTEMAPIUSERS for compose/.env
+	uv run python scripts/zitadel_bootstrap.py --keygen $(ZITADEL_SYSTEM_DIR)
+
+zitadel-bootstrap: ## Bootstrap ZITADEL service user for non-degraded IDP operation (after zitadel-keygen)
+	uv run python scripts/zitadel_bootstrap.py --system-key $(ZITADEL_SYSTEM_DIR)/system-user.pem --write-env
 	@echo "Restart brain-gateway to apply: make up"
 
 compose-gen: ## Regenerate docker-compose.yml from Helm values

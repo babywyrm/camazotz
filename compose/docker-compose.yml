@@ -115,7 +115,7 @@ services:
     networks:
     - camazotz
   zitadel:
-    image: ghcr.io/zitadel/zitadel:latest
+    image: ghcr.io/zitadel/zitadel:v4.13.1
     command:
     - start-from-init
     - --masterkey
@@ -128,6 +128,7 @@ services:
     - ZITADEL_TLS_ENABLED=false
     - ZITADEL_DATABASE_POSTGRES_DSN=postgres://zitadel:${ZITADEL_DB_PASSWORD:-camazotz-zitadel-postgres}@zitadel-postgres:5432/zitadel?sslmode=disable
     - ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORDCHANGEREQUIRED=false
+    - ZITADEL_SYSTEMAPIUSERS=${ZITADEL_SYSTEMAPIUSERS:-}
     ports:
     - 8180:8080
     depends_on:

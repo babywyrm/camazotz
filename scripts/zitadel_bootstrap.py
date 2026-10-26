@@ -1,33 +1,100 @@
 #!/usr/bin/env python3
 """Bootstrap a ZITADEL service user with client credentials for Camazotz.
 
+ZITADEL v4 removed the password grant, so this authenticates as a system API
+user: a key pair whose public half ZITADEL is given in ZITADEL_SYSTEMAPIUSERS.
+
 Usage:
-    uv run python scripts/zitadel_bootstrap.py [--zitadel-url URL] [--write-env]
+    # once: write the key, then give ZITADEL the printed value
+    uv run python scripts/zitadel_bootstrap.py --keygen ~/.camazotz/zitadel-system
+    # Compose: ZITADEL_SYSTEMAPIUSERS=<value> in compose/.env
+    # Helm:    --set-file zitadel.systemApiUsers=<dir>/system-api-users.json
+
+    # then, as often as needed (a new client secret each run)
+    uv run python scripts/zitadel_bootstrap.py --system-key <dir>/system-user.pem [--write-env]
 
 This script:
   1. Waits for ZITADEL to become healthy
-  2. Obtains an admin token via the default first-instance credentials
-  3. Creates a machine user (camazotz-gateway) with client credentials
+  2. Signs a five-minute token as the system API user
+  3. Creates a machine user (camazotz-gateway) in the default organization
   4. Prints the client_id and client_secret
-  5. Optionally appends them to compose/.env (--write-env)
+  5. Optionally writes them to compose/.env (--write-env)
 
-Requires: httpx (already in project deps)
+Requires: httpx and pyjwt[crypto] (already in project deps)
 """
 
 from __future__ import annotations
 
 import argparse
+import base64
 import json
+import os
 import sys
 import time
+from pathlib import Path
 
 import httpx
+import jwt
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
 
 DEFAULT_ZITADEL_URL = "http://localhost:8180"
-DEFAULT_ADMIN_USER = "zitadel-admin@zitadel.localhost"
-DEFAULT_ADMIN_PASS = "Password1!"
+# ZITADEL picks the instance from the Host header and checks the token's
+# audience against it, so both must be the external domain, not the URL dialed.
+DEFAULT_EXTERNAL_URL = "http://zitadel:8080"
+SYSTEM_USER = "camazotz-bootstrap"
 MACHINE_USERNAME = "camazotz-gateway"
 MACHINE_DISPLAY = "Camazotz Gateway Service Account"
+
+
+def keygen(directory: Path) -> str:
+    """Write a system API key pair to directory; return ZITADEL_SYSTEMAPIUSERS."""
+    directory.mkdir(parents=True, exist_ok=True)
+    key_path = directory / "system-user.pem"
+    if key_path.exists():
+        sys.exit(f"{key_path} exists; remove it to rotate the key")
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    pem = key.private_bytes(
+        serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption()
+    )
+    fd = os.open(key_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(fd, "wb") as f:
+        f.write(pem)
+    public = key.public_key().public_bytes(
+        serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo
+    )
+    users = json.dumps({
+        SYSTEM_USER: {
+            "KeyData": base64.b64encode(public).decode(),
+            "Memberships": [{"MemberType": "System", "Roles": ["SYSTEM_OWNER", "IAM_OWNER", "ORG_OWNER"]}],
+        }
+    })
+    (directory / "system-api-users.json").write_text(users)
+    return users
+
+
+def system_token(private_pem: bytes, audience: str) -> str:
+    now = int(time.time())
+    claims = {"iss": SYSTEM_USER, "sub": SYSTEM_USER, "aud": audience, "iat": now, "exp": now + 300}
+    return jwt.encode(claims, private_pem, algorithm="RS256")
+
+
+def client(
+    base: str, external_url: str, token: str, transport: httpx.BaseTransport | None = None
+) -> httpx.Client:
+    host = httpx.URL(external_url).netloc.decode()
+    return httpx.Client(
+        base_url=base.rstrip("/"),
+        headers={"Authorization": f"Bearer {token}", "Host": host},
+        timeout=10,
+        transport=transport,
+    )
+
+
+def _check(r: httpx.Response, what: str, ok: tuple[int, ...] = (200, 201)) -> httpx.Response:
+    if r.status_code not in ok:
+        sys.exit(f"{what}: {r.status_code} {r.text}")
+    return r
 
 
 def _wait_healthy(base: str, timeout: int = 120) -> None:
@@ -47,101 +114,45 @@ def _wait_healthy(base: str, timeout: int = 120) -> None:
     sys.exit(1)
 
 
-def _admin_token(base: str) -> str:
-    """Get an access token using the default admin credentials."""
-    r = httpx.post(
-        f"{base}/oauth/v2/token",
-        data={
-            "grant_type": "password",
-            "username": DEFAULT_ADMIN_USER,
-            "password": DEFAULT_ADMIN_PASS,
-            "scope": "openid urn:zitadel:iam:org:project:id:zitadel:aud",
-        },
-        headers={"Content-Type": "application/x-www-form-urlencoded"},
-        timeout=10,
-    )
-    if r.status_code != 200:
-        print(f"Failed to get admin token: {r.status_code} {r.text}")
-        sys.exit(1)
-    token = r.json().get("access_token", "")
-    if not token:
-        print(f"No access_token in response: {r.text}")
-        sys.exit(1)
-    return token
+def bootstrap(c: httpx.Client) -> tuple[str, str]:
+    """Create or reuse the gateway machine user and give it a new client secret."""
+    org = _check(c.get("/admin/v1/orgs/default"), "Failed to find the default org").json()["org"]["id"]
+    c.headers["x-zitadel-orgid"] = org
 
-
-def _create_machine_user(base: str, token: str) -> str:
-    """Create a machine user and return the user_id."""
-    r = httpx.post(
-        f"{base}/management/v1/users/machine",
+    r = c.post(
+        "/management/v1/users/machine",
         json={
             "userName": MACHINE_USERNAME,
             "name": MACHINE_DISPLAY,
             "description": "Service account for Camazotz brain-gateway IDP flows",
             "accessTokenType": 0,
         },
-        headers={"Authorization": f"Bearer {token}"},
-        timeout=10,
     )
     if r.status_code == 409:
-        print(f"Machine user '{MACHINE_USERNAME}' already exists, looking up...")
-        return _find_machine_user(base, token)
-    if r.status_code not in (200, 201):
-        print(f"Failed to create machine user: {r.status_code} {r.text}")
-        sys.exit(1)
-    user_id = r.json().get("userId", "")
-    print(f"Created machine user: {user_id}")
-    return user_id
+        found = _check(
+            c.post(
+                "/management/v1/users/_search",
+                json={"queries": [{"userNameQuery": {"userName": MACHINE_USERNAME, "method": 0}}]},
+            ),
+            "Failed to search users",
+        ).json().get("result", [])
+        if not found:
+            sys.exit("Machine user not found despite 409. Cannot proceed.")
+        user_id = found[0]["id"]
+        print(f"Found existing machine user: {user_id}")
+    else:
+        user_id = _check(r, "Failed to create machine user").json()["userId"]
+        print(f"Created machine user: {user_id}")
 
-
-def _find_machine_user(base: str, token: str) -> str:
-    """Look up existing machine user by username."""
-    r = httpx.post(
-        f"{base}/management/v1/users/_search",
-        json={
-            "queries": [
-                {"userNameQuery": {"userName": MACHINE_USERNAME, "method": 0}}
-            ]
-        },
-        headers={"Authorization": f"Bearer {token}"},
-        timeout=10,
-    )
-    if r.status_code != 200:
-        print(f"Failed to search users: {r.status_code} {r.text}")
-        sys.exit(1)
-    users = r.json().get("result", [])
-    if not users:
-        print("Machine user not found despite 409. Cannot proceed.")
-        sys.exit(1)
-    user_id = users[0].get("id", "")
-    print(f"Found existing machine user: {user_id}")
-    return user_id
-
-
-def _generate_client_secret(base: str, token: str, user_id: str) -> tuple[str, str]:
-    """Generate a new client secret for the machine user."""
-    r = httpx.put(
-        f"{base}/management/v1/users/{user_id}/secret",
-        json={},
-        headers={"Authorization": f"Bearer {token}"},
-        timeout=10,
-    )
-    if r.status_code not in (200, 201):
-        print(f"Failed to generate client secret: {r.status_code} {r.text}")
-        sys.exit(1)
-    data = r.json()
-    client_id = data.get("clientId", "")
-    client_secret = data.get("clientSecret", "")
-    if not client_id or not client_secret:
-        print(f"Unexpected secret response shape: {data}")
-        sys.exit(1)
-    return client_id, client_secret
+    data = _check(c.put(f"/management/v1/users/{user_id}/secret", json={}), "Failed to generate client secret").json()
+    if not data.get("clientId") or not data.get("clientSecret"):
+        sys.exit("Unexpected secret response shape")
+    return data["clientId"], data["clientSecret"]
 
 
 def _write_env(client_id: str, client_secret: str) -> None:
     """Append or update client credentials in compose/.env."""
-    import pathlib
-    env_path = pathlib.Path("compose/.env")
+    env_path = Path("compose/.env")
     if not env_path.exists():
         print(f"WARNING: {env_path} not found, skipping --write-env")
         return
@@ -169,19 +180,28 @@ def _write_env(client_id: str, client_secret: str) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Bootstrap ZITADEL service user for Camazotz")
-    parser.add_argument("--zitadel-url", default=DEFAULT_ZITADEL_URL, help="ZITADEL base URL")
+    parser.add_argument("--keygen", metavar="DIR", type=Path, help="Write a system API key pair to DIR and exit")
+    parser.add_argument("--system-key", type=Path, help="System API private key written by --keygen")
+    parser.add_argument("--zitadel-url", default=DEFAULT_ZITADEL_URL, help="URL to reach ZITADEL at")
+    parser.add_argument("--external-url", default=DEFAULT_EXTERNAL_URL, help="ZITADEL's external URL")
     parser.add_argument("--write-env", action="store_true", help="Write credentials to compose/.env")
     args = parser.parse_args()
 
-    base = args.zitadel_url.rstrip("/")
+    if args.keygen:
+        users = keygen(args.keygen)
+        print(f"Wrote {args.keygen / 'system-user.pem'} (keep it private).")
+        print("Give ZITADEL the public half, then restart it:")
+        print(f"  Compose: ZITADEL_SYSTEMAPIUSERS='{users}' in compose/.env")
+        print(f"  Helm:    --set-file zitadel.systemApiUsers={args.keygen / 'system-api-users.json'}")
+        return 0
+    if not args.system_key:
+        parser.error("--system-key is required (create one with --keygen)")
 
+    base = args.zitadel_url.rstrip("/")
     _wait_healthy(base)
-    print("Authenticating as default admin...")
-    token = _admin_token(base)
-    print("Creating service user...")
-    user_id = _create_machine_user(base, token)
     print("Generating client credentials...")
-    client_id, client_secret = _generate_client_secret(base, token, user_id)
+    with client(base, args.external_url, system_token(args.system_key.read_bytes(), args.external_url)) as c:
+        client_id, client_secret = bootstrap(c)
 
     print()
     print("=" * 60)
@@ -197,6 +217,7 @@ def main() -> int:
 
     print("To apply: restart brain-gateway to pick up new credentials.")
     print("  Local:  docker compose -f compose/docker-compose.yml --env-file compose/.env up -d --force-recreate brain-gateway")
+    print("  Helm:   --set secrets.idpClientSecret=<secret>, then restart brain-gateway")
     print("  Verify: curl -s http://localhost:8080/config | python3 -m json.tool")
     return 0
 

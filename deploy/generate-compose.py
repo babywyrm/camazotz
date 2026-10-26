@@ -195,6 +195,7 @@ def build_compose(v: dict) -> dict:
                     "ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORDCHANGEREQUIRED",
                     str(zit.get("firstInstancePasswordChangeRequired", "false")).lower(),
                 ),
+                env_line("ZITADEL_SYSTEMAPIUSERS", zit.get("systemApiUsers", ""), "ZITADEL_SYSTEMAPIUSERS"),
             ],
             "ports": [f"{zit.get('hostPort', 8180)}:{zit['port']}"],
             "depends_on": {"zitadel-postgres": {"condition": "service_healthy"}},

@@ -117,6 +117,10 @@ spec:
               value: "postgres://{{ .Values.zitadelPostgres.user }}:$(ZITADEL_DB_PASSWORD)@zitadel-postgres:{{ .Values.zitadelPostgres.port }}/{{ .Values.zitadelPostgres.db }}?sslmode=disable"
             - name: ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORDCHANGEREQUIRED
               value: {{ .Values.zitadel.firstInstancePasswordChangeRequired | quote }}
+            {{- with .Values.zitadel.systemApiUsers }}
+            - name: ZITADEL_SYSTEMAPIUSERS
+              value: {{ . | trim | quote }}
+            {{- end }}
             - name: ZITADEL_MASTERKEY
               valueFrom:
                 secretKeyRef:

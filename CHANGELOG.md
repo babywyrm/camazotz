@@ -3,6 +3,19 @@
 All notable changes to Camazotz are documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## ZITADEL v4 Bootstrap (2026-10-25)
+
+### Fixed
+
+- **`make zitadel-bootstrap` works against ZITADEL v4.** It signed in as the console admin with the password grant, which v4 removed (`unsupported_grant_type`), so no install since v4 could create the gateway's client credentials with it. It now authenticates as a system API user: `make zitadel-keygen` writes a key pair once, ZITADEL gets the public half through `ZITADEL_SYSTEMAPIUSERS` (`zitadel.systemApiUsers` in Helm, `compose/.env` for Compose), and the script signs a five-minute token with the private half. It works on an existing database, so adopting it needs no reinstall.
+- **ZITADEL is pinned to `v4.13.1`.** `latest` resolved to whatever each node pulled last: two clusters on the same chart ran v4.13.1 and v4.20.0.
+
+### Known
+
+- The bundled `zitadel-postgres` keeps its data in the container. Restarting that pod erases every ZITADEL user, the gateway's included. Rerun the bootstrap after one.
+
+---
+
 ## nullfield Strict Policy Loading (2026-10-25)
 
 ### Fixed

@@ -109,6 +109,20 @@ the gateway pod.
 
 For the full identity guide, see [guide.md](guide.md).
 
+**Bundled ZITADEL.** Create the gateway's client credentials with the bootstrap script, which authenticates as a system API user ([why](guide.md#bootstrap-one-time-setup)):
+
+```bash
+uv run python scripts/zitadel_bootstrap.py --keygen /root/zitadel-system      # once
+helm upgrade camazotz deploy/helm/camazotz -n camazotz --reuse-values \
+  --set-file zitadel.systemApiUsers=/root/zitadel-system/system-api-users.json
+kubectl -n camazotz port-forward svc/zitadel 8180:8080 &
+uv run python scripts/zitadel_bootstrap.py --system-key /root/zitadel-system/system-user.pem
+```
+
+Pass the printed secret as `secrets.idpClientSecret` (step 1). `zitadel.tag` is pinned in `values.yaml`; `latest` resolves to whatever each node pulled last. The bundled `zitadel-postgres` keeps its data in the container, so restarting that pod erases every ZITADEL user, the gateway's included; rerun the bootstrap after one.
+
+**External IdP.**
+
 1. Edit **`deploy/helm/camazotz/values.yaml`** (or use `--set` / a values overlay):
 
    ```yaml

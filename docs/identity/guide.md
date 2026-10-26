@@ -294,10 +294,14 @@ This table shows what each artifact looks like across the three runtime states:
 ### Bootstrap (one-time setup)
 
 ```bash
+make zitadel-keygen       # once: writes ~/.camazotz/zitadel-system/system-user.pem
+# put the printed ZITADEL_SYSTEMAPIUSERS=... line in compose/.env, then restart ZITADEL
 make zitadel-bootstrap
 ```
 
-This creates a ZITADEL service user with client credentials, writes the credentials to `compose/.env`, and prints them for verification. Then restart the gateway:
+ZITADEL v4 has no password grant, so the script cannot sign in as the console admin. It authenticates as a *system API user* instead: ZITADEL holds the public key from `ZITADEL_SYSTEMAPIUSERS`, and the script signs a five-minute token with the private key. Keep `system-user.pem` private; it holds instance-owner rights. The public value is not a secret.
+
+The bootstrap creates a ZITADEL service user with client credentials in the default organization, writes the credentials to `compose/.env`, and prints them for verification. Each run issues a new client secret. Then restart the gateway:
 
 ```bash
 make up

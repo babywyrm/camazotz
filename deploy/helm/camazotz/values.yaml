@@ -155,8 +155,13 @@ ollama:
 zitadel:
   enabled: true
   image: ghcr.io/zitadel/zitadel
-  tag: latest
+  # Pinned: "latest" resolves to whatever was pulled last on each node.
+  tag: v4.13.1
   pullPolicy: IfNotPresent
+  # ZITADEL_SYSTEMAPIUSERS: the public key scripts/zitadel_bootstrap.py
+  # authenticates with. Not a secret. Set with
+  # --set-file zitadel.systemApiUsers=<dir>/system-api-users.json
+  systemApiUsers: ""
   port: 8080
   serviceType: ClusterIP
   hostPort: 8180
